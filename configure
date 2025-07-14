@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if command -v root-config &> /dev/null; then
-    echo "ROOT is found."
+    echo "ROOT is found. Root support will be enabled."
+    echo "Now run make"
     # grab raw flags…
     raw_cflags=$(root-config --cflags)
     raw_libs=$(root-config --libs)
