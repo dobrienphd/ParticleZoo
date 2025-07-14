@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if command -v root-config &> /dev/null; then
+    echo "ROOT is found."
+    # grab raw flags…
+    raw_cflags=$(root-config --cflags)
+    raw_libs=$(root-config --libs)
+    # strip any -std= and -m flags so our -std=c++20 stays in force
+    CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
+    LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
+    cat > root_flags.mk <<-EOF
+ROOT_CFLAGS = $CFLAGS
+ROOT_LIBS   = $LIBS
+USE_ROOT    = 1
+EOF
+else
+    echo "ROOT not found. disabling ROOT support."
+    cat > root_flags.mk <<-EOF
+ROOT_CFLAGS =
+ROOT_LIBS   =
+USE_ROOT    = 0
+EOF
+fi
