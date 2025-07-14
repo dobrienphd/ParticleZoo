@@ -10,19 +10,13 @@ ROOT_OTHER_FLAGS := $(filter-out -I%,$(ROOT_CFLAGS))
 
 # only define USE_ROOT when actually enabled
 ifeq ($(USE_ROOT),1)
-    ROOT_DEFINE := -DUSE_ROOT=1
+    MACRO_DEFINE := -DUSE_ROOT=1
 else
-    ROOT_DEFINE :=
+    MACRO_DEFINE :=
 endif
 
 # Common include flags
 INCLUDES := -Iinclude
-
-# Release flags
-CXXFLAGS_RELEASE := -std=c++20 -O3 -march=native $(ROOT_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
-
-# Debug flags
-CXXFLAGS_DEBUG := -std=c++20 -O0 -g $(ROOT_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # Source lists
 GCC_SRCS_CONVERT := \
@@ -66,6 +60,12 @@ GCC_SRCS_IMAGE := \
 
 # Optionally include external submodule overrides
 -include ext/ext.mk
+
+# Release flags
+CXXFLAGS_RELEASE := -std=c++20 -O3 -march=native $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
+
+# Debug flags
+CXXFLAGS_DEBUG := -std=c++20 -O0 -g $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # detect Windows vs. Unix
 ifeq ($(OS),Windows_NT)
