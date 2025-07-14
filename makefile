@@ -64,6 +64,9 @@ GCC_SRCS_IMAGE := \
 	src/ROOT/ROOTphsp.cc \
 	PHSPImage.cc
 
+# Optionally include external submodule overrides
+-include ext/ext.mk
+
 # detect Windows vs. Unix
 ifeq ($(OS),Windows_NT)
     BINEXT := .exe

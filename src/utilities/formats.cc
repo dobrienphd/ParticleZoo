@@ -9,6 +9,10 @@
 #include "particlezoo/peneasy/penEasyphspFile.h"
 #include "particlezoo/ROOT/ROOTphsp.h"
 
+#ifdef PZ_USE_EXT
+#include "ext_formats.h"
+#endif
+
 namespace ParticleZoo
 {
 
@@ -64,6 +68,10 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::ROOT::Writer>(filename, options);
                        });
+    #endif
+
+    #ifdef PZ_USE_EXT
+        RegisterExternalFormats();
     #endif
 
     }
