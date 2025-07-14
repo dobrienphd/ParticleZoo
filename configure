@@ -8,14 +8,16 @@ if command -v root-config &> /dev/null; then
     # strip any -std= and -m flags so our -std=c++20 stays in force
     CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
     LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
-    cat > root_flags.mk <<-EOF
+    cat > configure.mk <<-EOF
 ROOT_CFLAGS = $CFLAGS
 ROOT_LIBS   = $LIBS
 USE_ROOT    = 1
 EOF
 else
     echo "ROOT not found. disabling ROOT support."
-    cat > root_flags.mk <<-EOF
+    echo "If you want to use ROOT, please install it and ensure root-config is in your PATH."
+    echo "Now run make"
+    cat > configure.mk <<-EOF
 ROOT_CFLAGS =
 ROOT_LIBS   =
 USE_ROOT    = 0
