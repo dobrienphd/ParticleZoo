@@ -10,7 +10,7 @@ namespace ParticleZoo {
     // The codes are integers, with positive values typically representing particles and negative values representing antiparticles.
     // The PDG codes are defined in the Particle Data Group's Particle Listings, which can be found at https://pdg.lbl.gov/
 
-    // ——— 1) List every (name, PDG-code) once ———
+    // A macro to define particle codes
     #define PARTICLE_LIST \
         /* Quarks */ \
         X(DownQuark,                       1) \
@@ -33,36 +33,36 @@ namespace ParticleZoo {
         /* Leptons */ \
         X(Electron,                       11) \
         X(Positron,                      -11) \
-        X(ElectronNeutrino,              12) \
-        X(AntiElectronNeutrino,         -12) \
-        X(Muon,                          13) \
-        X(AntiMuon,                     -13) \
-        X(MuonNeutrino,                 14) \
-        X(AntiMuonNeutrino,            -14) \
-        X(Tau,                          15) \
-        X(AntiTau,                     -15) \
-        X(TauNeutrino,                 16) \
-        X(AntiTauNeutrino,            -16) \
-        X(TauPrime,                     17) \
-        X(AntiTauPrime,                -17) \
-        X(TauPrimeNeutrino,            18) \
-        X(AntiTauPrimeNeutrino,       -18) \
+        X(ElectronNeutrino,               12) \
+        X(AntiElectronNeutrino,          -12) \
+        X(Muon,                           13) \
+        X(AntiMuon,                      -13) \
+        X(MuonNeutrino,                   14) \
+        X(AntiMuonNeutrino,              -14) \
+        X(Tau,                            15) \
+        X(AntiTau,                       -15) \
+        X(TauNeutrino,                    16) \
+        X(AntiTauNeutrino,               -16) \
+        X(TauPrime,                       17) \
+        X(AntiTauPrime,                  -17) \
+        X(TauPrimeNeutrino,               18) \
+        X(AntiTauPrimeNeutrino,          -18) \
         \
         /* Bosons */ \
-        X(Gluon,                         21) \
-        X(Photon,                        22) \
-        X(ZBoson,                        23) \
-        X(WBoson,                        24) \
-        X(AntiWBoson,                   -24) \
-        X(HiggsBoson,                    25) \
-        X(ZPrimeBoson,                   32) \
-        X(ZDoublePrimeBoson,             33) \
-        X(WPrimeBoson,                   34) \
-        X(AntiWPrimeBoson,              -34) \
-        X(NeutralHiggsBoson,             35) \
-        X(PseudoscalarHiggsBoson,        36) \
-        X(ChargedHiggsBoson,             37) \
-        X(AntiChargedHiggsBoson,        -37) \
+        X(Gluon,                          21) \
+        X(Photon,                         22) \
+        X(ZBoson,                         23) \
+        X(WBoson,                         24) \
+        X(AntiWBoson,                    -24) \
+        X(HiggsBoson,                     25) \
+        X(ZPrimeBoson,                    32) \
+        X(ZDoublePrimeBoson,              33) \
+        X(WPrimeBoson,                    34) \
+        X(AntiWPrimeBoson,               -34) \
+        X(NeutralHiggsBoson,              35) \
+        X(PseudoscalarHiggsBoson,         36) \
+        X(ChargedHiggsBoson,              37) \
+        X(AntiChargedHiggsBoson,         -37) \
         \
         /* Diquarks */ \
         X(Diquark_dd_1,                   1103) \
@@ -117,11 +117,11 @@ namespace ParticleZoo {
         X(AntiDiquark_bb_1,              -5503) \
         \
         /* Light Mesons (I=1) */ \
-        X(PionZero,                      111) \
-        X(PionPlus,                      211) \
-        X(AntiPionPlus,                 -211) \
+        X(PionZero,                       111) \
+        X(PionPlus,                       211) \
+        X(AntiPionPlus,                  -211) \
         X(a0_980_Zero,                9000111) \
-        X(a0_980_Plus,               9000211) \
+        X(a0_980_Plus,                9000211) \
         X(Anti_a0_980_Plus,          -9000211) \
         X(Pi_1300_Zero,                100111) \
         X(Pi_1300_Plus,                100211) \
@@ -132,15 +132,15 @@ namespace ParticleZoo {
         X(Pi_1800_Zero,               9010111) \
         X(Pi_1800_Plus,               9010211) \
         X(AntiPi_1800_Plus,          -9010211) \
-        X(Rho_770_Zero,                  113) \
-        X(Rho_770_Plus,                  213) \
-        X(AntiRho_770_Plus,             -213) \
-        X(b1_1235_Zero,                10113) \
-        X(b1_1235_Plus,                10213) \
-        X(Anti_b1_1235_Plus,          -10213) \
-        X(a1_1260_Zero,                20113) \
-        X(a1_1260_Plus,                20213) \
-        X(Anti_a1_1260_Plus,          -20213) \
+        X(Rho_770_Zero,                   113) \
+        X(Rho_770_Plus,                   213) \
+        X(AntiRho_770_Plus,              -213) \
+        X(b1_1235_Zero,                 10113) \
+        X(b1_1235_Plus,                 10213) \
+        X(Anti_b1_1235_Plus,           -10213) \
+        X(a1_1260_Zero,                 20113) \
+        X(a1_1260_Plus,                 20213) \
+        X(Anti_a1_1260_Plus,           -20213) \
         X(Pi1_1400_Zero,              9000113) \
         X(Pi1_1400_Plus,              9000213) \
         X(Anti_Pi1_1400_Plus,        -9000213) \
@@ -156,48 +156,48 @@ namespace ParticleZoo {
         X(Rho_1700_Zero,                30113) \
         X(Rho_1700_Plus,                30213) \
         X(AntiRho_1700_Plus,           -30213) \
-        X(Rho_1900_Zero,             9030113) \
-        X(Rho_1900_Plus,             9030213) \
-        X(AntiRho_1900_Plus,        -9030213) \
-        X(Rho_2150_Zero,             9040113) \
-        X(Rho_2150_Plus,             9040213) \
-        X(AntiRho_2150_Plus,        -9040213) \
-        X(a2_1320_Zero,                  115) \
-        X(a2_1320_Plus,                  215) \
-        X(Anti_a2_1320_Plus,            -215) \
-        X(Pi2_1670_Zero,               10115) \
-        X(Pi2_1670_Plus,               10215) \
-        X(AntiPi2_1670_Plus,          -10215) \
-        X(a2_1700_Zero,             9000115) \
-        X(a2_1700_Plus,             9000215) \
-        X(Anti_a2_1700_Plus,        -9000215) \
-        X(Pi2_2100_Zero,            9010115) \
-        X(Pi2_2100_Plus,            9010215) \
-        X(AntiPi2_2100_Plus,       -9010215) \
-        X(Rho3_1690_Zero,                117) \
-        X(Rho3_1690_Plus,                217) \
-        X(AntiRho3_1690_Plus,           -217) \
-        X(Rho3_1990_Zero,            9000117) \
-        X(Rho3_1990_Plus,            9000217) \
-        X(AntiRho3_1990_Plus,       -9000217) \
-        X(Rho3_2250_Zero,            9010117) \
-        X(Rho3_2250_Plus,            9010217) \
-        X(AntiRho3_2250_Plus,       -9010217) \
-        X(a4_2040_Zero,                 119) \
-        X(a4_2040_Plus,                 219) \
-        X(Anti_a4_2040_Plus,           -219) \
+        X(Rho_1900_Zero,              9030113) \
+        X(Rho_1900_Plus,              9030213) \
+        X(AntiRho_1900_Plus,         -9030213) \
+        X(Rho_2150_Zero,              9040113) \
+        X(Rho_2150_Plus,              9040213) \
+        X(AntiRho_2150_Plus,         -9040213) \
+        X(a2_1320_Zero,                   115) \
+        X(a2_1320_Plus,                   215) \
+        X(Anti_a2_1320_Plus,             -215) \
+        X(Pi2_1670_Zero,                10115) \
+        X(Pi2_1670_Plus,                10215) \
+        X(AntiPi2_1670_Plus,           -10215) \
+        X(a2_1700_Zero,               9000115) \
+        X(a2_1700_Plus,               9000215) \
+        X(Anti_a2_1700_Plus,         -9000215) \
+        X(Pi2_2100_Zero,              9010115) \
+        X(Pi2_2100_Plus,              9010215) \
+        X(AntiPi2_2100_Plus,         -9010215) \
+        X(Rho3_1690_Zero,                 117) \
+        X(Rho3_1690_Plus,                 217) \
+        X(AntiRho3_1690_Plus,            -217) \
+        X(Rho3_1990_Zero,             9000117) \
+        X(Rho3_1990_Plus,             9000217) \
+        X(AntiRho3_1990_Plus,        -9000217) \
+        X(Rho3_2250_Zero,             9010117) \
+        X(Rho3_2250_Plus,             9010217) \
+        X(AntiRho3_2250_Plus,        -9010217) \
+        X(a4_2040_Zero,                   119) \
+        X(a4_2040_Plus,                   219) \
+        X(Anti_a4_2040_Plus,             -219) \
         \
         /* Light Mesons (I=0) */ \
         X(Eta,                            221) \
         X(EtaPrime_958,                   331) \
         X(f0_600,                     9000221) \
         X(f0_980,                     9010221) \
-        X(Eta_1295,                     100221) \
-        X(f0_1370,                       10221) \
+        X(Eta_1295,                    100221) \
+        X(f0_1370,                      10221) \
         X(Eta_1405,                   9020221) \
-        X(Eta_1475,                     100331) \
+        X(Eta_1475,                    100331) \
         X(f0_1500,                    9030221) \
-        X(f0_1710,                       10331) \
+        X(f0_1710,                      10331) \
         X(Eta_1760,                   9040221) \
         X(f0_2020,                    9050221) \
         X(f0_2100,                    9060221) \
@@ -205,23 +205,23 @@ namespace ParticleZoo {
         X(Eta_2225,                   9080221) \
         X(Omega_782,                      223) \
         X(Phi_1020,                       333) \
-        X(h1_1170,                       10223) \
-        X(f1_1285,                       20223) \
-        X(h1_1380,                       10333) \
-        X(f1_1420,                       20333) \
-        X(Omega_1420,                   100223) \
+        X(h1_1170,                      10223) \
+        X(f1_1285,                      20223) \
+        X(h1_1380,                      10333) \
+        X(f1_1420,                      20333) \
+        X(Omega_1420,                  100223) \
         X(f1_1510,                    9000223) \
         X(h1_1595,                    9010223) \
-        X(Omega_1650,                    30223) \
-        X(Phi_1680,                     100333) \
+        X(Omega_1650,                   30223) \
+        X(Phi_1680,                    100333) \
         X(f2_1270,                        225) \
         X(f2_1430,                    9000225) \
         X(f2_1525,                        335) \
         X(f2_1565,                    9010225) \
         X(f2_1640,                    9020225) \
-        X(Eta2_1645,                     10225) \
+        X(Eta2_1645,                    10225) \
         X(f2_1810,                    9030225) \
-        X(Eta2_1870,                     10335) \
+        X(Eta2_1870,                    10335) \
         X(f2_1910,                    9040225) \
         X(f2_1950,                    9050225) \
         X(f2_2010,                    9060225) \
@@ -533,90 +533,90 @@ namespace ParticleZoo {
         X(AntiKaonZero,                    -311) \
         X(KaonPlus,                         321) \
         X(AntiKaonPlus,                    -321) \
-        X(K0Star_800_Zero,            9000311) \
-        X(AntiK0Star_800_Zero,       -9000311) \
-        X(K0Star_800_Plus,            9000321) \
-        X(AntiK0Star_800_Plus,       -9000321) \
-        X(K0Star_1430_Zero,             10311) \
-        X(AntiK0Star_1430_Zero,        -10311) \
-        X(K0Star_1430_Plus,             10321) \
-        X(AntiK0Star_1430_Plus,        -10321) \
-        X(K_1460_Zero,                  100311) \
-        X(AntiK_1460_Zero,             -100311) \
-        X(K_1460_Plus,                  100321) \
-        X(AntiK_1460_Plus,             -100321) \
-        X(K_1830_Zero,                9010311) \
-        X(AntiK_1830_Zero,           -9010311) \
-        X(K_1830_Plus,                9010321) \
-        X(AntiK_1830_Plus,           -9010321) \
-        X(K0Star_1950_Zero,           9020311) \
-        X(AntiK0Star_1950_Zero,      -9020311) \
-        X(K0Star_1950_Plus,           9020321) \
-        X(AntiK0Star_1950_Plus,      -9020321) \
-        X(KStar_892_Zero,                 313) \
-        X(AntiKStar_892_Zero,            -313) \
-        X(KStar_892_Plus,                 323) \
-        X(AntiKStar_892_Plus,            -323) \
-        X(K1_1270_Zero,                 10313) \
-        X(AntiK1_1270_Zero,            -10313) \
-        X(K1_1270_Plus,                 10323) \
-        X(AntiK1_1270_Plus,            -10323) \
-        X(K1_1400_Zero,                 20313) \
-        X(AntiK1_1400_Zero,            -20313) \
-        X(K1_1400_Plus,                 20323) \
-        X(AntiK1_1400_Plus,            -20323) \
-        X(KStar_1410_Zero,             100313) \
-        X(AntiKStar_1410_Zero,        -100313) \
-        X(KStar_1410_Plus,             100323) \
-        X(AntiKStar_1410_Plus,        -100323) \
-        X(K1_1650_Zero,               9000313) \
-        X(AntiK1_1650_Zero,          -9000313) \
-        X(K1_1650_Plus,               9000323) \
-        X(AntiK1_1650_Plus,          -9000323) \
-        X(KStar_1680_Zero,              30313) \
-        X(AntiKStar_1680_Zero,         -30313) \
-        X(KStar_1680_Plus,              30323) \
-        X(AntiKStar_1680_Plus,         -30323) \
-        X(K2Star_1430_Zero,               315) \
-        X(AntiK2Star_1430_Zero,          -315) \
-        X(K2Star_1430_Plus,               325) \
-        X(AntiK2Star_1430_Plus,          -325) \
-        X(K2_1580_Zero,               9000315) \
-        X(AntiK2_1580_Zero,          -9000315) \
-        X(K2_1580_Plus,               9000325) \
-        X(AntiK2_1580_Plus,          -9000325) \
-        X(K2_1770_Zero,                 10315) \
-        X(AntiK2_1770_Zero,            -10315) \
-        X(K2_1770_Plus,                 10325) \
-        X(AntiK2_1770_Plus,            -10325) \
-        X(K2_1820_Zero,                 20315) \
-        X(AntiK2_1820_Zero,            -20315) \
-        X(K2_1820_Plus,                 20325) \
-        X(AntiK2_1820_Plus,            -20325) \
-        X(K2_1980_Zero,               9010315) \
-        X(AntiK2_1980_Zero,          -9010315) \
-        X(K2_1980_Plus,               9010325) \
-        X(AntiK2_1980_Plus,          -9010325) \
-        X(K2_2250_Zero,               9020315) \
-        X(AntiK2_2250_Zero,          -9020315) \
-        X(K2_2250_Plus,               9020325) \
-        X(AntiK2_2250_Plus,          -9020325) \
-        X(K3Star_1780_Zero,               317) \
-        X(AntiK3Star_1780_Zero,          -317) \
-        X(K3Star_1780_Plus,               327) \
-        X(AntiK3Star_1780_Plus,          -327) \
-        X(K3_2320_Zero,               9010317) \
-        X(AntiK3_2320_Zero,          -9010317) \
-        X(K3_2320_Plus,               9010327) \
-        X(AntiK3_2320_Plus,          -9010327) \
-        X(K4Star_2045_Zero,               319) \
-        X(AntiK4Star_2045_Zero,          -319) \
-        X(K4Star_2045_Plus,               329) \
-        X(AntiK4Star_2045_Plus,          -329) \
-        X(K4_2500_Zero,               9000319) \
-        X(AntiK4_2500_Zero,          -9000319) \
-        X(K4_2500_Plus,               9000329) \
-        X(AntiK4_2500_Plus,          -9000329) \
+        X(K0Star_800_Zero,              9000311) \
+        X(AntiK0Star_800_Zero,         -9000311) \
+        X(K0Star_800_Plus,              9000321) \
+        X(AntiK0Star_800_Plus,         -9000321) \
+        X(K0Star_1430_Zero,               10311) \
+        X(AntiK0Star_1430_Zero,          -10311) \
+        X(K0Star_1430_Plus,               10321) \
+        X(AntiK0Star_1430_Plus,          -10321) \
+        X(K_1460_Zero,                   100311) \
+        X(AntiK_1460_Zero,              -100311) \
+        X(K_1460_Plus,                   100321) \
+        X(AntiK_1460_Plus,              -100321) \
+        X(K_1830_Zero,                  9010311) \
+        X(AntiK_1830_Zero,             -9010311) \
+        X(K_1830_Plus,                  9010321) \
+        X(AntiK_1830_Plus,             -9010321) \
+        X(K0Star_1950_Zero,             9020311) \
+        X(AntiK0Star_1950_Zero,        -9020311) \
+        X(K0Star_1950_Plus,             9020321) \
+        X(AntiK0Star_1950_Plus,        -9020321) \
+        X(KStar_892_Zero,                   313) \
+        X(AntiKStar_892_Zero,              -313) \
+        X(KStar_892_Plus,                   323) \
+        X(AntiKStar_892_Plus,              -323) \
+        X(K1_1270_Zero,                   10313) \
+        X(AntiK1_1270_Zero,              -10313) \
+        X(K1_1270_Plus,                   10323) \
+        X(AntiK1_1270_Plus,              -10323) \
+        X(K1_1400_Zero,                   20313) \
+        X(AntiK1_1400_Zero,              -20313) \
+        X(K1_1400_Plus,                   20323) \
+        X(AntiK1_1400_Plus,              -20323) \
+        X(KStar_1410_Zero,               100313) \
+        X(AntiKStar_1410_Zero,          -100313) \
+        X(KStar_1410_Plus,               100323) \
+        X(AntiKStar_1410_Plus,          -100323) \
+        X(K1_1650_Zero,                 9000313) \
+        X(AntiK1_1650_Zero,            -9000313) \
+        X(K1_1650_Plus,                 9000323) \
+        X(AntiK1_1650_Plus,            -9000323) \
+        X(KStar_1680_Zero,                30313) \
+        X(AntiKStar_1680_Zero,           -30313) \
+        X(KStar_1680_Plus,                30323) \
+        X(AntiKStar_1680_Plus,           -30323) \
+        X(K2Star_1430_Zero,                 315) \
+        X(AntiK2Star_1430_Zero,            -315) \
+        X(K2Star_1430_Plus,                 325) \
+        X(AntiK2Star_1430_Plus,            -325) \
+        X(K2_1580_Zero,                 9000315) \
+        X(AntiK2_1580_Zero,            -9000315) \
+        X(K2_1580_Plus,                 9000325) \
+        X(AntiK2_1580_Plus,            -9000325) \
+        X(K2_1770_Zero,                   10315) \
+        X(AntiK2_1770_Zero,              -10315) \
+        X(K2_1770_Plus,                   10325) \
+        X(AntiK2_1770_Plus,              -10325) \
+        X(K2_1820_Zero,                   20315) \
+        X(AntiK2_1820_Zero,              -20315) \
+        X(K2_1820_Plus,                   20325) \
+        X(AntiK2_1820_Plus,              -20325) \
+        X(K2_1980_Zero,                 9010315) \
+        X(AntiK2_1980_Zero,            -9010315) \
+        X(K2_1980_Plus,                 9010325) \
+        X(AntiK2_1980_Plus,            -9010325) \
+        X(K2_2250_Zero,                 9020315) \
+        X(AntiK2_2250_Zero,            -9020315) \
+        X(K2_2250_Plus,                 9020325) \
+        X(AntiK2_2250_Plus,            -9020325) \
+        X(K3Star_1780_Zero,                 317) \
+        X(AntiK3Star_1780_Zero,            -317) \
+        X(K3Star_1780_Plus,                 327) \
+        X(AntiK3Star_1780_Plus,            -327) \
+        X(K3_2320_Zero,                 9010317) \
+        X(AntiK3_2320_Zero,            -9010317) \
+        X(K3_2320_Plus,                 9010327) \
+        X(AntiK3_2320_Plus,            -9010327) \
+        X(K4Star_2045_Zero,                 319) \
+        X(AntiK4Star_2045_Zero,            -319) \
+        X(K4Star_2045_Plus,                 329) \
+        X(AntiK4Star_2045_Plus,            -329) \
+        X(K4_2500_Zero,                 9000319) \
+        X(AntiK4_2500_Zero,            -9000319) \
+        X(K4_2500_Plus,                 9000329) \
+        X(AntiK4_2500_Plus,            -9000329) \
         \
         /* Charmed Mesons */ \
         X(DPlus,                         411) \
@@ -709,48 +709,48 @@ namespace ParticleZoo {
         /* Charmonium Mesons */ \
         X(Eta_c_1S,                       441) \
         X(Chi_c0_1P,                    10441) \
-        X(Eta_c_2S,                     100441) \
+        X(Eta_c_2S,                    100441) \
         X(J_psi_1S,                       443) \
         X(h_c_1P,                       10443) \
         X(Chi_c1_1P,                    20443) \
-        X(psi_2S,                       100443) \
+        X(psi_2S,                      100443) \
         X(psi_3770,                     30443) \
         X(psi_4040,                   9000443) \
         X(psi_4160,                   9010443) \
         X(psi_4415,                   9020443) \
         X(Chi_c2_1P,                      445) \
-        X(Chi_c2_2P,                    100445) \
+        X(Chi_c2_2P,                   100445) \
         \
         /* Bottomonium Mesons */ \
         X(Eta_b_1S,                        551) \
         X(Chi_b0_1P,                     10551) \
-        X(Eta_b_2S,                      100551) \
-        X(Chi_b0_2P,                     110551) \
-        X(Eta_b_3S,                      200551) \
-        X(Chi_b0_3P,                     210551) \
+        X(Eta_b_2S,                     100551) \
+        X(Chi_b0_2P,                    110551) \
+        X(Eta_b_3S,                     200551) \
+        X(Chi_b0_3P,                    210551) \
         X(Upsilon_1S,                      553) \
         X(h_b_1P,                        10553) \
         X(Chi_b1_1P,                     20553) \
         X(Upsilon1_1D,                   30553) \
-        X(Upsilon_2S,                    100553) \
-        X(h_b_2P,                        110553) \
-        X(Chi_b1_2P,                     120553) \
-        X(Upsilon1_2D,                   130553) \
-        X(Upsilon_3S,                    200553) \
-        X(h_b_3P,                        210553) \
-        X(Chi_b1_3P,                     220553) \
-        X(Upsilon_4S,                    300553) \
+        X(Upsilon_2S,                   100553) \
+        X(h_b_2P,                       110553) \
+        X(Chi_b1_2P,                    120553) \
+        X(Upsilon1_2D,                  130553) \
+        X(Upsilon_3S,                   200553) \
+        X(h_b_3P,                       210553) \
+        X(Chi_b1_3P,                    220553) \
+        X(Upsilon_4S,                   300553) \
         X(Upsilon_10860,               9000553) \
         X(Upsilon_11020,               9010553) \
         X(Chi_b2_1P,                       555) \
         X(Eta_b2_1D,                     10555) \
         X(Upsilon2_1D,                   20555) \
-        X(Chi_b2_2P,                     100555) \
-        X(Eta_b2_2D,                     110555) \
-        X(Upsilon2_2D,                   120555) \
-        X(Chi_b2_3P,                     200555) \
+        X(Chi_b2_2P,                    100555) \
+        X(Eta_b2_2D,                    110555) \
+        X(Upsilon2_2D,                  120555) \
+        X(Chi_b2_3P,                    200555) \
         X(Upsilon3_1D,                     557) \
-        X(Upsilon3_2D,                   100557) \
+        X(Upsilon3_2D,                  100557) \
         \
         /* Pentaquarks */ \
         X(ThetaPlus,                  9221132) \
@@ -759,13 +759,13 @@ namespace ParticleZoo {
         X(AntiPhiMinusMinus,         -9331122) \
         \
         /* Excited */ \
-        X(ExcitedDownQuark,     4000001) \
-        X(ExcitedUpQuark,       4000002) \
-        X(ExcitedElectron,      4000011) \
-        X(ExcitedElectronNeutrino,4000012) \
-        X(ExcitedAntiDownQuark,-4000001) \
-        X(ExcitedAntiUpQuark,  -4000002) \
-        X(ExcitedPositron,     -4000011) \
+        X(ExcitedDownQuark,            4000001) \
+        X(ExcitedUpQuark,              4000002) \
+        X(ExcitedElectron,             4000011) \
+        X(ExcitedElectronNeutrino,     4000012) \
+        X(ExcitedAntiDownQuark,       -4000001) \
+        X(ExcitedAntiUpQuark,         -4000002) \
+        X(ExcitedPositron,            -4000011) \
         X(ExcitedAntiElectronNeutrino,-4000012) \
         \
         /* Special */ \
@@ -777,38 +777,39 @@ namespace ParticleZoo {
         X(Odderon,                  9990) \
         \
         /* Nuclei */ \
-        X(Deuteron,            1000010020) \
-        X(AntiDeuteron,       -1000010020) \
-        X(Triton,              1000010030) \
-        X(AntiTriton,         -1000010030) \
-        X(Helium3Nucleus,      1000020030) \
-        X(AntiHelium3Nucleus, -1000020030) \
-        X(HeliumNucleus,       1000020040) \
-        X(AntiHeliumNucleus,  -1000020040) \
-        X(Lithium6Nucleus,     1000030060) \
-        X(AntiLithium6Nucleus,-1000030060) \
-        X(Lithium7Nucleus,     1000030070) \
-        X(AntiLithium7Nucleus,-1000030070) \
-        X(Beryllium7Nucleus,   1000040070) \
+        X(Deuteron,              1000010020) \
+        X(AntiDeuteron,         -1000010020) \
+        X(Triton,                1000010030) \
+        X(AntiTriton,           -1000010030) \
+        X(Helium3Nucleus,        1000020030) \
+        X(AntiHelium3Nucleus,   -1000020030) \
+        X(HeliumNucleus,         1000020040) \
+        X(AntiHeliumNucleus,    -1000020040) \
+        X(Lithium6Nucleus,       1000030060) \
+        X(AntiLithium6Nucleus,  -1000030060) \
+        X(Lithium7Nucleus,       1000030070) \
+        X(AntiLithium7Nucleus,  -1000030070) \
+        X(Beryllium7Nucleus,     1000040070) \
         X(AntiBeryllium7Nucleus,-1000040070) \
-        X(Beryllium9Nucleus,   1000040090) \
+        X(Beryllium9Nucleus,     1000040090) \
         X(AntiBeryllium9Nucleus,-1000040090) \
-        X(Boron10Nucleus,      1000050100) \
-        X(AntiBoron10Nucleus, -1000050100) \
-        X(Boron11Nucleus,      1000050110) \
-        X(AntiBoron11Nucleus, -1000050110) \
-        X(Carbon11Nucleus,     1000060110) \
-        X(AntiCarbon11Nucleus,-1000060110) \
-        X(CarbonNucleus,       1000060120) \
-        X(AntiCarbonNucleus,  -1000060120) \
-        X(Nitrogen14Nucleus,   1000070140) \
+        X(Boron10Nucleus,        1000050100) \
+        X(AntiBoron10Nucleus,   -1000050100) \
+        X(Boron11Nucleus,        1000050110) \
+        X(AntiBoron11Nucleus,   -1000050110) \
+        X(Carbon11Nucleus,       1000060110) \
+        X(AntiCarbon11Nucleus,  -1000060110) \
+        X(CarbonNucleus,         1000060120) \
+        X(AntiCarbonNucleus,    -1000060120) \
+        X(Nitrogen14Nucleus,     1000070140) \
         X(AntiNitrogen14Nucleus,-1000070140) \
-        X(Oxygen15Nucleus,     1000080150) \
-        X(AntiOxygen15Nucleus,-1000080150) \
-        X(OxygenNucleus,       1000080160) \
-        X(AntiOxygenNucleus,  -1000080160)
+        X(Oxygen15Nucleus,       1000080150) \
+        X(AntiOxygen15Nucleus,  -1000080150) \
+        X(OxygenNucleus,         1000080160) \
+        X(AntiOxygenNucleus,    -1000080160)
 
-    // ——— 2) Generate the enum from that list ———
+
+    // Convert the macro list into an enum list of particle types with their PDG IDs
     enum class ParticleType : std::int32_t {
     #define X(name, code) name = code,
         PARTICLE_LIST
@@ -816,7 +817,7 @@ namespace ParticleZoo {
         Unsupported =  99
     };
 
-    // ——— 3) Generate your “safe” from-PDGID lookup ———
+    // Returns the ParticleType corresponding to a given PDG ID.
     inline ParticleType getParticleTypeFromPDGID(std::int32_t pdg) noexcept {
         switch (pdg) {
     #define X(name, code) case code: return ParticleType::name;
@@ -826,7 +827,7 @@ namespace ParticleZoo {
         }
     }
 
-    // ——— 4) Generate your name lookup, too ———
+    // Returns the name of the particle type as a string.
     constexpr std::string_view getParticleTypeName(ParticleType t) {
         switch (t) {
     #define X(name, code) case ParticleType::name: return #name;

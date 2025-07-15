@@ -1,2 +1,3 @@
-configure.mk
+config.status
 build
+.vscode

@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# Default installation prefix
+PREFIX=/usr/local
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prefix=*)
+      PREFIX="${1#*=}"
+      shift
+      ;;
+    --prefix)
+      PREFIX="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
 # Detect C++ compiler if not already set
 echo -n "checking for a C++ compiler... "
 if [ -z "$CXX" ]; then
@@ -49,14 +70,15 @@ else
     USE_ROOT=0
 fi
 
-# write out configure.mk
-echo "configure: creating ./configure.mk"
-cat > configure.mk <<-EOF
-CXX        = $CXX
-CXXFLAGS   = $CXXFLAGS
+# write out config.status
+echo "configure: creating ./config.status"
+cat > config.status <<-EOF
+CXX         = $CXX
+CXXFLAGS    = $CXXFLAGS
 ROOT_CFLAGS = $CFLAGS
 ROOT_LIBS   = $LIBS
 USE_ROOT    = $USE_ROOT
+PREFIX      = $PREFIX
 EOF
 
 # final summary
@@ -66,6 +88,7 @@ Configuration Summary:
   C++ Compiler:           $CXX
   C++ Standard:           C++20
   ROOT support:           $( [ $USE_ROOT -eq 1 ] && echo yes || echo no )
+  Installation prefix:    $PREFIX
 
 Now you can run 'make' to build the software.
 "
