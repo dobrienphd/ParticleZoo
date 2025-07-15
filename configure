@@ -1,26 +1,71 @@
 #!/bin/bash
 
+# Detect C++ compiler if not already set
+echo -n "checking for a C++ compiler... "
+if [ -z "$CXX" ]; then
+    for comp in g++ clang++ c++; do
+        if command -v "$comp" &> /dev/null; then
+            CXX="$comp"
+            break
+        fi
+    done
+fi
+if [ -z "$CXX" ]; then
+    echo "no"
+    echo "Error: No C++ compiler found. Please install g++, clang++, or another C++ compiler."
+    exit 1
+else
+    echo "$CXX"
+fi
+
+# Test for C++20 support
+echo -n "checking whether $CXX accepts -std=c++20... "
+echo 'int main(){}' > conftest.cpp
+if ! "$CXX" -std=c++20 -o conftest conftest.cpp &> /dev/null; then
+    echo "no"
+    rm -f conftest.cpp conftest
+    echo "Error: Compiler $CXX does not support C++20."
+    exit 1
+else
+    echo "yes"
+fi
+rm -f conftest.cpp conftest
+
+CXXFLAGS="-std=c++20"
+
+# ROOT support
+echo -n "checking for root-config... "
 if command -v root-config &> /dev/null; then
-    echo "ROOT is found. Root support will be enabled."
-    echo "Now run make"
-    # grab raw flags…
+    echo "yes"
     raw_cflags=$(root-config --cflags)
     raw_libs=$(root-config --libs)
-    # strip any -std= and -m flags so our -std=c++20 stays in force
     CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
     LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
-    cat > configure.mk <<-EOF
+    USE_ROOT=1
+else
+    echo "no"
+    CFLAGS=
+    LIBS=
+    USE_ROOT=0
+fi
+
+# write out configure.mk
+echo "configure: creating ./configure.mk"
+cat > configure.mk <<-EOF
+CXX        = $CXX
+CXXFLAGS   = $CXXFLAGS
 ROOT_CFLAGS = $CFLAGS
 ROOT_LIBS   = $LIBS
-USE_ROOT    = 1
+USE_ROOT    = $USE_ROOT
 EOF
-else
-    echo "ROOT not found. disabling ROOT support."
-    echo "If you want to use ROOT, please install it and ensure root-config is in your PATH."
-    echo "Now run make"
-    cat > configure.mk <<-EOF
-ROOT_CFLAGS =
-ROOT_LIBS   =
-USE_ROOT    = 0
-EOF
-fi
+
+# final summary
+echo "
+------------------------------------------------------------------------
+Configuration Summary:
+  C++ Compiler:           $CXX
+  C++ Standard:           C++20
+  ROOT support:           $( [ $USE_ROOT -eq 1 ] && echo yes || echo no )
+
+Now you can run 'make' to build the software.
+"

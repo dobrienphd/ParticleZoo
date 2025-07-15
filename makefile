@@ -14,6 +14,8 @@ ifeq ($(USE_ROOT),1)
     MACRO_DEFINE := -DUSE_ROOT=1
 else
     MACRO_DEFINE :=
+	ROOT_SYS_CFLAGS :=
+	ROOT_OTHER_FLAGS :=
 endif
 
 # Common include flags
@@ -63,10 +65,10 @@ GCC_SRCS_IMAGE := \
 -include ext/ext.mk
 
 # Release flags
-CXXFLAGS_RELEASE := -std=c++20 -O3 -march=native $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
+CXXFLAGS_RELEASE := $(CXXFLAGS) -O3 -march=native $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # Debug flags
-CXXFLAGS_DEBUG := -std=c++20 -O0 -g $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
+CXXFLAGS_DEBUG := $(CXXFLAGS) -O0 -g $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # detect Windows vs. Unix
 ifeq ($(OS),Windows_NT)
