@@ -24,6 +24,10 @@ endif
 # Common include flags
 INCLUDES := -Iinclude
 
+# Output dirs and binaries
+GCC_BIN_DIR_REL := build/gcc/release
+GCC_BIN_DIR_DBG := build/gcc/debug
+
 # Source lists
 GCC_SRCS_CONVERT := \
 	src/PhaseSpaceFileReader.cc \
@@ -64,6 +68,26 @@ GCC_SRCS_IMAGE := \
 	src/ROOT/ROOTphsp.cc \
 	PHSPImage.cc
 
+# --- static library settings ---
+LIB_NAME     := libparticlezoo.a
+LIB_SRCS     := \
+    src/PhaseSpaceFileReader.cc \
+    src/PhaseSpaceFileWriter.cc \
+    src/utilities/formats.cc \
+    src/egs/egsphspFile.cc \
+    src/peneasy/penEasyphspFile.cc \
+    src/iaea/IAEAHeader.cc \
+    src/iaea/IAEAphspFile.cc \
+    src/topas/TOPASHeader.cc \
+    src/topas/TOPASphspFile.cc \
+    src/ROOT/ROOTphsp.cc
+
+LIB_OBJS_REL := $(patsubst src/%.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
+LIB_OBJS_DBG := $(patsubst src/%.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
+
+LIB_REL       := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
+LIB_DBG       := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)
+
 # Optionally include external submodule overrides
 -include ext/ext.mk
 
@@ -82,10 +106,6 @@ else
     MKDIR_P := mkdir -p
 endif
 
-# Output dirs and binaries
-GCC_BIN_DIR_REL := build/gcc/release
-GCC_BIN_DIR_DBG := build/gcc/debug
-
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
 COMBINE_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPCombine$(BINEXT)
 IMAGE_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPImage$(BINEXT)
@@ -98,47 +118,68 @@ IMAGE_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPImage$(BINEXT)
 .DEFAULT_GOAL := release
 
 .PHONY: release debug \
-        gcc-release-convert gcc-release-combine gcc-release-image \
-        gcc-debug-convert   gcc-debug-combine   gcc-debug-image \
-        clean install
+        gcc-release-convert gcc-release-combine gcc-release-image gcc-release-lib \
+        gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-lib \
+        clean install install-debug
 
 # Default (release)
-release: gcc-release-convert gcc-release-combine gcc-release-image
+release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-lib
 
 # Debug bundle
-debug: gcc-debug-convert gcc-debug-combine gcc-debug-image
+debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-lib
 
 # Release targets
 gcc-release-convert:
 	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building GCC Release (PHSPConvert)..."
+	@echo "Building Release (PHSPConvert)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_CONVERT) -o $(CONVERT_BIN_REL) $(ROOT_LIBS)
 
 gcc-release-combine:
 	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building GCC Release (PHSPCombine)..."
+	@echo "Building Release (PHSPCombine)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_COMBINE) -o $(COMBINE_BIN_REL) $(ROOT_LIBS)
 
 gcc-release-image:
 	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building GCC Release (PHSPImage)..."
+	@echo "Building Release (PHSPImage)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_IMAGE) -o $(IMAGE_BIN_REL) $(ROOT_LIBS)
+
+gcc-release-lib: $(LIB_REL)
+$(LIB_REL): $(LIB_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Building Release static library ($@)…"
+	ar rcs $@ $^
 
 # Debug targets
 gcc-debug-convert:
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
-	@echo "Building GCC Debug (PHSPConvert)..."
+	@echo "Building Debug (PHSPConvert)..."
 	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_CONVERT) -o $(CONVERT_BIN_DBG) $(ROOT_LIBS)
 
 gcc-debug-combine:
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
-	@echo "Building GCC Debug (PHSPCombine)..."
+	@echo "Building Debug (PHSPCombine)..."
 	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_COMBINE) -o $(COMBINE_BIN_DBG) $(ROOT_LIBS)
 
 gcc-debug-image:
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
-	@echo "Building GCC Debug (PHSPImage)..."
+	@echo "Building Debug (PHSPImage)..."
 	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_IMAGE) -o $(IMAGE_BIN_DBG) $(ROOT_LIBS)
+
+gcc-debug-lib: $(LIB_DBG)
+$(LIB_DBG): $(LIB_OBJS_DBG)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Building Debug static library ($@)…"
+	ar rcs $@ $^
+
+# --- compile object files into the right dirs ---
+$(GCC_BIN_DIR_REL)/%.o: src/%.cc
+	@$(MKDIR_P) $(dir $@)
+	$(CXX) $(CXXFLAGS_RELEASE) -c $< -o $@
+
+$(GCC_BIN_DIR_DBG)/%.o: src/%.cc
+	@$(MKDIR_P) $(dir $@)
+	$(CXX) $(CXXFLAGS_DEBUG)  -c $< -o $@
 
 # Clean
 clean:
@@ -149,11 +190,18 @@ clean:
 # Installation directory (can be overridden)
 PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/bin
+LIBDIR := $(PREFIX)/lib
 
 install:
-	@echo -n "Installing to $(BINDIR)..."
-	@$(MKDIR_P) $(BINDIR)
-	@cp $(CONVERT_BIN_REL) $(BINDIR)
-	@cp $(COMBINE_BIN_REL) $(BINDIR)
-	@cp $(IMAGE_BIN_REL) $(BINDIR)
+	@echo -n "Installing into $(BINDIR) and $(LIBDIR)..."
+	@$(MKDIR_P) $(BINDIR) $(LIBDIR)
+	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(BINDIR)
+	@cp $(LIB_REL) $(LIBDIR)
+	@echo " done."
+
+install-debug:
+	@echo -n "Installing debug binaries and library to $(BINDIR)/debug and $(LIBDIR)/debug..."
+	@$(MKDIR_P) $(BINDIR)/debug $(LIBDIR)/debug
+	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)/debug
+	@cp $(LIB_DBG) $(LIBDIR)/debug
 	@echo " done."
