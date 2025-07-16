@@ -6,6 +6,10 @@ ifneq ($(wildcard config.status),config.status)
   $(error config.status not found. Please run './configure' first.)
 endif
 
+# Enable parallel builds
+JOBS   ?= $(shell nproc)
+MAKEFLAGS += -j$(JOBS)
+
 USE_ROOT ?= 0
 ROOT_CFLAGS ?=
 ROOT_LIBS   ?=
@@ -32,43 +36,43 @@ GCC_BIN_DIR_DBG := build/gcc/debug
 
 # Source lists
 GCC_SRCS_CONVERT := \
-	src/PhaseSpaceFileReader.cc \
-	src/PhaseSpaceFileWriter.cc \
-	src/utilities/formats.cc \
-	src/egs/egsphspFile.cc \
-	src/peneasy/penEasyphspFile.cc \
-	src/iaea/IAEAHeader.cc \
-	src/iaea/IAEAphspFile.cc \
-	src/topas/TOPASHeader.cc \
-	src/topas/TOPASphspFile.cc \
-	src/ROOT/ROOTphsp.cc \
-	PHSPConvert.cc
+    src/PhaseSpaceFileReader.cc \
+    src/PhaseSpaceFileWriter.cc \
+    src/utilities/formats.cc \
+    src/egs/egsphspFile.cc \
+    src/peneasy/penEasyphspFile.cc \
+    src/iaea/IAEAHeader.cc \
+    src/iaea/IAEAphspFile.cc \
+    src/topas/TOPASHeader.cc \
+    src/topas/TOPASphspFile.cc \
+    src/ROOT/ROOTphsp.cc \
+    PHSPConvert.cc
 
 GCC_SRCS_COMBINE := \
-	src/PhaseSpaceFileReader.cc \
-	src/PhaseSpaceFileWriter.cc \
-	src/utilities/formats.cc \
-	src/egs/egsphspFile.cc \
-	src/peneasy/penEasyphspFile.cc \
-	src/iaea/IAEAHeader.cc \
-	src/iaea/IAEAphspFile.cc \
-	src/topas/TOPASHeader.cc \
-	src/topas/TOPASphspFile.cc \
-	src/ROOT/ROOTphsp.cc \
-	PHSPCombine.cc
+    src/PhaseSpaceFileReader.cc \
+    src/PhaseSpaceFileWriter.cc \
+    src/utilities/formats.cc \
+    src/egs/egsphspFile.cc \
+    src/peneasy/penEasyphspFile.cc \
+    src/iaea/IAEAHeader.cc \
+    src/iaea/IAEAphspFile.cc \
+    src/topas/TOPASHeader.cc \
+    src/topas/TOPASphspFile.cc \
+    src/ROOT/ROOTphsp.cc \
+    PHSPCombine.cc
 
 GCC_SRCS_IMAGE := \
-	src/PhaseSpaceFileReader.cc \
-	src/PhaseSpaceFileWriter.cc \
-	src/utilities/formats.cc \
-	src/egs/egsphspFile.cc \
-	src/peneasy/penEasyphspFile.cc \
-	src/iaea/IAEAHeader.cc \
-	src/iaea/IAEAphspFile.cc \
-	src/topas/TOPASHeader.cc \
-	src/topas/TOPASphspFile.cc \
-	src/ROOT/ROOTphsp.cc \
-	PHSPImage.cc
+    src/PhaseSpaceFileReader.cc \
+    src/PhaseSpaceFileWriter.cc \
+    src/utilities/formats.cc \
+    src/egs/egsphspFile.cc \
+    src/peneasy/penEasyphspFile.cc \
+    src/iaea/IAEAHeader.cc \
+    src/iaea/IAEAphspFile.cc \
+    src/topas/TOPASHeader.cc \
+    src/topas/TOPASphspFile.cc \
+    src/ROOT/ROOTphsp.cc \
+    PHSPImage.cc
 
 # --- static library settings ---
 LIB_NAME := libparticlezoo.a
@@ -88,10 +92,11 @@ LIB_SRCS := \
 LIB_REL := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
 LIB_DBG := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)
 
-LIB_OBJS_REL    := $(patsubst src/%.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
-LIB_OBJS_DBG    := $(patsubst src/%.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
+LIB_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
+LIB_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
 
-vpath %.cc src
+# Allow pattern rules to find .cc in src/ and project root
+vpath %.cc src .
 
 # Optionally include external submodule overrides
 -include ext/ext.mk
@@ -113,11 +118,11 @@ endif
 
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
 COMBINE_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPCombine$(BINEXT)
-IMAGE_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPImage$(BINEXT)
+IMAGE_BIN_REL   := $(GCC_BIN_DIR_REL)/PHSPImage$(BINEXT)
 
 CONVERT_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPConvert$(BINEXT)
 COMBINE_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPCombine$(BINEXT)
-IMAGE_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPImage$(BINEXT)
+IMAGE_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPImage$(BINEXT)
 
 # Make release the default goal
 .DEFAULT_GOAL := release
@@ -133,29 +138,40 @@ release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-l
 # Debug bundle
 debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-lib
 
-# Release targets
-gcc-release-convert:
-	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building Release (PHSPConvert)..."
-	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_CONVERT) -o $(CONVERT_BIN_REL) $(ROOT_LIBS)
+# Object lists for executables
+CONVERT_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_CONVERT))
+COMBINE_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_COMBINE))
+IMAGE_OBJS_REL   := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_IMAGE))
 
-gcc-release-combine:
-	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building Release (PHSPCombine)..."
-	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_COMBINE) -o $(COMBINE_BIN_REL) $(ROOT_LIBS)
+# Release executable targets
+gcc-release-convert: $(CONVERT_BIN_REL)
+gcc-release-combine: $(COMBINE_BIN_REL)
+gcc-release-image:   $(IMAGE_BIN_REL)
 
-gcc-release-image:
-	@$(MKDIR_P) $(GCC_BIN_DIR_REL)
-	@echo "Building Release (PHSPImage)..."
-	$(CXX) $(CXXFLAGS_RELEASE) $(GCC_SRCS_IMAGE) -o $(IMAGE_BIN_REL) $(ROOT_LIBS)
+$(CONVERT_BIN_REL): $(CONVERT_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Linking Release (PHSPConvert)…"
+	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
+	@echo " "
 
+$(COMBINE_BIN_REL): $(COMBINE_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Linking Release (PHSPCombine)…"
+	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
+
+$(IMAGE_BIN_REL): $(IMAGE_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Linking Release (PHSPImage)…"
+	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
+
+# Release static library
 gcc-release-lib: $(LIB_REL)
 $(LIB_REL): $(LIB_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Building Release static library ($@)…"
 	ar rcs $@ $^
 
-# Debug targets
+# Debug executable targets (could be parallelized similarly)
 gcc-debug-convert:
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
 	@echo "Building Debug (PHSPConvert)..."
@@ -178,13 +194,15 @@ $(LIB_DBG): $(LIB_OBJS_DBG)
 	ar rcs $@ $^
 
 # --- compile object files into the right dirs ---
-$(GCC_BIN_DIR_REL)/%.o: src/%.cc
+$(GCC_BIN_DIR_REL)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
+	@echo "Compiling Release object $<…"
 	$(CXX) $(CXXFLAGS_RELEASE) -c $< -o $@
 
-$(GCC_BIN_DIR_DBG)/%.o: src/%.cc
+$(GCC_BIN_DIR_DBG)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
-	$(CXX) $(CXXFLAGS_DEBUG)  -c $< -o $@
+	@echo "Compiling Debug object $<…"
+	$(CXX) $(CXXFLAGS_DEBUG) -c $< -o $@
 
 # Clean
 clean:
