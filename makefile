@@ -24,6 +24,8 @@ endif
 # Common include flags
 INCLUDES := -Iinclude
 
+PZ_HEADERS := include/particlezoo
+
 # Output dirs and binaries
 GCC_BIN_DIR_REL := build/gcc/release
 GCC_BIN_DIR_DBG := build/gcc/debug
@@ -69,24 +71,27 @@ GCC_SRCS_IMAGE := \
 	PHSPImage.cc
 
 # --- static library settings ---
-LIB_NAME     := libparticlezoo.a
-LIB_SRCS     := \
-    src/PhaseSpaceFileReader.cc \
-    src/PhaseSpaceFileWriter.cc \
-    src/utilities/formats.cc \
-    src/egs/egsphspFile.cc \
-    src/peneasy/penEasyphspFile.cc \
-    src/iaea/IAEAHeader.cc \
-    src/iaea/IAEAphspFile.cc \
-    src/topas/TOPASHeader.cc \
-    src/topas/TOPASphspFile.cc \
-    src/ROOT/ROOTphsp.cc
+LIB_NAME := libparticlezoo.a
+LIB_SRCS := \
+        src/PhaseSpaceFileReader.cc \
+        src/PhaseSpaceFileWriter.cc \
+        src/utilities/formats.cc \
+        src/egs/egsphspFile.cc \
+        src/peneasy/penEasyphspFile.cc \
+        src/iaea/IAEAHeader.cc \
+        src/iaea/IAEAphspFile.cc \
+        src/topas/TOPASHeader.cc \
+        src/topas/TOPASphspFile.cc \
+        src/ROOT/ROOTphsp.cc \
+        PHSPImage.cc
 
-LIB_OBJS_REL := $(patsubst src/%.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
-LIB_OBJS_DBG := $(patsubst src/%.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
+LIB_REL := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
+LIB_DBG := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)
 
-LIB_REL       := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
-LIB_DBG       := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)
+LIB_OBJS_REL    := $(patsubst src/%.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
+LIB_OBJS_DBG    := $(patsubst src/%.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
+
+vpath %.cc src
 
 # Optionally include external submodule overrides
 -include ext/ext.mk
@@ -193,15 +198,17 @@ BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/lib
 
 install:
-	@echo -n "Installing into $(BINDIR) and $(LIBDIR)..."
-	@$(MKDIR_P) $(BINDIR) $(LIBDIR)
+	@echo -n "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
+	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
 	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(BINDIR)
 	@cp $(LIB_REL) $(LIBDIR)
+	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
 
 install-debug:
-	@echo -n "Installing debug binaries and library to $(BINDIR)/debug and $(LIBDIR)/debug..."
-	@$(MKDIR_P) $(BINDIR)/debug $(LIBDIR)/debug
+	@echo -n "Installing debug binaries and library to $(BINDIR)/debug, $(LIBDIR)/debug and headers into $(PREFIX)/include..."
+	@$(MKDIR_P) $(BINDIR)/debug $(LIBDIR)/debug $(PREFIX)/include
 	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)/debug
 	@cp $(LIB_DBG) $(LIBDIR)/debug
+	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
