@@ -1,6 +1,7 @@
 #pragma once
 
 #include "particlezoo/ByteBuffer.h"
+#include "particlezoo/utilities/pzimages.h"
 
 #include <vector>
 #include <string>
@@ -11,29 +12,19 @@
 
 namespace ParticleZoo {
 
-    // Simple 24-bit pixel
     template<typename T>
-    struct Pixel {
-        static_assert(std::is_arithmetic_v<T> && "Pixel type must be arithmetic");
-        T r, g, b;
-        Pixel() : r(0), g(0), b(0) {}
-        Pixel(T rr, T gg, T bb) : r(rr), g(gg), b(bb) {}
-    };
-
-    template<typename T>
-    class Bitmap {
+    class BitmapImage : public Image<T> {
         static_assert(std::is_arithmetic_v<T> && "Bitmap type must be arithmetic");
 
     public:
-        Bitmap(int width, int height);
-        int width() const;
-        int height() const;
-        void setPixel(int x, int y, const Pixel<T>& p);
-        void setPixel(int x, int y, const T& R, const T& G, const T& B);
-        Pixel<T> getPixel(int x, int y) const;
+        BitmapImage(int width, int height);
+        int width() const override;
+        int height() const override;
+        void setPixel(int x, int y, const Pixel<T>& p) override;
+        void setPixel(int x, int y, const T& R, const T& G, const T& B) override;
+        Pixel<T> getPixel(int x, int y) const override;
 
-
-        void save(const std::string& path) const;
+        void save(const std::string& path) const override;
         void save(const std::string& path, T lowerLimit, T upperLimit) const;
 
     private:
@@ -47,20 +38,20 @@ namespace ParticleZoo {
     /* Inline implementation of Bitmap */
 
     template<typename T>
-    inline Bitmap<T>::Bitmap(int w, int h)
+    inline BitmapImage<T>::BitmapImage(int w, int h)
         : width_(w), height_(h), minValue_(std::numeric_limits<T>::max()), maxValue_(std::numeric_limits<T>::min()), data_(w * h)
     {
         if (w <= 0 || h <= 0) throw std::runtime_error("Invalid dimensions");
     }
 
     template<typename T>
-    inline int Bitmap<T>::width() const { return width_; }
+    inline int BitmapImage<T>::width() const { return width_; }
 
     template<typename T>
-    inline int Bitmap<T>::height() const { return height_; }
+    inline int BitmapImage<T>::height() const { return height_; }
 
     template<typename T>
-    inline void Bitmap<T>::setPixel(int x, int y, const Pixel<T>& p) {
+    inline void BitmapImage<T>::setPixel(int x, int y, const Pixel<T>& p) {
         if (x<0||x>=width_||y<0||y>=height_) throw std::runtime_error("Pixel out of range");
         size_t idx = (y * width_ + x);
         data_[idx] = p;
@@ -75,7 +66,7 @@ namespace ParticleZoo {
     }
 
     template<typename T>
-    inline void Bitmap<T>::setPixel(int x, int y, const T& R, const T& G, const T& B) {
+    inline void BitmapImage<T>::setPixel(int x, int y, const T& R, const T& G, const T& B) {
         if (x<0||x>=width_||y<0||y>=height_) throw std::runtime_error("Pixel out of range");
         size_t idx = (y * width_ + x);
         data_[idx] = Pixel<T>{R, G, B};
@@ -90,19 +81,19 @@ namespace ParticleZoo {
     }
 
     template<typename T>
-    inline Pixel<T> Bitmap<T>::getPixel(int x, int y) const {
+    inline Pixel<T> BitmapImage<T>::getPixel(int x, int y) const {
         if (x<0||x>=width_||y<0||y>=height_) throw std::runtime_error("Pixel out of range");
         size_t idx = (y * width_ + x);
         return data_[idx];
     }
 
     template<typename T>
-    inline void Bitmap<T>::save(const std::string& path) const {
+    inline void BitmapImage<T>::save(const std::string& path) const {
         save(path, minValue_, maxValue_);
     }
 
     template<typename T>
-    inline void Bitmap<T>::save(const std::string& path, T lowerLimit, T upperLimit) const {
+    inline void BitmapImage<T>::save(const std::string& path, T lowerLimit, T upperLimit) const {
         // BMP row padding to 4-byte boundary
         int rowBytes = width_ * 3;
         int pad = (4 - (rowBytes % 4)) % 4;

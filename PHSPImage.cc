@@ -5,7 +5,9 @@
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
-#include "particlezoo/utilities/bitmap.h"
+#include "particlezoo/utilities/pzimages.h"
+#include "particlezoo/utilities/pzbitmap.h"
+#include "particlezoo/utilities/pztiff.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
@@ -13,6 +15,11 @@ enum Plane {
     XY,
     XZ,
     YZ
+};
+
+enum ImageFormat {
+    TIFF,
+    BMP
 };
 
 int main(int argc, char* argv[]) {
@@ -35,6 +42,8 @@ int main(int argc, char* argv[]) {
     using namespace ParticleZoo;
 
     FormatRegistry::RegisterStandardFormats();
+
+    ImageFormat outputFormat = TIFF; // default output format
 
     std::string usageMessage = "Usage: PHSPImage [--<option> <value> ...] planeLocation inputfile outputfile";
     auto args = parseArgs(argc, argv, usageMessage, 3);
@@ -154,8 +163,20 @@ int main(int argc, char* argv[]) {
 
     std::string inputFormat = args["inputFormat"].empty() ? "" : args["inputFormat"][0];
 
+    if (args["outputFormat"].size() == 1) {
+        std::string formatStr = args["outputFormat"][0];
+        if (formatStr == "tiff" || formatStr == "TIFF") {
+            outputFormat = TIFF;
+        } else if (formatStr == "bmp" || formatStr == "BMP") {
+            outputFormat = BMP;
+        } else {
+            throw std::runtime_error("Unsupported output format: " + formatStr);
+        }
+    }
+
     // print out the parameters
     std::cout << "Parameters:" << std::endl;
+    std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
     std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
     std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
     std::cout << "  Input File: " << inputFile << " (Format: " << inputFormat << ")" << std::endl;
@@ -198,7 +219,14 @@ int main(int argc, char* argv[]) {
 
         auto start_time = std::chrono::steady_clock::now();
 
-        Bitmap<float> bitmap(imageWidth, imageHeight);
+        Image<float> * image;
+        if (outputFormat == TIFF) {
+            image = new TiffImage<float>(imageWidth, imageHeight);
+        } else if (outputFormat == BMP) {
+            image = new BitmapImage<float>(imageWidth, imageHeight);
+        } else {
+            throw std::runtime_error("Unsupported output format.");
+        }
 
         if (particlesToRead > 0) {
             for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
@@ -250,18 +278,20 @@ int main(int argc, char* argv[]) {
                 }
 
                 // Set pixel color based on the particle's weight
-                Pixel pixel = bitmap.getPixel(pixelX, pixelY);
+                Pixel<float> pixel = image->getPixel(pixelX, pixelY);
                 pixel.b += weight;
                 pixel.g += weight;
                 pixel.r += weight;
-                bitmap.setPixel(pixelX, pixelY, pixel);
+                image->setPixel(pixelX, pixelY, pixel);
             }
         }
 
-        bitmap.save(outputFile);
+        image->save(outputFile);
 
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
+
+        delete image;
 
         std::cout << "\r[####################] 100% complete" << std::endl;
         std::cout << "Time taken: " << elapsed << " seconds" << std::endl;

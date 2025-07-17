@@ -7,10 +7,37 @@
 #include <cstdlib>
 #include <cstddef>
 #include <vector>
+#include <variant>
 
 #include "particlezoo/utilities/formats.h"
 
 namespace ParticleZoo {
+
+    using CLIValue = std::variant<float,int,std::string,bool>;
+
+    struct CLICommand
+    {
+        enum CLIArgType { CLI_FLOAT = 1, CLI_INT = 2, CLI_STRING = 3, CLI_BOOL = 4 };
+
+        std::string shortName;
+        std::string longName;
+        std::string description;
+        std::vector<CLIArgType> argTypes;
+        
+        CLICommand(const std::string& shortName,
+                const std::string& longName,
+                const std::string& description,
+                std::initializer_list<CLIArgType> types)
+        : shortName(shortName),
+            longName(longName),
+            description(description),
+            argTypes(types)
+            {}
+        
+        bool operator==(CLICommand const& o) const noexcept {
+            return shortName == o.shortName && longName == o.longName;
+        }
+    };
 
     static std::unordered_map<std::string, std::vector<std::string>>
     parseArgs(int argc, char* argv[], std::string & usageMessage, std::size_t minimumPositionalArgs = 0)
