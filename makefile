@@ -86,20 +86,19 @@ LIB_SRCS := \
         src/iaea/IAEAphspFile.cc \
         src/topas/TOPASHeader.cc \
         src/topas/TOPASphspFile.cc \
-        src/ROOT/ROOTphsp.cc \
-        PHSPImage.cc
+        src/ROOT/ROOTphsp.cc
 
 LIB_REL := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
 LIB_DBG := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)
-
-LIB_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
-LIB_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
 
 # Allow pattern rules to find .cc in src/ and project root
 vpath %.cc src .
 
 # Optionally include external submodule overrides
 -include ext/ext.mk
+
+LIB_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
+LIB_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
 
 # Release flags
 CXXFLAGS_RELEASE := $(CXXFLAGS) -O3 -march=native $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
