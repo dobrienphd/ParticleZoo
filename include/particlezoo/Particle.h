@@ -70,7 +70,7 @@ namespace ParticleZoo {
         };
 
         public:
-            Particle();
+            Particle() = default;
             Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory = true, float weight = 1.0);
 
             // Getters and setters for basic particle properties
@@ -126,17 +126,17 @@ namespace ParticleZoo {
 
         private:
 
-            const ParticleType type_;
-            float kineticEnergy_;
-            float x_;
-            float y_;
-            float z_;
-            float px_;
-            float py_;
-            float pz_;
-            bool isNewHistory_;
-            float weight_;
-            ParticleProperties properties_;
+            ParticleType type_{ParticleType::Unsupported};
+            float kineticEnergy_{0.f};
+            float x_{0.f};
+            float y_{0.f};
+            float z_{0.f};
+            float px_{0.f};
+            float py_{0.f};
+            float pz_{0.f};
+            bool isNewHistory_{false};
+            float weight_{0.f};
+            ParticleProperties properties_{};
             
             int  getBoolPropertyIndex(BoolPropertyType type) const;
             int  getFloatPropertyIndex(FloatPropertyType type) const;
@@ -147,9 +147,6 @@ namespace ParticleZoo {
 
     /* Implementation of Particle class methods */
 
-    inline Particle::Particle()
-    :Particle(ParticleType::Unsupported, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, false, 1.f)
-    {}
 
     inline Particle::Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory, float weight)
     : type_(type), kineticEnergy_(kineticEnergy), x_(x), y_(y), z_(z), px_(px), py_(py), pz_(pz), isNewHistory_(isNewHistory), weight_(weight), properties_()
