@@ -23,6 +23,7 @@ namespace ParticleZoo {
         void setPixel(int x, int y, const Pixel<T>& p) override;
         void setPixel(int x, int y, const T& R, const T& G, const T& B) override;
         Pixel<T> getPixel(int x, int y) const override;
+        void normalize(T normalizationFactor) override;
 
         void save(const std::string& path) const override;
         void save(const std::string& path, T lowerLimit, T upperLimit) const;
@@ -85,6 +86,20 @@ namespace ParticleZoo {
         if (x<0||x>=width_||y<0||y>=height_) throw std::runtime_error("Pixel out of range");
         size_t idx = (y * width_ + x);
         return data_[idx];
+    }
+
+    template<typename T>
+    inline void BitmapImage<T>::normalize(T normalizationFactor) {
+        if (normalizationFactor <= 0) {
+            throw std::runtime_error("Normalization factor must be greater than zero.");
+        }
+        for (auto& pixel : data_) {
+            pixel.r /= normalizationFactor;
+            pixel.g /= normalizationFactor;
+            pixel.b /= normalizationFactor;
+        }
+        minValue_ /= normalizationFactor;
+        maxValue_ /= normalizationFactor;
     }
 
     template<typename T>

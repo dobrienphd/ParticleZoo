@@ -25,6 +25,7 @@ namespace ParticleZoo {
         void setPixel(int x, int y, const Pixel<T>& p) override;
         void setPixel(int x, int y, const T& R, const T& G, const T& B) override;
         Pixel<T> getPixel(int x, int y) const override;
+        void normalize(T normalizationFactor) override;
         void save(const std::string& path) const override;
 
     private:
@@ -78,11 +79,25 @@ namespace ParticleZoo {
     }
 
     template<typename T>
+    inline void TiffImage<T>::normalize(T normalizationFactor) {
+        if (normalizationFactor <= 0) {
+            throw std::runtime_error("Normalization factor must be greater than zero.");
+        }
+        for (auto& pixel : data_) {
+            pixel.r /= normalizationFactor;
+            pixel.g /= normalizationFactor;
+            pixel.b /= normalizationFactor;
+        }
+        minValue_ /= normalizationFactor;
+        maxValue_ /= normalizationFactor;
+    }
+
+    template<typename T>
     inline void TiffImage<T>::save(const std::string& path) const {
         static_assert(std::is_arithmetic_v<T>, "TiffImage<T> requires arithmetic T");
 
         constexpr uint16_t samplesPerPixel = 3;
-        constexpr uint16_t bitsPerSample   = sizeof(T) * 8;                       // e.g. 8,16,32
+        constexpr uint16_t bitsPerSample   = sizeof(T) * 8; // e.g. 8,16,32
         constexpr uint16_t sampleFormat    = std::is_floating_point_v<T> ? 3 : 1; // 1=UnsignedInt, 3=IEEEFP
 
         size_t pixelCount = size_t(width_) * height_;
@@ -97,8 +112,8 @@ namespace ParticleZoo {
         const uint32_t offBits    = static_cast<uint32_t>(OFF_AUX);
         const uint32_t offSamFmt  = offBits + samplesPerPixel * sizeof(uint16_t); // 6
         const uint32_t offXRes    = offSamFmt + samplesPerPixel * sizeof(uint16_t); // 12
-        const uint32_t offYRes    = offXRes   + 8;                                 // 20
-        const uint32_t offPixData = static_cast<uint32_t>(OFF_AUX + 28);          // 6+6+8+8 = 28
+        const uint32_t offYRes    = offXRes   + 8; // 20
+        const uint32_t offPixData = static_cast<uint32_t>(OFF_AUX + 28); // 6+6+8+8 = 28
         const size_t OFF_PIX      = OFF_AUX + 28;
         size_t totalSize          = OFF_PIX + pdSize;
 
