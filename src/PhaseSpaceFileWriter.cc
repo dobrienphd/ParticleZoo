@@ -2,8 +2,9 @@
 
 namespace ParticleZoo
 {
-    PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
-    : fileName_(fileName),
+    PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
+    : phspFormat_(phspFormat),
+      fileName_(fileName),
       userOptions_(userOptions),
       BUFFER_SIZE(bufferSize),
       formatType_(formatType),

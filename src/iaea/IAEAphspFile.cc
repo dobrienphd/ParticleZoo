@@ -7,7 +7,7 @@ namespace ParticleZoo::IAEAphspFile
     // Implementations for the IAEAphspFileReader class
 
     Reader::Reader(const std::string & filename, const UserOptions & options)
-        : PhaseSpaceFileReader(filename, options), header_(IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename)))
+        : PhaseSpaceFileReader("IAEA", filename, options), header_(IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename)))
     {
         // nothing to do
     }
@@ -82,7 +82,7 @@ namespace ParticleZoo::IAEAphspFile
 
 
     Writer::Writer(const std::string & filename, const UserOptions & userOptions)
-        : PhaseSpaceFileWriter(filename, userOptions),
+        : PhaseSpaceFileWriter("IAEA", filename, userOptions),
           header_([&]() {
             IAEAHeader header = userOptions.contains("IAEAHeaderTemplate") ? 
                 IAEAHeader(IAEAHeader(userOptions.at("IAEAHeaderTemplate").front())) : 

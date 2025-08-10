@@ -8,6 +8,7 @@
 #include "particlezoo/utilities/pzimages.h"
 #include "particlezoo/utilities/pzbitmap.h"
 #include "particlezoo/utilities/pztiff.h"
+#include "particlezoo/utilities/progress.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
@@ -174,24 +175,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // print out the parameters
-    std::cout << "Parameters:" << std::endl;
-    std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
-    std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
-    std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
-    std::cout << "  Input File: " << inputFile << " (Format: " << inputFormat << ")" << std::endl;
-    std::cout << "  Output File: " << outputFile << std::endl; 
-    std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
-    std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
-    std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" 
-              << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
-    std::cout << "  Width in third dimension: " << widthDim3 << " cm" << std::endl;
-    std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
-    std::cout << "  Max Particles to Read: " 
-              << (args["maxParticles"].empty() ? "all" : args["maxParticles"][0]) << std::endl;
-
-    int errorCode = 0;
-
     std::unique_ptr<PhaseSpaceFileReader> reader;
     if (inputFormat.empty()) {
         reader = FormatRegistry::CreateReader(inputFile, args);
@@ -199,13 +182,28 @@ int main(int argc, char* argv[]) {
         reader = FormatRegistry::CreateReader(inputFormat, inputFile, args);
     }
 
+    // print out the parameters
+    std::cout << "Parameters:" << std::endl;
+    std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
+    std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
+    std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
+    std::cout << "  Input File: " << inputFile << " (Format: " << reader->getPHSPFormat() << ")" << std::endl;
+    std::cout << "  Output File: " << outputFile << std::endl; 
+    std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
+    std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
+    std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" 
+              << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
+    std::cout << "  Thickness in third dimension: " << widthDim3 << " cm" << std::endl;
+    std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
+    std::cout << "  Max Particles to Read: " 
+              << (args["maxParticles"].empty() ? "all" : args["maxParticles"][0]) << std::endl;
+
+    int errorCode = 0;
+
     try {
         std::cout << "Counting particles from " 
-                  << inputFile << " (" << inputFormat << ") to store in image "
+                  << inputFile << " (" << reader->getPHSPFormat() << ") to store in image "
                   << outputFile << "..." << std::endl;
-
-        int lastPercentageProgress = 0;
-        std::cout << "[--------------------] 0% complete" << std::flush;
 
         uint64_t particlesInFile = reader->getNumberOfParticles();
         uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
@@ -232,21 +230,11 @@ int main(int argc, char* argv[]) {
         }
 
         if (particlesToRead > 0) {
+            Progress<uint64_t> progress(particlesToRead);
+            progress.Start("Reading particles:");
             for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
 
                 Particle particle = reader->getNextParticle();
-
-                // Update progress bar every 1% of particles read
-                if (particlesSoFar % onePercentInterval == 0) {
-                    int progress = static_cast<int>(particlesSoFar * 20 / particlesToRead);
-                    int percentageProgress = static_cast<int>(particlesSoFar * 100 / particlesToRead);
-                    if (percentageProgress != lastPercentageProgress) {
-                        lastPercentageProgress = percentageProgress;
-                        std::cout << "\r[";
-                        std::cout << std::string(progress, '#') << std::string(20 - progress, '-') << "] "
-                            << percentageProgress << "% complete" << std::flush;
-                    }
-                }
 
                 /* Process particle */
                 float x = particle.getX() / cm;
@@ -287,21 +275,26 @@ int main(int argc, char* argv[]) {
                 pixel.g += weight;
                 pixel.r += weight;
                 image->setPixel(pixelX, pixelY, pixel);
+
+                // Update progress bar every 1% of particles read
+                if (particlesSoFar % onePercentInterval == 0) {
+                    progress.Update(particlesSoFar, "Processed " + std::to_string(reader->getHistoriesRead()) + " histories.");
+                }
             }
+
+            std::uint64_t historiesRead = particlesToRead < particlesInFile ? reader->getHistoriesRead() : numberOfHistories;
+
+            image->normalize(static_cast<float>(historiesRead));
+            image->save(outputFile);
+
+            progress.Complete("Image generation complete. Processed " + std::to_string(historiesRead) + " histories.");
         }
-
-        std::uint64_t historiesRead = particlesToRead < particlesInFile ? reader->getHistoriesRead() : numberOfHistories;
-
-        image->normalize(static_cast<float>(historiesRead));
-
-        image->save(outputFile);
 
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
 
         delete image;
 
-        std::cout << "\r[####################] 100% complete" << std::endl;
         std::cout << "Time taken: " << elapsed << " seconds" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error occurred: " << e.what() << std::endl;

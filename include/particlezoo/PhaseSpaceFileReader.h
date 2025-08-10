@@ -16,11 +16,13 @@ namespace ParticleZoo
     class PhaseSpaceFileReader
     {
         public:
-            PhaseSpaceFileReader(const std::string & fileName, const UserOptions & options, FormatType formatType = FormatType::BINARY, unsigned int bufferSize = DEFAULT_BUFFER_SIZE);
+            PhaseSpaceFileReader(const std::string & phspFormat, const std::string & fileName, const UserOptions & options, FormatType formatType = FormatType::BINARY, unsigned int bufferSize = DEFAULT_BUFFER_SIZE);
             virtual ~PhaseSpaceFileReader();
 
             Particle              getNextParticle();
             virtual bool          hasMoreParticles();
+
+            const std::string     getPHSPFormat() const;
 
             virtual std::uint64_t getNumberOfParticles() const = 0;
             virtual std::uint64_t getNumberOfOriginalHistories() const = 0;
@@ -55,6 +57,7 @@ namespace ParticleZoo
             void                  readNextBlock();
             void                  bufferNextASCIILine();
 
+            const std::string phspFormat_;
             const std::string fileName_;
             const UserOptions userOptions_;
             const FormatType formatType_;
@@ -79,6 +82,8 @@ namespace ParticleZoo
     };
 
     // Inline implementations for the PhaseSpaceFileReader class
+
+    inline const std::string PhaseSpaceFileReader::getPHSPFormat() const { return phspFormat_; }
 
     inline Particle PhaseSpaceFileReader::getNextParticle() {
         return getNextParticle(true); // count particle in statistics by default

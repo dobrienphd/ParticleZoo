@@ -3,8 +3,9 @@
 
 namespace ParticleZoo
 {
-    PhaseSpaceFileReader::PhaseSpaceFileReader(const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
-    :   fileName_(fileName),
+    PhaseSpaceFileReader::PhaseSpaceFileReader(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
+    :   phspFormat_(phspFormat),
+        fileName_(fileName),
         userOptions_(userOptions),
         formatType_(formatType),
         BUFFER_SIZE(bufferSize),

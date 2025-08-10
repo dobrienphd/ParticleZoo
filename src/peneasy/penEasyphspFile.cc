@@ -13,7 +13,7 @@ namespace ParticleZoo::penEasyphspFile
 {
 
     Writer::Writer(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileWriter(fileName, options, FormatType::ASCII)
+    : PhaseSpaceFileWriter("penEasy", fileName, options, FormatType::ASCII)
     {}
 
     void Writer::writeHeaderData(ByteBuffer & buffer)
@@ -90,7 +90,7 @@ namespace ParticleZoo::penEasyphspFile
 
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader(fileName, options, FormatType::ASCII),
+    : PhaseSpaceFileReader("penEasy", fileName, options, FormatType::ASCII),
       numberOfParticlesRead_(0),
       numberOfOriginalHistoriesRead_(0)
     {}
