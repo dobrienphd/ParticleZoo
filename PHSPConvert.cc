@@ -5,6 +5,7 @@
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
+#include "particlezoo/utilities/progress.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
@@ -67,8 +68,8 @@ int main(int argc, char* argv[]) {
 
     try {
         std::cout << "Converting particles from " 
-                  << inputFile << " (" << inputFormat << ") to "
-                  << outputFile << " (" << outputFormat << ")..." << std::endl;
+                  << inputFile << " (" << reader->getPHSPFormat() << ") to "
+                  << outputFile << " (" << writer->getPHSPFormat() << ")..." << std::endl;
 
         int lastPercentageProgress = 0;
         std::cout << "[--------------------] 0% complete" << std::flush;
@@ -76,7 +77,7 @@ int main(int argc, char* argv[]) {
         uint64_t particlesInFile = reader->getNumberOfParticles();
         uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
         uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
-        
+
         uint64_t onePercentInterval = particlesToRead >= 100 
                                     ? particlesToRead / 100 
                                     : 1;
@@ -84,6 +85,8 @@ int main(int argc, char* argv[]) {
         auto start_time = std::chrono::steady_clock::now();
 
         if (particlesToRead > 0) {
+            Progress<uint64_t> progress(particlesToRead);
+            progress.Start("Converting:");
             for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
 
                 Particle particle = reader->getNextParticle();
@@ -91,14 +94,7 @@ int main(int argc, char* argv[]) {
 
                 // Update progress bar every 1% of particles read
                 if (particlesSoFar % onePercentInterval == 0) {
-                    int progress = static_cast<int>(particlesSoFar * 20 / particlesToRead);
-                    int percentageProgress = static_cast<int>(particlesSoFar * 100 / particlesToRead);
-                    if (percentageProgress != lastPercentageProgress) {
-                        lastPercentageProgress = percentageProgress;
-                        std::cout << "\r[";
-                        std::cout << std::string(progress, '#') << std::string(20 - progress, '-') << "] "
-                            << percentageProgress << "% complete" << std::flush;
-                    }
+                    progress.Update(particlesSoFar, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
                 }
             }
 
@@ -106,13 +102,16 @@ int main(int argc, char* argv[]) {
             std::uint64_t historiesWritten = writer->getHistoriesWritten();
             if (historiesWritten < historiesInOriginalFile) {
                 writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
+            } else if (historiesWritten > historiesInOriginalFile) {
+                throw std::runtime_error("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file (" + std::to_string(historiesInOriginalFile) + ").");
             }
+
+            progress.Complete("Conversion complete. Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
         }
 
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
 
-        std::cout << "\r[####################] 100% complete" << std::endl;
         std::cout << "Time taken: " << elapsed << " seconds" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error occurred: " << e.what() << std::endl;

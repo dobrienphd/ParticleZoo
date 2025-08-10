@@ -206,6 +206,7 @@ namespace ParticleZoo::TOPASphspFile
             Header(const std::string & fileName, TOPASFormat formatType); // writing to new file
 
             TOPASFormat    getTOPASFormat() const;
+            std::string    getTOPASFormatName() const;
             std::size_t    getRecordLength() const;
             std::uint64_t  getNumberOfOriginalHistories() const;
             std::uint64_t  getNumberOfRepresentedHistories() const;
@@ -220,6 +221,8 @@ namespace ParticleZoo::TOPASphspFile
             void setNumberOfOriginalHistories(std::uint64_t originalHistories);
 
             void writeHeader();
+
+            static std::string getTOPASFormatName(TOPASFormat format);
 
         private:
             void writeHeader_ASCII(std::ofstream & file) const;
@@ -250,6 +253,17 @@ namespace ParticleZoo::TOPASphspFile
     inline std::uint64_t Header::getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
     inline std::uint64_t Header::getNumberOfParticles() const { return numberOfParticles_; }
     inline TOPASFormat    Header::getTOPASFormat() const { return formatType_; }
+
+    inline std::string Header::getTOPASFormatName() const { return getTOPASFormatName(formatType_); }
+    inline std::string Header::getTOPASFormatName(TOPASFormat format) {
+        switch (format) {
+            case TOPASFormat::ASCII: return "TOPAS ASCII";
+            case TOPASFormat::BINARY: return "TOPAS BINARY";
+            case TOPASFormat::LIMITED: return "TOPAS LIMITED";
+            default: throw std::runtime_error("Unknown TOPAS format.");
+        }
+    }
+
     inline const std::vector<Header::DataColumn> & Header::getColumnTypes() const { return columnTypes_; }
     inline void Header::setNumberOfOriginalHistories(std::uint64_t originalHistories) { numberOfOriginalHistories_ = originalHistories; }
 

@@ -8,6 +8,7 @@
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
+#include "particlezoo/utilities/progress.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
@@ -85,14 +86,11 @@ int main(int argc, char* argv[]) {
             }
 
             try {
-                int lastPercentageProgress = 0;
-                std::cout << inputFile << " [--------------------] 0% complete" << std::flush;
-
                 uint64_t particlesInFile = reader->getNumberOfParticles();
                 uint64_t particlesToRead = particlesInFile > maxParticles - particlesSoFar ? maxParticles - particlesSoFar : particlesInFile;
 
                 if (particlesToRead == 0) {
-                    std::cout << "\r" << inputFile << " [####################] 100% complete" << std::endl;
+                    std::cout << "\rWARNING: " << inputFile << " has no particles to read... skipped." << std::endl;
                     continue; // No particles to read, skip to next file
                 }
 
@@ -103,6 +101,9 @@ int main(int argc, char* argv[]) {
                                             : 1;
 
                 std::uint64_t initialHistoryCount = writer->getHistoriesWritten();
+
+                Progress<uint64_t> progress(particlesToRead);
+                progress.Start("Reading " + inputFile);
                 for ( ; reader->hasMoreParticles() && particlesSoFar < maxParticles ; particlesSoFar++) {
 
                     Particle particle = reader->getNextParticle();
@@ -111,15 +112,7 @@ int main(int argc, char* argv[]) {
                     // Update progress bar every 1% of particles read
                     particlesSoFarThisFile++;
                     if (particlesSoFarThisFile % onePercentInterval == 0) {
-                        int percentageProgress = static_cast<int>(particlesSoFarThisFile * 100 / particlesToRead);
-                        int progressBarBlocks = percentageProgress / 5; // 20 steps for 100%
-                        if (percentageProgress != lastPercentageProgress) {
-                            lastPercentageProgress = percentageProgress;
-                            // Print progress bar
-                            std::cout << "\r" << inputFile << " [";
-                            std::cout << std::string(progressBarBlocks, '#') << std::string(20 - progressBarBlocks, '-') << "] "
-                                    << percentageProgress << "% complete" << std::flush;
-                        }
+                        progress.Update(particlesSoFarThisFile, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
                     }
                 }
                 std::uint64_t historiesInOriginalFile = particlesToRead < particlesInFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
@@ -127,7 +120,7 @@ int main(int argc, char* argv[]) {
                 if (historiesWritten < historiesInOriginalFile) {
                     writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
                 }
-                std::cout << "\r" << inputFile << " [####################] 100% complete" << std::endl;
+                progress.Complete("done.");
             } catch (const std::exception& e) {
                 std::cerr << "Error reading file " << inputFile << ": " << e.what() << std::endl;
                 errorCode = 1;

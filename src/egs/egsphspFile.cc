@@ -12,7 +12,7 @@ namespace ParticleZoo::EGSphspFile
 {
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader(fileName, options)
+    : PhaseSpaceFileReader("EGS", fileName, options)
     {
         bool ignoreHeaderParticleCount = false;
         if (options.contains("EGSIgnoreHeaderCount")) {
@@ -109,7 +109,7 @@ namespace ParticleZoo::EGSphspFile
 
     // Writer class implementation
     Writer::Writer(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileWriter(fileName, options)
+    : PhaseSpaceFileWriter("EGS", fileName, options)
     {
         mode_ = EGSMODE::MODE2; // Default mode
 

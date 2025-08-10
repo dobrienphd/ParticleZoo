@@ -72,7 +72,7 @@ namespace ParticleZoo::ROOT {
     Reader::Reader(const std::string & fileName,
                     const std::map<std::string,BranchInfo> & branchNames,
                     const UserOptions & options)
-    : ParticleZoo::PhaseSpaceFileReader(fileName, options, FormatType::NONE)
+    : ParticleZoo::PhaseSpaceFileReader("ROOT", fileName, options, FormatType::NONE)
     {
         file = TFile::Open(fileName.c_str(), "READ");
         if (!file || !file->IsOpen() || file->IsZombie()) {
@@ -249,7 +249,7 @@ namespace ParticleZoo::ROOT {
     }
 
     Writer::Writer(const std::string & fileName, const std::map<std::string,BranchInfo> & branchNames, const UserOptions & options)
-    : ParticleZoo::PhaseSpaceFileWriter(fileName, options, FormatType::NONE), branchNames_(branchNames)
+    : ParticleZoo::PhaseSpaceFileWriter("ROOT", fileName, options, FormatType::NONE), branchNames_(branchNames)
     {
         file_ = TFile::Open(fileName.c_str(), "RECREATE");
         if (!file_ || !file_->IsOpen() || file_->IsZombie()) {

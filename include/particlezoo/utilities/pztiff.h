@@ -97,25 +97,39 @@ namespace ParticleZoo {
         static_assert(std::is_arithmetic_v<T>, "TiffImage<T> requires arithmetic T");
 
         constexpr uint16_t samplesPerPixel = 3;
-        constexpr uint16_t bitsPerSample   = sizeof(T) * 8; // e.g. 8,16,32
-        constexpr uint16_t sampleFormat    = std::is_floating_point_v<T> ? 3 : 1; // 1=UnsignedInt, 3=IEEEFP
+        constexpr uint16_t bitsPerSample   = sizeof(T) * 8; // e.g. 8,16,32,64
+        constexpr uint16_t sampleFormat =
+            std::is_floating_point_v<T> ? 3 :
+            (std::is_signed_v<T> ? 2 : 1); // 1=UnsignedInt, 2=SignedInt, 3=IEEEFP
 
-        size_t pixelCount = size_t(width_) * height_;
-        size_t pdSize     = pixelCount * samplesPerPixel * sizeof(T);
+        const size_t pixelCount = size_t(width_) * size_t(height_);
+        const size_t pdSize     = pixelCount * samplesPerPixel * sizeof(T);
+
+        // Classic TIFF has 32-bit offsets/counts. Bail out if too big.
+        if (pdSize > std::numeric_limits<uint32_t>::max())
+            throw std::runtime_error("Image too large for Classic TIFF (use BigTIFF).");
 
         // IFD layout
-        const uint16_t ENTRY_COUNT = 12;
-        const size_t SIZE_IFD  = 2 + ENTRY_COUNT*12 + 4;
+        const uint16_t ENTRY_COUNT = 14; // includes PlanarConfiguration (284) and ResolutionUnit (296)
         const size_t OFF_IFD   = 8;
-        const size_t OFF_AUX   = OFF_IFD + SIZE_IFD;
-        // compute offsets into the AUX block
-        const uint32_t offBits    = static_cast<uint32_t>(OFF_AUX);
-        const uint32_t offSamFmt  = offBits + samplesPerPixel * sizeof(uint16_t); // 6
-        const uint32_t offXRes    = offSamFmt + samplesPerPixel * sizeof(uint16_t); // 12
-        const uint32_t offYRes    = offXRes   + 8; // 20
-        const uint32_t offPixData = static_cast<uint32_t>(OFF_AUX + 28); // 6+6+8+8 = 28
-        const size_t OFF_PIX      = OFF_AUX + 28;
-        size_t totalSize          = OFF_PIX + pdSize;
+        const size_t SIZE_IFD  = 2 + ENTRY_COUNT*12 + 4;
+
+        // Align AUX block and pixel data to 4-byte boundaries for robustness
+        auto align4 = [](size_t x) { return (x + 3u) & ~size_t(3u); };
+
+        const size_t OFF_AUX   = align4(OFF_IFD + SIZE_IFD);
+
+        // compute offsets into the AUX block (BitsPerSample, SampleFormat, X/YResolution)
+        const uint32_t offBits    = static_cast<uint32_t>(OFF_AUX);                       // 6 bytes
+        const uint32_t offSamFmt  = offBits + samplesPerPixel * sizeof(uint16_t);         // +6 => 12
+        const uint32_t offXRes    = offSamFmt + samplesPerPixel * sizeof(uint16_t);       // +6 => 18 -> but OFF_AUX is 4-aligned, so offXRes becomes 4-aligned
+        const uint32_t offYRes    = offXRes   + 8;                                        // +8
+        const size_t   AUX_SIZE   = 6 + 6 + 8 + 8;                                        // 28
+
+        const size_t OFF_PIX      = align4(size_t(OFF_AUX) + AUX_SIZE);
+        const uint32_t offPixData = static_cast<uint32_t>(OFF_PIX);
+
+        const size_t totalSize    = OFF_PIX + pdSize;
 
         ByteBuffer buf(totalSize, ByteOrder::LittleEndian);
 
@@ -135,17 +149,26 @@ namespace ParticleZoo {
 
         entry(256, 4, 1, static_cast<uint32_t>(width_));              // ImageWidth
         entry(257, 4, 1, static_cast<uint32_t>(height_));             // ImageLength
-        entry(258, 3, samplesPerPixel, offBits);                      // BitsPerSample
+        entry(258, 3, samplesPerPixel, offBits);                      // BitsPerSample[3]
         entry(259, 3, 1,               1);                            // Compression = none
         entry(262, 3, 1,               2);                            // Photometric = RGB
         entry(273, 4, 1,               offPixData);                   // StripOffsets
         entry(277, 3, 1,               samplesPerPixel);              // SamplesPerPixel
         entry(278, 4, 1, static_cast<uint32_t>(height_));             // RowsPerStrip
         entry(279, 4, 1, static_cast<uint32_t>(pdSize));              // StripByteCounts
-        entry(282, 5, 1,               offXRes);                      // XResolution
-        entry(283, 5, 1,               offYRes);                      // YResolution
-        entry(339, 3, samplesPerPixel, offSamFmt);                    // SampleFormat
+        entry(282, 5, 1,               offXRes);                      // XResolution (RATIONAL)
+        entry(283, 5, 1,               offYRes);                      // YResolution (RATIONAL)
+        entry(284, 3, 1,               1);                            // PlanarConfiguration = Chunky
+        entry(296, 3, 1,               2);                            // ResolutionUnit = Inch
+        entry(339, 3, samplesPerPixel, offSamFmt);                    // SampleFormat[3]
         buf.write<uint32_t>(0);                                       // nextIFD = 0
+
+        // --- PAD to OFF_AUX ---
+        {
+            const size_t posAfterIFD = OFF_IFD + SIZE_IFD;
+            const size_t pad = OFF_AUX - posAfterIFD;
+            for (size_t i = 0; i < pad; ++i) buf.write<uint8_t>(0);
+        }
 
         // --- AUX DATA ---
         for (int i = 0; i < samplesPerPixel; ++i)
@@ -156,6 +179,13 @@ namespace ParticleZoo {
         buf.write<uint32_t>(72); buf.write<uint32_t>(1);
         // YResolution = 72/1
         buf.write<uint32_t>(72); buf.write<uint32_t>(1);
+
+        // --- PAD to OFF_PIX ---
+        {
+            const size_t posAfterAux = size_t(OFF_AUX) + AUX_SIZE;
+            const size_t pad = OFF_PIX - posAfterAux;
+            for (size_t i = 0; i < pad; ++i) buf.write<uint8_t>(0);
+        }
 
         // --- PIXEL DATA ---
         for (const auto &P : data_) {

@@ -26,7 +26,7 @@ namespace ParticleZoo::TOPASphspFile
     {}
 
     Reader::Reader(const std::string &filename, const UserOptions &options, std::pair<FormatType,Header> formatAndHeader)
-    : PhaseSpaceFileReader(filename, options, formatAndHeader.first),
+    : PhaseSpaceFileReader(header_.getTOPASFormatName(), filename, options, formatAndHeader.first),
       header_(std::move(formatAndHeader.second)),
       formatType_(header_.getTOPASFormat()),
       particleRecordLength_(header_.getRecordLength()),
@@ -231,7 +231,7 @@ namespace ParticleZoo::TOPASphspFile
     {}
 
     Writer::Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType)
-        : PhaseSpaceFileWriter(filename, options, getFormatTypeFromTOPASFormat(formatType)), formatType_(formatType), header_(filename, formatType)
+        : PhaseSpaceFileWriter(Header::getTOPASFormatName(formatType), filename, options, getFormatTypeFromTOPASFormat(formatType)), formatType_(formatType), header_(filename, formatType)
     {}
 
     void Writer::writeHeaderData(ByteBuffer & buffer)

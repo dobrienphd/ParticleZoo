@@ -16,8 +16,10 @@ namespace ParticleZoo
     class PhaseSpaceFileWriter
     {
         public:
-            PhaseSpaceFileWriter(const std::string & fileName, const UserOptions & userOptions, FormatType formatType = FormatType::BINARY, unsigned int bufferSize = DEFAULT_BUFFER_SIZE);
+            PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType = FormatType::BINARY, unsigned int bufferSize = DEFAULT_BUFFER_SIZE);
             virtual ~PhaseSpaceFileWriter();
+
+            const std::string           getPHSPFormat() const;
 
             virtual void                writeParticle(Particle particle);
             virtual std::uint64_t       getMaximumSupportedParticles() const = 0;
@@ -51,7 +53,8 @@ namespace ParticleZoo
             void                        writeHeaderToFile();
             ByteBuffer *                getParticleBuffer();
 
-            std::string fileName_;
+            const std::string phspFormat_;
+            const std::string fileName_;
             const UserOptions userOptions_;
             const unsigned int BUFFER_SIZE;
             FormatType formatType_;
@@ -65,6 +68,8 @@ namespace ParticleZoo
     };
 
     // Inline implementations for the PhaseSpaceFileWriter class
+
+    inline const std::string PhaseSpaceFileWriter::getPHSPFormat() const { return phspFormat_; }
 
     inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_; }
 
