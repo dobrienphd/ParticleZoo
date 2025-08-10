@@ -26,6 +26,7 @@ public:
     virtual void setPixel(int x, int y, const Pixel<T>& p) = 0;
     virtual void setPixel(int x, int y, const T& R, const T& G, const T& B) = 0;
     virtual Pixel<T> getPixel(int x, int y) const = 0;
+    virtual void normalize(T normalizationFactor) = 0;
 
     /// write to disk (format‐specific behavior in derived)
     virtual void save(const std::string& path) const = 0;

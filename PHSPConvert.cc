@@ -73,11 +73,9 @@ int main(int argc, char* argv[]) {
         int lastPercentageProgress = 0;
         std::cout << "[--------------------] 0% complete" << std::flush;
 
-        uint64_t particlesToRead = reader->getNumberOfParticles();
-        uint64_t maxParticles = args["maxParticles"].empty() ? particlesToRead : std::stoull(args["maxParticles"][0]);
-        if (particlesToRead > maxParticles) {
-            particlesToRead = maxParticles;
-        }
+        uint64_t particlesInFile = reader->getNumberOfParticles();
+        uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
+        uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
         
         uint64_t onePercentInterval = particlesToRead >= 100 
                                     ? particlesToRead / 100 
@@ -104,7 +102,7 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            std::uint64_t historiesInOriginalFile = reader->getHistoriesRead();
+            std::uint64_t historiesInOriginalFile = particlesToRead < particlesInFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
             std::uint64_t historiesWritten = writer->getHistoriesWritten();
             if (historiesWritten < historiesInOriginalFile) {
                 writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);

@@ -207,15 +207,18 @@ int main(int argc, char* argv[]) {
         int lastPercentageProgress = 0;
         std::cout << "[--------------------] 0% complete" << std::flush;
 
-        uint64_t particlesToRead = reader->getNumberOfParticles();
-        uint64_t maxParticles = args["maxParticles"].empty() ? particlesToRead : std::stoull(args["maxParticles"][0]);
-        if (particlesToRead > maxParticles) {
-            particlesToRead = maxParticles;
-        }
+        uint64_t particlesInFile = reader->getNumberOfParticles();
+        uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
+        uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
         
         uint64_t onePercentInterval = particlesToRead >= 100 
                                     ? particlesToRead / 100 
                                     : 1;
+
+        uint64_t numberOfHistories = reader->getNumberOfOriginalHistories();
+        if (numberOfHistories == 0 || particlesToRead == 0) {
+            throw std::runtime_error("No particle histories found in the input file.");
+        }
 
         auto start_time = std::chrono::steady_clock::now();
 
@@ -266,6 +269,7 @@ int main(int argc, char* argv[]) {
                     pixelY = static_cast<int>((z - minDim2) / (maxDim2 - minDim2) * imageHeight);
                     validPixel = true;
                 }
+                
                 // Check if pixel coordinates are valid
                 validPixel = validPixel && (pixelX >= 0 && pixelX < imageWidth && pixelY >= 0 && pixelY < imageHeight);               
                 if (!validPixel) {
@@ -285,6 +289,10 @@ int main(int argc, char* argv[]) {
                 image->setPixel(pixelX, pixelY, pixel);
             }
         }
+
+        std::uint64_t historiesRead = particlesToRead < particlesInFile ? reader->getHistoriesRead() : numberOfHistories;
+
+        image->normalize(static_cast<float>(historiesRead));
 
         image->save(outputFile);
 
