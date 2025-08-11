@@ -25,8 +25,8 @@ namespace ParticleZoo {
         BigEndian = 4321,
         PDPEndian = 3412
     };
-    
-    constexpr unsigned int DEFAULT_BUFFER_SIZE = 4096;
+ 
+    constexpr unsigned int DEFAULT_BUFFER_SIZE = 1048576;   // found to be optimal on an WD_BLACK 8TB SN850X NVMe M.2 SSD
 
     constexpr ByteOrder HOST_BYTE_ORDER = 
     (std::endian::native == std::endian::little) ? ByteOrder::LittleEndian :
