@@ -218,11 +218,18 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("No particle histories found in the input file.");
         }
 
+        float xPixelsPerUnitLength = static_cast<float>(imageWidth) / (maxDim1 - minDim1);
+        float yPixelsPerUnitLength = static_cast<float>(imageHeight) / (maxDim2 - minDim2);
+        float xOffset = static_cast<float>(minDim1) * xPixelsPerUnitLength;
+        float yOffset = static_cast<float>(minDim2) * yPixelsPerUnitLength;
+
+        float pixelArea = (maxDim1 - minDim1) * (maxDim2 - minDim2) / (imageWidth * imageHeight);
+
         auto start_time = std::chrono::steady_clock::now();
 
         Image<float> * image;
         if (outputFormat == TIFF) {
-            image = new TiffImage<float>(imageWidth, imageHeight);
+            image = new TiffImage<float>(imageWidth, imageHeight, xPixelsPerUnitLength, yPixelsPerUnitLength, xOffset, yOffset);
         } else if (outputFormat == BMP) {
             image = new BitmapImage<float>(imageWidth, imageHeight);
         } else {
@@ -266,15 +273,13 @@ int main(int argc, char* argv[]) {
 
                 float weight = particle.getWeight();
                 if (energyWeighted) {
-                    weight *= particle.getKineticEnergy();
+                    weight *= particle.getKineticEnergy() / MeV;
                 }
 
                 // Set pixel color based on the particle's weight
-                Pixel<float> pixel = image->getPixel(pixelX, pixelY);
-                pixel.b += weight;
-                pixel.g += weight;
-                pixel.r += weight;
-                image->setPixel(pixelX, pixelY, pixel);
+                float weightPerUnitArea = weight / pixelArea; // counts per cm2 or MeV per cm2
+                float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
+                image->setGrayscaleValue(pixelX, pixelY, pixelValue);
 
                 // Update progress bar every 1% of particles read
                 if (particlesSoFar % onePercentInterval == 0) {
