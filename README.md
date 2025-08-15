@@ -218,7 +218,7 @@ int main() {
 }
 ```
 
-Compile with include path `-Iinclude` and link `libparticlezoo.a` (plus ROOT libs if enabled).
+Link `libparticlezoo.a` (plus ROOT libs if enabled) during build.
 
 ## Troubleshooting
 
