@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "particlezoo/PDGParticleCodes.h"
+
 namespace ParticleZoo
 {
 
