@@ -127,10 +127,6 @@ namespace ParticleZoo {
             std::size_t length_;        // length of data written to the buffer
             ByteOrder byteOrder_;       // byte order of the data
 
-            // Swap the byte order of a value
-            // template<typename T>
-            // static T swapByteOrder(T value);
-
             // Reorder bytes of a value to match the target byte order
             template<typename T>
             static T reorderBytes(T value, ByteOrder targetByteOrder);
@@ -362,14 +358,6 @@ namespace ParticleZoo {
 
     inline void ByteBuffer::setByteOrder(ByteOrder byteOrder) { byteOrder_ = byteOrder; }
     inline ByteOrder ByteBuffer::getByteOrder() const { return byteOrder_; }
-
-    // template<typename T>
-    // T ByteBuffer::swapByteOrder(T value) {
-    //     static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable.");
-    //     std::array<byte, sizeof(T)> bytes = std::bit_cast<std::array<byte, sizeof(T)>>(value);
-    //     std::reverse(bytes.begin(), bytes.end());
-    //     return std::bit_cast<T>(bytes);
-    // }
 
     template<typename T>
     inline T ByteBuffer::reorderBytes(T v, ByteOrder target) {
