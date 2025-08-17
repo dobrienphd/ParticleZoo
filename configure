@@ -57,12 +57,21 @@ CXXFLAGS="-std=c++20"
 # ROOT support
 echo -n "checking for root-config... "
 if command -v root-config &> /dev/null; then
-    echo "yes"
     raw_cflags=$(root-config --cflags)
     raw_libs=$(root-config --libs)
     CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
     LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
-    USE_ROOT=1
+
+    # Validate that ROOT really provided flags, otherwise disable it
+    if [ -z "${CFLAGS}${LIBS}" ]; then
+        echo "no"
+        CFLAGS=
+        LIBS=
+        USE_ROOT=0
+    else
+      echo "yes"
+      USE_ROOT=1
+    fi
 else
     echo "no"
     CFLAGS=
