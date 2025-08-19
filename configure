@@ -2,6 +2,8 @@
 
 # Default installation prefix
 PREFIX=/usr/local
+# Flag to disable ROOT support
+NO_ROOT=0
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -13,6 +15,10 @@ while [[ $# -gt 0 ]]; do
     --prefix)
       PREFIX="$2"
       shift 2
+      ;;
+    --no-root)
+      NO_ROOT=1
+      shift
       ;;
     *)
       echo "Unknown option: $1"
@@ -55,28 +61,35 @@ rm -f conftest.cpp conftest
 CXXFLAGS="-std=c++20"
 
 # ROOT support
-echo -n "checking for root-config... "
-if command -v root-config &> /dev/null; then
-    raw_cflags=$(root-config --cflags)
-    raw_libs=$(root-config --libs)
-    CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
-    LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
-
-    # Validate that ROOT really provided flags, otherwise disable it
-    if [ -z "${CFLAGS}${LIBS}" ]; then
-        echo "no"
-        CFLAGS=
-        LIBS=
-        USE_ROOT=0
-    else
-      echo "yes"
-      USE_ROOT=1
-    fi
+if [ "$NO_ROOT" = "1" ]; then
+  echo "ROOT support disabled by --no-root option"
+  CFLAGS=
+  LIBS=
+  USE_ROOT=0
 else
-    echo "no"
-    CFLAGS=
-    LIBS=
-    USE_ROOT=0
+  echo -n "checking for root-config... "
+  if command -v root-config &> /dev/null; then
+      raw_cflags=$(root-config --cflags)
+      raw_libs=$(root-config --libs)
+      CFLAGS=$(echo "$raw_cflags" | sed -E 's/-std=[^ ]*//g; s/-m(64|32)//g')
+      LIBS=$(echo "$raw_libs"  | sed -E 's/-m(64|32)//g')
+
+      # Validate that ROOT really provided flags, otherwise disable it
+      if [ -z "${CFLAGS}${LIBS}" ]; then
+          echo "no"
+          CFLAGS=
+          LIBS=
+          USE_ROOT=0
+      else
+          echo "yes"
+          USE_ROOT=1
+      fi
+  else
+      echo "no"
+      CFLAGS=
+      LIBS=
+      USE_ROOT=0
+  fi
 fi
 
 # write out config.status
