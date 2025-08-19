@@ -10,7 +10,7 @@
 #include "particlezoo/ROOT/ROOTphsp.h"
 
 #ifdef PZ_USE_EXT
-#include "ext_formats.h"
+#include "particlezoo/ext_formats.h"
 #endif
 
 namespace ParticleZoo
@@ -18,6 +18,9 @@ namespace ParticleZoo
 
     void FormatRegistry::RegisterStandardFormats()
     {
+        static bool standardFormatsRegistered = false;
+        if (standardFormatsRegistered) return;
+
         // Register IAEAphsp format
         SupportedFormat iaeaFormat{"IAEA", "IAEA Phase Space File Format", ".IAEAphsp"};
         RegisterFormat(iaeaFormat,
