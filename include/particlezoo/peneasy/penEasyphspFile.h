@@ -54,18 +54,20 @@ namespace ParticleZoo
     
                 std::uint64_t getNumberOfParticles() const override;
                 std::uint64_t getNumberOfOriginalHistories() const override;
+                std::uint64_t getNumberOfParticlesRead() const;
     
             protected:
                 Particle readASCIIParticle(const std::string & line) override;
                 size_t getMaximumASCIILineLength() const override;
 
             private:
+                std::uint64_t numberOfParticles_;
                 std::uint64_t numberOfParticlesRead_;
                 std::uint64_t numberOfOriginalHistoriesRead_;
         };
 
-        inline std::uint64_t Reader::getNumberOfParticles() const { return numberOfParticlesRead_; }
         inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return numberOfOriginalHistoriesRead_; }
+        inline std::uint64_t Reader::getNumberOfParticlesRead() const { return numberOfParticlesRead_; }
         inline size_t Reader::getMaximumASCIILineLength() const { return MAX_ASCII_LINE_LENGTH; }
 
     }
