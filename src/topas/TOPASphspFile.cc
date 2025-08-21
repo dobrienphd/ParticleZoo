@@ -26,7 +26,7 @@ namespace ParticleZoo::TOPASphspFile
     {}
 
     Reader::Reader(const std::string &filename, const UserOptions &options, std::pair<FormatType,Header> formatAndHeader)
-    : PhaseSpaceFileReader(header_.getTOPASFormatName(), filename, options, formatAndHeader.first),
+    : PhaseSpaceFileReader(formatAndHeader.second.getTOPASFormatName(), filename, options, formatAndHeader.first),
       header_(std::move(formatAndHeader.second)),
       formatType_(header_.getTOPASFormat()),
       particleRecordLength_(header_.getRecordLength()),
