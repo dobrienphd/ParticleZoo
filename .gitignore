@@ -1,3 +1,4 @@
 config.status
 build
+tests
 .vscode
