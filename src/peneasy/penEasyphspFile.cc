@@ -5,6 +5,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 #include "particlezoo/Particle.h"
 #include "particlezoo/ByteBuffer.h"
@@ -89,11 +92,64 @@ namespace ParticleZoo::penEasyphspFile
     }
 
 
+
+    std::size_t countLinesInAsciiFile(const std::string& filename) {
+        // Open the file in binary mode for efficient byte-level reading
+        std::ifstream file(filename, std::ios::binary);
+        if (!file.is_open()) {
+            // Return 0 and print an error message if the file cannot be opened
+            std::cerr << "Error: Could not open file " << filename << std::endl;
+            return 0;
+        }
+
+        // Create an instance of ByteBuffer
+        ByteBuffer buffer;
+        size_t lineCount = 0;
+
+        // Read the file in chunks until the end of the file is reached
+        while (!file.eof()) {
+            // Read data from the file into the ByteBuffer
+            size_t bytesRead = buffer.setData(file);
+
+            // Iterate over the data in the buffer to count newlines
+            // The buffer's data() method gives us a pointer to the raw data
+            const byte* data = buffer.data();
+            for (size_t i = 0; i < bytesRead; ++i) {
+                if (data[i] == '\n') {
+                    lineCount++;
+                }
+            }
+        }
+
+        // A final check to handle the case where the file is not empty but doesn't
+        // end with a newline character. If the file is not empty and the last
+        // character read was not a newline, we count the last line.
+        file.seekg(0, std::ios::end);
+        if (file.tellg() > 0 && lineCount == 0) {
+            lineCount = 1; // It's a single-line file with no newline.
+        } else if (file.tellg() > 0 && file.tellg() > buffer.length() && buffer.data()[buffer.length() - 1] != '\n') {
+            // This case is for large files. If the last chunk of data read
+            // doesn't end with a newline, we add one more to the count.
+            file.seekg(-1, std::ios::end);
+            char lastChar;
+            file.read(&lastChar, 1);
+            if (lastChar != '\n') {
+                lineCount++;
+            }
+        }
+        return lineCount;
+    }
+
+
     Reader::Reader(const std::string & fileName, const UserOptions & options)
     : PhaseSpaceFileReader("penEasy", fileName, options, FormatType::ASCII),
+      numberOfParticles_(0),
       numberOfParticlesRead_(0),
       numberOfOriginalHistoriesRead_(0)
-    {}
+    {
+        std::size_t linesInASCIIFile = countLinesInAsciiFile(fileName);
+        numberOfParticles_ = (linesInASCIIFile > 2) ? linesInASCIIFile - 2 : 0; // subtract 2 for the header
+    }
 
     Particle Reader::readASCIIParticle(const std::string & line)
     {
@@ -152,5 +208,10 @@ namespace ParticleZoo::penEasyphspFile
         
         return particle;
     }
+
+    std::uint64_t Reader::getNumberOfParticles() const {
+        return numberOfParticles_;
+    }
+
 
 }

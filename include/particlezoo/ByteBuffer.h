@@ -26,7 +26,7 @@ namespace ParticleZoo {
         PDPEndian = 3412
     };
  
-    constexpr unsigned int DEFAULT_BUFFER_SIZE = 1048576;   // found to be optimal on an WD_BLACK 8TB SN850X NVMe M.2 SSD
+    constexpr std::size_t DEFAULT_BUFFER_SIZE = 1048576;   // found to be optimal on an WD_BLACK 8TB SN850X NVMe M.2 SSD
 
     constexpr ByteOrder HOST_BYTE_ORDER = 
     (std::endian::native == std::endian::little) ? ByteOrder::LittleEndian :
@@ -38,7 +38,7 @@ namespace ParticleZoo {
     class ByteBuffer {
         public:
             // Create an empty ByteBuffer with a fixed capacity
-            ByteBuffer(std::size_t bufferSize, ByteOrder byteOrder = HOST_BYTE_ORDER);
+            ByteBuffer(std::size_t bufferSize = DEFAULT_BUFFER_SIZE, ByteOrder byteOrder = HOST_BYTE_ORDER);
 
             // Create a ByteBuffer from a subspan of data
             ByteBuffer(const std::span<const byte> data, ByteOrder byteOrder = HOST_BYTE_ORDER);
