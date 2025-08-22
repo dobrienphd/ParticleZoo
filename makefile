@@ -7,7 +7,7 @@ ifneq ($(wildcard config.status),config.status)
 endif
 
 # Enable parallel builds
-JOBS   ?= $(shell nproc)
+JOBS   ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 MAKEFLAGS += -j$(JOBS)
 
 USE_ROOT ?= 0
