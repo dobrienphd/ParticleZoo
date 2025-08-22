@@ -215,7 +215,7 @@ namespace ParticleZoo::TOPASphspFile
             [&]() {
                 TOPASFormat format = TOPASFormat::BINARY; // default to BINARY
                 if (options.contains("TOPASformat")) {
-                    const auto & formatStr = options.at("format").front();
+                    const auto & formatStr = options.at("TOPASformat").front();
                     if (formatStr == "ASCII") {
                         format = TOPASFormat::ASCII;
                     } else if (formatStr == "LIMITED") {
@@ -387,7 +387,8 @@ namespace ParticleZoo::TOPASphspFile
             case 2112: particleTypeCode = 4; break; // Neutron
             case 2212: particleTypeCode = 5; break; // Proton
             default:
-                throw std::runtime_error("Attempted to write a particle type that is not compatible with a TOPAS Limited phase space file.");
+                std::string particleTypeName = std::string(getParticleTypeName(particle.getType()));
+                throw std::runtime_error("Attempted to write particle type '" + particleTypeName + "' (" + std::to_string(pdgID) + ") which is not compatible with a TOPAS Limited phase space file.");
         }
         if (particle.getPz() < 0) {
             particleTypeCode = -particleTypeCode;
