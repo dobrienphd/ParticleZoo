@@ -205,7 +205,7 @@ $(GCC_BIN_DIR_DBG)/%.o: %.cc
 
 # Clean
 clean:
-	@echo -n "Cleaning build artifacts..."
+	@printf "Cleaning build artifacts..."
 	@rm -rf $(GCC_BIN_DIR_REL) $(GCC_BIN_DIR_DBG)
 	@echo " done."
 
@@ -215,7 +215,7 @@ BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/lib
 
 install:
-	@echo -n "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
+	@printf "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
 	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(BINDIR)
 	@cp $(LIB_REL) $(LIBDIR)
@@ -223,7 +223,7 @@ install:
 	@echo " done."
 
 install-debug:
-	@echo -n "Installing debug binaries and library to $(BINDIR)/debug, $(LIBDIR)/debug and headers into $(PREFIX)/include..."
+	@printf "Installing debug binaries and library to $(BINDIR)/debug, $(LIBDIR)/debug and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR)/debug $(LIBDIR)/debug $(PREFIX)/include
 	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)/debug
 	@cp $(LIB_DBG) $(LIBDIR)/debug
