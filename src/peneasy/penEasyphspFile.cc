@@ -188,7 +188,7 @@ namespace ParticleZoo::penEasyphspFile
 
         float kineticEnergy = e * 1.e-6f; // convert to MeV
 
-        bool isNewHistory = (dn == 1);
+        bool isNewHistory = (dn >= 1);
 
         Particle particle(particleType, kineticEnergy, x, y, z, u, v, w, isNewHistory, weight);
         particle.reserveIntProperties(6); // Reserve space for 6 int properties
@@ -202,7 +202,7 @@ namespace ParticleZoo::penEasyphspFile
         }
 
         if (isNewHistory) {
-            numberOfOriginalHistoriesRead_++;
+            numberOfOriginalHistoriesRead_+=dn;
         }
         numberOfParticlesRead_++;
         
