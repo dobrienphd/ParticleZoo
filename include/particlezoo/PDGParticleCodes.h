@@ -814,7 +814,8 @@ namespace ParticleZoo {
     #define X(name, code) name = code,
         PARTICLE_LIST
     #undef X
-        Unsupported =  99
+        Unsupported =  99,
+        PseudoParticle = 98
     };
 
     // Returns the ParticleType corresponding to a given PDG ID.

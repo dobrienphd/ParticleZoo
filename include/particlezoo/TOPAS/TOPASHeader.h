@@ -283,6 +283,9 @@ namespace ParticleZoo::TOPASphspFile
     }
 
     inline void Header::countParticleStats(const Particle & particle) {
+        ParticleType particleType = particle.getType();
+        if (particleType == ParticleType::Unsupported) return;
+
         // Capture original history details even for pseudo particles
         if (particle.isNewHistory()) {
             if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
@@ -293,11 +296,10 @@ namespace ParticleZoo::TOPASphspFile
         }
 
         // Don't count other statistics for pseudo particles
-        if (particle.getType() == ParticleType::Unsupported || particle.getWeight() <= 0) return;
+        if (particleType == ParticleType::PseudoParticle || particle.getWeight() <= 0) return;
 
         if (particle.isNewHistory()) numberOfRepresentedHistories_++;
-        ParticleType type = particle.getType();
-        auto & stats = particleStatsTable_[type];
+        auto & stats = particleStatsTable_[particleType];
         stats.count_++;
         double energy = particle.getKineticEnergy();
         stats.minKineticEnergy_ = std::min(energy, stats.minKineticEnergy_);
@@ -306,4 +308,4 @@ namespace ParticleZoo::TOPASphspFile
         numberOfParticles_++;
     }
 
-} // namespace ParticleZoo::TOPASphsp
+} // namespace ParticleZoo::TOPASphspFile

@@ -115,9 +115,13 @@ namespace ParticleZoo::TOPASphspFile
         float weight = buffer.read<float>();
         std::int32_t typeCode = buffer.read<std::int32_t>();
 
-        if (typeCode == 0 && weight < 0) {
+        if (typeCode == 0) {
             // special particle representing a sequence of empty histories
-            return Particle(ParticleType::Unsupported, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, weight);
+            if (weight >= 0) throw std::runtime_error("Invalid weight for pseudo particle in TOPAS binary file");
+            Particle pseudoparticle(ParticleType::PseudoParticle, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, weight);
+            int32_t extraHistories = roundToInt32(-pseudoparticle.getWeight());
+            pseudoparticle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, extraHistories);
+            return pseudoparticle;
         }
 
         ParticleType particleType = getParticleTypeFromPDGID(typeCode);
@@ -196,7 +200,7 @@ namespace ParticleZoo::TOPASphspFile
             case 3: type = ParticleType::Positron; break;
             case 4: type = ParticleType::Neutron; break;
             case 5: type = ParticleType::Proton; break;
-            default: throw std::runtime_error("Invalid particle type in TOPAS Limited phase space file.");
+            default: throw std::runtime_error("Invalid particle type ("+std::to_string(particleType)+") in TOPAS Limited phase space file.");
         }
 
         return Particle(type, energy, x, y, z, u, v, w, isNewHistory, weight);
@@ -249,6 +253,15 @@ namespace ParticleZoo::TOPASphspFile
 
     const std::string Writer::writeASCIIParticle(Particle & particle)
     {
+        if (particle.getType() == ParticleType::Unsupported) {
+            throw std::runtime_error("Attempting to write particle with unsupported type to TOPAS ASCII phase space file.");
+        }
+
+        if (particle.getType() == ParticleType::PseudoParticle) {
+            header_.countParticleStats(particle);
+            return ""; // write nothing for pseudoparticles
+        }
+
         std::ostringstream oss;
         oss << std::setw(12) << particle.getX() / cm << " "
             << std::setw(12) << particle.getY() / cm << " "
@@ -312,21 +325,32 @@ namespace ParticleZoo::TOPASphspFile
 
     void Writer::writeBinaryStandardParticle(ByteBuffer & buffer, Particle & particle)
     {
-        buffer.write(particle.getX() / cm);
-        buffer.write(particle.getY() / cm);
-        buffer.write(particle.getZ() / cm);
-        buffer.write(particle.getPx());
-        buffer.write(particle.getPy());
-        buffer.write(particle.getKineticEnergy() / MeV);
-        buffer.write(particle.getWeight());
-        if (particle.getType() == ParticleType::Unsupported) {
+        if (particle.getType() == ParticleType::PseudoParticle) {
             // special particle representing a sequence of empty histories
+            float weight = particle.getWeight();
+            if (weight >= 0) throw std::runtime_error("Attempted to write invalid weight for pseudo particle in TOPAS binary file");
+            buffer.write<float>(0.f);
+            buffer.write<float>(0.f);
+            buffer.write<float>(0.f);
+            buffer.write<float>(0.f);
+            buffer.write<float>(0.f);
+            buffer.write<float>(0.f);
+            buffer.write<float>(weight);
             buffer.write<std::int32_t>(0);
+            buffer.write<bool>(false);
+            buffer.write<bool>(true);
         } else {
+            buffer.write(particle.getX() / cm);
+            buffer.write(particle.getY() / cm);
+            buffer.write(particle.getZ() / cm);
+            buffer.write(particle.getPx());
+            buffer.write(particle.getPy());
+            buffer.write(particle.getKineticEnergy() / MeV);
+            buffer.write(particle.getWeight());
             buffer.write(getPDGIDFromParticleType(particle.getType()));
+            buffer.write(particle.getPz() < 0 ? true : false);
+            buffer.write(particle.isNewHistory());
         }
-        buffer.write(particle.getPz() < 0 ? true : false);
-        buffer.write(particle.isNewHistory());
 
         // Write any additional properties
         const std::vector<Header::DataColumn> & columnTypes = header_.getColumnTypes();
@@ -347,25 +371,40 @@ namespace ParticleZoo::TOPASphspFile
                 switch (column.valueType_) {
                     case Header::DataType::STRING:
                     {
-                        const std::string & customString = customStringProperties[customStringIndex++];
+                        const std::string & customString = customStringIndex < customStringProperties.size() ? customStringProperties[customStringIndex++] : "";
                         buffer.writeString(customString);
                         break;
                     }
                     case Header::DataType::BOOLEAN:
-                        buffer.write(static_cast<bool>(customBoolProperties[customBoolIndex++]));
+                    {
+                        const bool customBool = customBoolIndex < customBoolProperties.size() ? customBoolProperties[customBoolIndex++] : false;
+                        buffer.write(static_cast<bool>(customBool));
                         break;
+                    }
                     case Header::DataType::INT8:
-                        buffer.write(static_cast<std::int8_t>(customIntProperties[customIntIndex++]));
+                    {
+                        const std::int8_t customInt8 = customIntIndex < customIntProperties.size() ? static_cast<std::int8_t>(customIntProperties[customIntIndex++]) : 0;
+                        buffer.write(customInt8);
                         break;
+                    }
                     case Header::DataType::INT32:
-                        buffer.write(static_cast<std::int32_t>(customIntProperties[customIntIndex++]));
+                    {
+                        const std::int32_t customInt32 = customIntIndex < customIntProperties.size() ? static_cast<std::int32_t>(customIntProperties[customIntIndex++]) : 0;
+                        buffer.write(customInt32);
                         break;
+                    }
                     case Header::DataType::FLOAT32:
-                        buffer.write(static_cast<float>(customFloatProperties[customFloatIndex++]));
+                    {
+                        const float customFloat32 = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
+                        buffer.write(customFloat32);
                         break;
+                    }
                     case Header::DataType::FLOAT64:
-                        buffer.write(static_cast<double>(customFloatProperties[customFloatIndex++]));
+                    {
+                        const double customFloat64 = customFloatIndex < customFloatProperties.size() ? static_cast<double>(customFloatProperties[customFloatIndex++]) : 0.0;
+                        buffer.write(customFloat64);
                         break;
+                    }
                 }
             }
         }
