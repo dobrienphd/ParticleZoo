@@ -26,7 +26,8 @@ namespace ParticleZoo::ROOT {
         {"directionalCosineX",    {"Direction_Cosine_X", 1.0}},
         {"directionalCosineY",    {"Direction_Cosine_Y", 1.0}},
         {"directionalCosineZIsNegative",    {"Flag_to_tell_if_Third_Direction_Cosine_is_Negative__1_means_true_", 1.0}},
-        {"pdgCode",      {"Particle_Type__in_PDG_Format_", 1.0}}
+        {"pdgCode",      {"Particle_Type__in_PDG_Format_", 1.0}},
+        {"historyNumber",{"Event_ID", 1.0}}
     };
 
     inline const std::map<std::string, BranchInfo> OPENGateBranches = {
@@ -84,6 +85,9 @@ namespace ParticleZoo::ROOT {
             double zUnits_{1.0};
             double energyUnits_{1.0};
 
+            int historyNumber_{0};
+
+            bool readIncrementalHistories_{false};
             std::uint64_t numberOfParticles_{};
             std::uint64_t particlesRead_{};
             std::uint64_t historiesRead_{};
@@ -137,6 +141,9 @@ namespace ParticleZoo::ROOT {
             double inverseZUnits_{1.f};
             double inverseEnergyUnits_{1.f};
 
+            int historyNumber_{0};
+
+            bool storeIncrementalHistories_{false};
             TFile * file_{};
             TTree * tree_{};
             std::map<std::string, BranchInfo> branchNames_;
