@@ -14,6 +14,7 @@ namespace ParticleZoo
 {
     namespace EGSphspFile {
 
+        constexpr std::size_t MINIMUM_HEADER_DATA_LENGTH = 25;
         enum class EGSMODE { MODE0 = 28, MODE2 = 32 };
         const double ELECTRON_REST_MASS = 0.5109989461f; // MeV
 
@@ -31,7 +32,7 @@ namespace ParticleZoo
                 float getMinElectronEnergy() const { return minElectronEnergy_; };
 
             protected:
-                std::size_t getParticleRecordLength() const override { return static_cast<std::size_t>(mode_); };
+                std::size_t getParticleRecordLength() const override { return std::max(static_cast<std::size_t>(mode_), MINIMUM_HEADER_DATA_LENGTH); };
                 std::size_t getParticleRecordStartOffset() const override { return getParticleRecordLength(); };
 
                 Particle readBinaryParticle(ByteBuffer & buffer) override;
