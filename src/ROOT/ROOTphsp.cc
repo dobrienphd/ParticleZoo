@@ -58,6 +58,8 @@ namespace ParticleZoo::ROOT {
                 branchNames["directionalCosineZIsNegative"].branchName = value[0];
             } else if (key == "rootPDGCode") {
                 branchNames["pdgCode"].branchName = value[0];
+            } else if (key == "rootHistoryNumber") {
+                branchNames["historyNumber"].branchName = value[0];
             }
         }
 
@@ -117,6 +119,7 @@ namespace ParticleZoo::ROOT {
         std::string directionalCosineZBranchName    = extractStringFromMap(branchNames, "directionalCosineZ");
         std::string directionalCosineZIsNegativeBranchName    = extractStringFromMap(branchNames, "directionalCosineZIsNegative");
         std::string pdgCodeBranchName      = extractStringFromMap(branchNames, "pdgCode");
+        std::string historyNumberBranchName = extractStringFromMap(branchNames, "historyNumber");
 
         // mandatory branches
         if (energyBranchName.length()>0 && tree->GetBranch(energyBranchName.c_str())) {
@@ -182,12 +185,18 @@ namespace ParticleZoo::ROOT {
             }
         } else {
             if (directionalCosineZIsNegativeBranchName.length()>0 && tree->GetBranch(directionalCosineZIsNegativeBranchName.c_str())) {
+                readIncrementalHistories_ = true;
                 tree->SetBranchAddress(directionalCosineZIsNegativeBranchName.c_str(), &pzIsNegative_);
             } else {
                 pzIsNegative_ = false; // Default to positive if not specified
                 std::cerr << "Warning: Branch '" << directionalCosineZIsNegativeBranchName << "' not found in TTree: " << treeName << ". The sign of the Z directional cosine will be assumed to be positive." << std::endl;
             }
         }
+
+        if (historyNumberBranchName.length()>0 && tree->GetBranch(historyNumberBranchName.c_str()))
+            tree->SetBranchAddress(historyNumberBranchName.c_str(), &historyNumber_);
+        else if (historyNumberBranchName.length()>0)
+            std::cerr << "Warning: Branch '" << historyNumberBranchName << "' not found in TTree: " << treeName << ". Empty histories will not be accounted for." << std::endl;
 
         tree->SetCacheSize(256 * 1024 * 1024);       // 256 MB cache
         tree->SetCacheLearnEntries(500);            // learn basket layout on first 500 entries
@@ -202,6 +211,7 @@ namespace ParticleZoo::ROOT {
         if (weightBranchName.length()>0) tree->AddBranchToCache(weightBranchName.c_str(), true);
         if (pdgCodeBranchName.length()>0) tree->AddBranchToCache(pdgCodeBranchName.c_str(), true);
         if (isNewHistoryBranchName.length()>0) tree->AddBranchToCache(isNewHistoryBranchName.c_str(), true);
+        if (historyNumberBranchName.length()>0) tree->AddBranchToCache(historyNumberBranchName.c_str(), true);
     }
 
     Reader::~Reader()
@@ -215,6 +225,9 @@ namespace ParticleZoo::ROOT {
     Particle Reader::readParticleManually()
     {
         if (particlesRead_ >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
+
+        int lastHistoryNumber = historyNumber_;
+
         tree->GetEntry(particlesRead_++);
 
         ParticleType type = getParticleTypeFromPDGID(pdgCode_);
@@ -225,10 +238,11 @@ namespace ParticleZoo::ROOT {
             if (pzIsNegative_) { pz_ = -pz_; }
         }
 
-        if (isNewHistory_)
-            historiesRead_++;
+        int historyIncrement = historyNumber_ - lastHistoryNumber;
+        if (historiesRead_ == 0 || (historyIncrement == 0 && isNewHistory_)) historyIncrement = 1;
+        isNewHistory_ = historyIncrement > 0;
 
-        return Particle(type,
+        Particle particle(type,
                         energy_ * energyUnits_,
                         x_ * xUnits_,
                         y_ * yUnits_,
@@ -238,6 +252,14 @@ namespace ParticleZoo::ROOT {
                         pz_,
                         isNewHistory_,
                         weight_);
+
+        if (readIncrementalHistories_) {
+            particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, historyIncrement);
+        }
+
+        historiesRead_ += historyIncrement;
+
+        return particle;
     }
 
 
@@ -302,6 +324,9 @@ namespace ParticleZoo::ROOT {
                 tree_->Branch(branchName.c_str(), &pdgCode_, (branchName + "/I").c_str());
             } else if (branchKey == "isNewHistory") {
                 tree_->Branch(branchName.c_str(), &isNewHistory_, (branchName + "/O").c_str());
+            } else if (branchKey == "historyNumber") {
+                tree_->Branch(branchName.c_str(), &historyNumber_, (branchName + "/I").c_str());
+                storeIncrementalHistories_ = true;
             }
         }
 
@@ -330,6 +355,13 @@ namespace ParticleZoo::ROOT {
         weight_ = particle.getWeight();
         pdgCode_ = getPDGIDFromParticleType(particle.getType());
         isNewHistory_ = particle.isNewHistory();
+        if (storeIncrementalHistories_) {
+            int historyIncrement = isNewHistory_ ? 1 : 0;
+            if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+                historyIncrement = particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+            }
+            historyNumber_ += historyIncrement;
+        }
 
         tree_->Fill();
     }
