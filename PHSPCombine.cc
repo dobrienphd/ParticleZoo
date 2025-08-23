@@ -102,8 +102,8 @@ int main(int argc, char* argv[]) {
     std::string outputFormat = args["outputFormat"].empty() ? "" : args["outputFormat"][0];
     std::string outputFile = args["outputFile"].empty() ? "" : args["outputFile"][0];
     std::vector<std::string> inputFiles = args["positionals"];
-    if (inputFiles.empty()) { throw std::runtime_error("No input files provided."); }
-    if (outputFile == "") { throw std::runtime_error("No output file specified."); }
+    if (inputFiles.empty()) throw std::runtime_error("No input files provided.");
+    if (outputFile == "") throw std::runtime_error("No output file specified.");
 
     // Create the writer
     std::unique_ptr<PhaseSpaceFileWriter> writer;
@@ -182,10 +182,12 @@ int main(int argc, char* argv[]) {
                 std::uint64_t historiesWritten = writer->getHistoriesWritten() - initialHistoryCount;
                 if (historiesWritten < historiesInOriginalFile) {
                     writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
+                } else if (historiesWritten > historiesInOriginalFile) {
+                    throw std::runtime_error("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file (" + std::to_string(historiesInOriginalFile) + ").");
                 }
 
                 // Complete the progress bar
-                progress.Complete("done.");
+                progress.Complete("done. Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
             }
             catch (const std::exception& e) {
                 std::cerr << "Error reading file " << inputFile << ": " << e.what() << std::endl;
