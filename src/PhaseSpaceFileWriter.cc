@@ -89,63 +89,74 @@ namespace ParticleZoo
     }
 
     void PhaseSpaceFileWriter::writeParticle(Particle particle) {        
-        switch (formatType_) {
+        ParticleType type = particle.getType();
 
-        case (FormatType::BINARY): // Binary format
-            {
-                if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
-                writeParticleDepth_++;
-                
-                ByteBuffer * particleBuffer;
-                std::unique_ptr<ByteBuffer> temporaryParticleBuffer;
-                if (writeParticleDepth_ == 1) {
-                    // avoid creating a new particle buffer if one is available
-                    particleBuffer = getParticleBuffer();
-                    particleBuffer->clear();
-                } else {
-                    // If the particle buffer is not available, create a new one
-                    temporaryParticleBuffer = std::make_unique<ByteBuffer>(particleRecordLength_, buffer_.getByteOrder());
-                    particleBuffer = temporaryParticleBuffer.get();
-                }
-
-                writeBinaryParticle(*particleBuffer, particle);
-
-                if (particleBuffer->length() < particleRecordLength_) {
-                    particleBuffer->expand();
-                }
-
-                if (buffer_.length() + getParticleRecordLength() > buffer_.capacity()) {
-                    writeNextBlock();
-                }
-
-                buffer_.appendData(*particleBuffer, true);
-
-                writeParticleDepth_--;
-            }
-            break;
-        case (FormatType::ASCII): // ASCII format
-            {
-                if (buffer_.length() + getMaximumASCIILineLength() > buffer_.capacity()) {
-                    writeNextBlock();
-                }
-
-                std::string asciiLine = writeASCIIParticle(particle);
-
-                if (asciiLine.length() > getMaximumASCIILineLength()) {
-                    throw std::runtime_error("ASCII line length exceeds maximum allowed length.");
-                }
-
-                buffer_.writeString(asciiLine);
-            }
-            break;
-        default: // NONE format
-            {
-                writeParticleManually(particle);
-            }
-            break;
+        if (type == ParticleType::Unsupported) {
+            throw std::runtime_error("Attempting to write particle with unsupported type to phase space file.");
         }
 
-        // Update the number of histories written based on the particle's history status
+        // do not attempt to write pseudoparticles to the file unless the writer explicitly supports that
+        if (type != ParticleType::PseudoParticle || canWritePseudoParticlesExplicitly()) {
+
+            switch (formatType_) {
+
+            case (FormatType::BINARY): // Binary format
+                {
+                    if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
+                    writeParticleDepth_++;
+                    
+                    ByteBuffer * particleBuffer;
+                    std::unique_ptr<ByteBuffer> temporaryParticleBuffer;
+                    if (writeParticleDepth_ == 1) {
+                        // avoid creating a new particle buffer if one is available
+                        particleBuffer = getParticleBuffer();
+                        particleBuffer->clear();
+                    } else {
+                        // If the particle buffer is not available, create a new one
+                        temporaryParticleBuffer = std::make_unique<ByteBuffer>(particleRecordLength_, buffer_.getByteOrder());
+                        particleBuffer = temporaryParticleBuffer.get();
+                    }
+
+                    writeBinaryParticle(*particleBuffer, particle);
+
+                    if (particleBuffer->length() < particleRecordLength_) {
+                        particleBuffer->expand();
+                    }
+
+                    if (buffer_.length() + getParticleRecordLength() > buffer_.capacity()) {
+                        writeNextBlock();
+                    }
+
+                    buffer_.appendData(*particleBuffer, true);
+
+                    writeParticleDepth_--;
+                }
+                break;
+            case (FormatType::ASCII): // ASCII format
+                {
+                    if (buffer_.length() + getMaximumASCIILineLength() > buffer_.capacity()) {
+                        writeNextBlock();
+                    }
+
+                    std::string asciiLine = writeASCIIParticle(particle);
+
+                    if (asciiLine.length() > getMaximumASCIILineLength()) {
+                        throw std::runtime_error("ASCII line length exceeds maximum allowed length.");
+                    }
+
+                    buffer_.writeString(asciiLine);
+                }
+                break;
+            default: // NONE format
+                {
+                    writeParticleManually(particle);
+                }
+                break;
+            }
+
+        }
+
+        // Update the number of histories written based on the particle's history status (even for pseudoparticles)
         if (particle.isNewHistory()) {
             std::uint64_t historiesWritten = 1; // Default to 1 for a new history
             if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {

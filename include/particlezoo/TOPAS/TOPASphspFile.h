@@ -120,6 +120,7 @@ namespace ParticleZoo::TOPASphspFile
             void              writeBinaryParticle(ByteBuffer & buffer, Particle & particle) override;
             const std::string writeASCIIParticle(Particle & particle) override;
             bool              accountForAdditionalHistories(std::uint64_t additionalHistories) override;
+            bool              canWritePseudoParticlesExplicitly() const override;
 
         private:
             Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType);
@@ -142,7 +143,8 @@ namespace ParticleZoo::TOPASphspFile
 
     inline void Writer::writeBinaryParticle(ByteBuffer & buffer, Particle & particle) {
         if (formatType_ == TOPASFormat::BINARY) {
-            if (particle.getType() != ParticleType::Unsupported && particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+            ParticleType particleType = particle.getType();
+            if (particleType != ParticleType::Unsupported && particleType != ParticleType::PseudoParticle && particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
                 // If the particle has an incremental history number, we need to handle it
                 std::int32_t incrementalHistoryNumber = particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
                 if (incrementalHistoryNumber > 1) {
@@ -162,13 +164,22 @@ namespace ParticleZoo::TOPASphspFile
 
     inline bool Writer::accountForAdditionalHistories(std::uint64_t additionalHistories)
     {
-        float pseudoWeight = -static_cast<float>(additionalHistories);
-        Particle emptyHistoryPseudoParticle(
-            ParticleType::Unsupported, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, pseudoWeight
-        );
-        emptyHistoryPseudoParticle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, static_cast<std::int32_t>(additionalHistories));
-        writeParticle(emptyHistoryPseudoParticle);
-        return false; // do not increment the histories counter manually, it is done by the writeParticle() method
+        if (formatType_ == TOPASFormat::BINARY) {
+            float pseudoWeight = -static_cast<float>(additionalHistories);
+            Particle emptyHistoryPseudoParticle(
+                ParticleType::PseudoParticle, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, pseudoWeight
+            );
+            emptyHistoryPseudoParticle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, static_cast<std::int32_t>(additionalHistories));
+            writeParticle(emptyHistoryPseudoParticle);
+            return false; // do not let the base class increment the histories counter automatically, it is done by instead by the call to writeParticle() here
+        } else {
+            // do not use pseudoparticles with the ASCII or LIMITED formats
+            return true;
+        }
+    }
+
+    inline bool Writer::canWritePseudoParticlesExplicitly() const {
+        return formatType_ == TOPASFormat::BINARY; // only binary files can write pseudo particles explicitly
     }
 
 } // namespace ParticleZoo::TOPASphsp

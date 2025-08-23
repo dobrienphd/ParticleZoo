@@ -44,6 +44,8 @@ namespace ParticleZoo
 
             virtual bool                accountForAdditionalHistories(std::uint64_t additionalHistories);
 
+            virtual bool                canWritePseudoParticlesExplicitly() const;
+
             void                        setByteOrder(ByteOrder byteOrder);
 
             const UserOptions&          getUserOptions() const;
@@ -126,6 +128,10 @@ namespace ParticleZoo
         if (accountForAdditionalHistories(additionalHistories)) {
             historiesWritten_ += additionalHistories;
         }
+    }
+
+    inline bool PhaseSpaceFileWriter::canWritePseudoParticlesExplicitly() const {
+        return false;
     }
 
 } // namespace ParticleZoo
