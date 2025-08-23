@@ -223,9 +223,16 @@ install:
 	@echo " done."
 
 install-debug:
-	@printf "Installing debug binaries and library to $(BINDIR)/debug, $(LIBDIR)/debug and headers into $(PREFIX)/include..."
-	@$(MKDIR_P) $(BINDIR)/debug $(LIBDIR)/debug $(PREFIX)/include
-	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)/debug
-	@cp $(LIB_DBG) $(LIBDIR)/debug
+	@printf "Installing debug binaries and library to $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
+	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
+	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)
+	@cp $(LIB_DBG) $(LIBDIR)
 	@cp -r $(PZ_HEADERS) $(PREFIX)/include
+	@echo " done."
+
+uninstall:
+	@printf "Removing particlezoo installation from $(PREFIX)..."
+	@rm -f $(BINDIR)/PHSPConvert$(BINEXT) $(BINDIR)/PHSPCombine$(BINEXT) $(BINDIR)/PHSPImage$(BINEXT)
+	@rm -f $(LIBDIR)/$(LIB_NAME)
+	@rm -rf $(PREFIX)/include/particlezoo
 	@echo " done."
