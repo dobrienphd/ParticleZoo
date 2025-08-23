@@ -142,6 +142,12 @@ namespace ParticleZoo::EGSphspFile
         buffer.write<unsigned int>(numberOfPhotons_);
         buffer.write<float>(maxKineticEnergy_);
         buffer.write<float>(minElectronEnergy_);
+
+        std::uint64_t historiesRecorded = getHistoriesWritten();
+        if (historiesRecorded > numberOfOriginalHistories_) {
+            numberOfOriginalHistories_ = historiesRecorded;
+        }
+
         buffer.write<float>(numberOfOriginalHistories_);
     }
 
