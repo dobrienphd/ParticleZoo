@@ -12,11 +12,14 @@ namespace ParticleZoo::EGSphspFile
 {
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader("EGS", fileName, options)
+    : PhaseSpaceFileReader("EGS", fileName, options), particleZValue_(0)
     {
         bool ignoreHeaderParticleCount = false;
         if (options.contains("EGSIgnoreHeaderCount")) {
             ignoreHeaderParticleCount = options.at("EGSIgnoreHeaderCount").front() == "true";
+        }
+        if (options.contains("EGSParticleZValue")) {
+            particleZValue_ = std::stof(options.at("EGSParticleZValue").front());
         }
 
         readHeader(ignoreHeaderParticleCount);
@@ -60,7 +63,7 @@ namespace ParticleZoo::EGSphspFile
         float energy = buffer.read<float>();
         float x = buffer.read<float>();
         float y = buffer.read<float>();
-        float z = 0;
+        float z = particleZValue_; // EGS format does not store the particle z value
         float u = buffer.read<float>();
         float v = buffer.read<float>();
 
@@ -111,7 +114,7 @@ namespace ParticleZoo::EGSphspFile
     Writer::Writer(const std::string & fileName, const UserOptions & options)
     : PhaseSpaceFileWriter("EGS", fileName, options)
     {
-        mode_ = EGSMODE::MODE2; // Default mode
+        mode_ = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
 
         if (options.contains("EGSMode")) {
             std::string modeStr = options.at("EGSMode").front();
@@ -174,11 +177,6 @@ namespace ParticleZoo::EGSphspFile
             minElectronEnergy_ = energy;
         }
 
-        if (particle.isNewHistory()) {
-            energy *= -1;
-            if (!historyCountManualSet_) numberOfOriginalHistories_++;
-        }
-
         unsigned int LATCH;
         if (particle.hasIntProperty(IntPropertyType::EGS_LATCH)) {
             LATCH = (unsigned int) particle.getIntProperty(IntPropertyType::EGS_LATCH);
@@ -210,6 +208,11 @@ namespace ParticleZoo::EGSphspFile
         }
         LATCH |= (particleChargeBits << 29);
 
+        if (particle.isNewHistory()) {
+            energy *= -1;
+            if (!historyCountManualSet_) numberOfOriginalHistories_++;
+        }
+
         buffer.write<unsigned int>(LATCH);
         buffer.write<float>(energy);
         buffer.write<float>(x);
@@ -223,7 +226,7 @@ namespace ParticleZoo::EGSphspFile
             if (particle.hasFloatProperty(FloatPropertyType::ZLAST)) {
                 ZLAST = particle.getFloatProperty(FloatPropertyType::ZLAST);
             } else {
-                ZLAST = z;
+                throw std::runtime_error("Missing ZLAST property for particle which is required for writting MODE2 EGS phase space files.");
             }
             buffer.write<float>(ZLAST);
         }
