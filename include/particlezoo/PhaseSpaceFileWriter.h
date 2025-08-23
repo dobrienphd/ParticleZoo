@@ -42,6 +42,11 @@ namespace ParticleZoo
             virtual const std::string   writeASCIIParticle(Particle & particle); // not const to allow internal counters to be updated in derived classes
             virtual void                writeParticleManually(Particle & particle);
 
+            // accountForAdditionalHistories() handles accounting for simulation histories that produced no particles to write.
+            // It is called by addAdditionalHistories().
+            // Some file formats need special handling for empty histories (e.g., writing pseudo-particles
+            // or updating header counters). Returns true if the base class should automatically
+            // increment the history counter, false if the derived class handles it manually.
             virtual bool                accountForAdditionalHistories(std::uint64_t additionalHistories);
 
             virtual bool                canWritePseudoParticlesExplicitly() const;
