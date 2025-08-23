@@ -41,8 +41,8 @@ GCC_SRCS_CONVERT := \
     src/utilities/formats.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
-    src/iaea/IAEAHeader.cc \
-    src/iaea/IAEAphspFile.cc \
+    src/IAEA/IAEAHeader.cc \
+    src/IAEA/IAEAphspFile.cc \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
@@ -54,8 +54,8 @@ GCC_SRCS_COMBINE := \
     src/utilities/formats.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
-    src/iaea/IAEAHeader.cc \
-    src/iaea/IAEAphspFile.cc \
+    src/IAEA/IAEAHeader.cc \
+    src/IAEA/IAEAphspFile.cc \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
@@ -67,8 +67,8 @@ GCC_SRCS_IMAGE := \
     src/utilities/formats.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
-    src/iaea/IAEAHeader.cc \
-    src/iaea/IAEAphspFile.cc \
+    src/IAEA/IAEAHeader.cc \
+    src/IAEA/IAEAphspFile.cc \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
@@ -82,8 +82,8 @@ LIB_SRCS := \
         src/utilities/formats.cc \
         src/egs/egsphspFile.cc \
         src/peneasy/penEasyphspFile.cc \
-        src/iaea/IAEAHeader.cc \
-        src/iaea/IAEAphspFile.cc \
+        src/IAEA/IAEAHeader.cc \
+        src/IAEA/IAEAphspFile.cc \
         src/topas/TOPASHeader.cc \
         src/topas/TOPASphspFile.cc \
         src/ROOT/ROOTphsp.cc
