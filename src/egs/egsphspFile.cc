@@ -12,7 +12,7 @@ namespace ParticleZoo::EGSphspFile
 {
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader("EGS", fileName, options), particleZValue_(0)
+    : PhaseSpaceFileReader("EGS", fileName, options), particleZValue_(0), mode_(EGSMODE::MODE0)
     {
         bool ignoreHeaderParticleCount = false;
         if (options.contains("EGSIgnoreHeaderCount")) {
