@@ -44,7 +44,7 @@ namespace ParticleZoo
                 float maxKineticEnergy_{};
                 float minElectronEnergy_{};
                 float numberOfOriginalHistories_{};
-                float particleZValue_;
+                float particleZValue_{};
 
                 void readHeader(bool ignoreHeaderParticleCount);
         };
