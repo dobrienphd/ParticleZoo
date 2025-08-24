@@ -34,6 +34,7 @@ namespace ParticleZoo
             }()),
         bytesRead_(0),
         particlesRead_(0),
+        historiesRead_(0),
         numberOfParticlesToRead_(0),
         particleRecordLength_(0),
         buffer_(BUFFER_SIZE)
@@ -188,7 +189,21 @@ namespace ParticleZoo
                 
                 // Read the next particle from the buffer
                 Particle particle = readBinaryParticle(particleData);
-                if (countParticleInStatistics) particlesRead_++;
+                if (countParticleInStatistics) {
+                    particlesRead_++;
+                    if (particle.isNewHistory()) {
+                        if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+                            int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+                            if (deltaN > 0) {
+                                historiesRead_ += static_cast<std::uint64_t>(deltaN);
+                            } else {
+                                historiesRead_++;
+                            }
+                        } else {
+                            historiesRead_++;
+                        }
+                    }
+                }
                 return particle;
             }
             break;
@@ -202,7 +217,21 @@ namespace ParticleZoo
                     std::string line = std::move(asciiLineBuffer_.front());
                     asciiLineBuffer_.pop_front();
                     Particle particle = readASCIIParticle(line);
-                    if (countParticleInStatistics) particlesRead_++;
+                    if (countParticleInStatistics) {
+                        particlesRead_++;
+                        if (particle.isNewHistory()) {
+                            if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+                                int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+                                if (deltaN > 0) {
+                                    historiesRead_ += static_cast<std::uint64_t>(deltaN);
+                                } else {
+                                    historiesRead_++;
+                                }
+                            } else {
+                                historiesRead_++;
+                            }
+                        }
+                    }
                     return particle;
                 } catch (const std::runtime_error &e) {
                     throw std::runtime_error("Error reading line from file: " + std::string(e.what()));
@@ -213,7 +242,21 @@ namespace ParticleZoo
             {
                 // For NONE format, all I/O needs to be implemented manually by the subclass.
                 Particle particle = readParticleManually();
-                if (countParticleInStatistics) particlesRead_++;
+                if (countParticleInStatistics) {
+                    particlesRead_++;
+                    if (particle.isNewHistory()) {
+                        if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+                            int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+                            if (deltaN > 0) {
+                                historiesRead_ += static_cast<std::uint64_t>(deltaN);
+                            } else {
+                                historiesRead_++;
+                            }
+                        } else {
+                            historiesRead_++;
+                        }
+                    }
+                }
                 return particle;
             }
             break;

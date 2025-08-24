@@ -185,7 +185,6 @@ namespace ParticleZoo::ROOT {
             }
         } else {
             if (directionalCosineZIsNegativeBranchName.length()>0 && tree->GetBranch(directionalCosineZIsNegativeBranchName.c_str())) {
-                readIncrementalHistories_ = true;
                 tree->SetBranchAddress(directionalCosineZIsNegativeBranchName.c_str(), &pzIsNegative_);
             } else {
                 pzIsNegative_ = false; // Default to positive if not specified
@@ -193,10 +192,12 @@ namespace ParticleZoo::ROOT {
             }
         }
 
-        if (historyNumberBranchName.length()>0 && tree->GetBranch(historyNumberBranchName.c_str()))
+        if (historyNumberBranchName.length()>0 && tree->GetBranch(historyNumberBranchName.c_str())) {
+            readIncrementalHistories_ = true;
             tree->SetBranchAddress(historyNumberBranchName.c_str(), &historyNumber_);
-        else if (historyNumberBranchName.length()>0)
+        } else if (historyNumberBranchName.length()>0) {
             std::cerr << "Warning: Branch '" << historyNumberBranchName << "' not found in TTree: " << treeName << ". Empty histories will not be accounted for." << std::endl;
+        }
 
         tree->SetCacheSize(256 * 1024 * 1024);       // 256 MB cache
         tree->SetCacheLearnEntries(500);            // learn basket layout on first 500 entries
@@ -224,11 +225,16 @@ namespace ParticleZoo::ROOT {
 
     Particle Reader::readParticleManually()
     {
-        if (particlesRead_ >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
+        std::uint64_t particlesRead = getParticlesRead();
+        if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
+        
+        if (!readIncrementalHistories_) {
+            historyNumber_ = getHistoriesRead();
+        }
 
         int lastHistoryNumber = historyNumber_;
 
-        tree->GetEntry(particlesRead_++);
+        tree->GetEntry(particlesRead++);
 
         ParticleType type = getParticleTypeFromPDGID(pdgCode_);
 
@@ -239,7 +245,7 @@ namespace ParticleZoo::ROOT {
         }
 
         int historyIncrement = historyNumber_ - lastHistoryNumber;
-        if (historiesRead_ == 0 || (historyIncrement == 0 && isNewHistory_)) historyIncrement = 1;
+        if (getHistoriesRead() == 0 || (historyIncrement == 0 && isNewHistory_)) historyIncrement = 1;
         isNewHistory_ = historyIncrement > 0;
 
         Particle particle(type,
@@ -256,8 +262,6 @@ namespace ParticleZoo::ROOT {
         if (readIncrementalHistories_) {
             particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, historyIncrement);
         }
-
-        historiesRead_ += historyIncrement;
 
         return particle;
     }

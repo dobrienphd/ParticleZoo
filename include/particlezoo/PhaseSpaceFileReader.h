@@ -27,7 +27,8 @@ namespace ParticleZoo
             virtual std::uint64_t getNumberOfParticles() const = 0;
             virtual std::uint64_t getNumberOfOriginalHistories() const = 0;
 
-            virtual std::uint64_t getHistoriesRead() const;
+            virtual std::uint64_t getHistoriesRead();
+            virtual std::uint64_t getParticlesRead();
 
             std::uint64_t         getFileSize() const;
             const std::string     getFileName() const;
@@ -70,6 +71,7 @@ namespace ParticleZoo
             const std::uint64_t bytesInFile_;
             std::uint64_t bytesRead_;
             std::uint64_t particlesRead_;
+            std::uint64_t historiesRead_;
             std::uint64_t numberOfParticlesToRead_;
             std::size_t particleRecordLength_;
             ByteBuffer buffer_;
@@ -94,14 +96,12 @@ namespace ParticleZoo
     inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) { buffer_.setByteOrder(byteOrder); }
     inline const UserOptions& PhaseSpaceFileReader::getUserOptions() const { return userOptions_; }
 
-    inline std::uint64_t PhaseSpaceFileReader::getHistoriesRead() const {
-        // default implementation estimates histories read based on particles read
-        static const std::uint64_t TOTAL_PARTICLES = getNumberOfParticles();
-        static const std::uint64_t TOTAL_HISTORIES = getNumberOfOriginalHistories();
-        if (particlesRead_ == TOTAL_PARTICLES) { return TOTAL_HISTORIES; }
-        static const float HISTORIES_PER_PARTICLE = static_cast<float>(TOTAL_HISTORIES) / static_cast<float>(TOTAL_PARTICLES);
-        return static_cast<std::uint64_t>(HISTORIES_PER_PARTICLE * particlesRead_);
+    inline std::uint64_t PhaseSpaceFileReader::getHistoriesRead() {
+        if (!hasMoreParticles()) historiesRead_ = getNumberOfOriginalHistories();
+        return historiesRead_;
     }
+
+    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead() { return particlesRead_; }
 
     inline void PhaseSpaceFileReader::setCommentMarkers(const std::vector<std::string> & commentMarkers) {
         asciiCommentMarkers_ = commentMarkers;
