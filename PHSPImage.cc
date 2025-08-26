@@ -111,6 +111,7 @@ int main(int argc, char* argv[]) {
     FormatRegistry::RegisterStandardFormats();
     ImageFormat outputFormat = TIFF; // default output format
     bool energyWeighted = false; // default to particle fluence instead of energy fluence
+    bool normalizeByParticles = false; // default to normalizing by histories instead of particles
     Plane plane = XY; // default plane
     float planeLocation;
 
@@ -244,6 +245,9 @@ int main(int argc, char* argv[]) {
     if (!args["energyWeighted"].empty()) {
         energyWeighted = (args["energyWeighted"][0] == "true");
     }
+    if (!args["normalizeByParticles"].empty()) {
+        normalizeByParticles = (args["normalizeByParticles"][0] == "true");
+    }
     if (args["outputFormat"].size() == 1) {
         std::string formatStr = args["outputFormat"][0];
         if (formatStr == "tiff" || formatStr == "TIFF") {
@@ -297,9 +301,8 @@ int main(int argc, char* argv[]) {
                                     : 1;
 
         // Check if there are particles to read
-        uint64_t numberOfHistories = reader->getNumberOfOriginalHistories();
-        if (numberOfHistories == 0 || particlesToRead == 0) {
-            throw std::runtime_error("No particle histories found in the input file.");
+        if (particlesToRead == 0) {
+            throw std::runtime_error("No particles found in the input file.");
         }
 
         // Calculate pixel mapping
@@ -375,9 +378,15 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Finalize the image by normalizing the data by the number of histories
-        std::uint64_t historiesRead = particlesToRead < particlesInFile ? reader->getHistoriesRead() : numberOfHistories;
-        image->normalize(static_cast<float>(historiesRead));
+        // Finalize the image by normalizing the data by the number of histories (or particles if specified by the user)
+        uint64_t numberOfHistories = reader->getNumberOfOriginalHistories();
+        uint64_t particlesRead = reader->getParticlesRead();
+        std::uint64_t historiesRead = particlesRead < particlesInFile ? reader->getHistoriesRead() : numberOfHistories;
+        if (normalizeByParticles) {
+            image->normalize(static_cast<float>(particlesRead));
+        } else {
+            image->normalize(static_cast<float>(historiesRead));
+        }
 
         // Save the image to the output file
         image->save(outputFile);
