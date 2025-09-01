@@ -278,9 +278,9 @@ PHSPCombine --outputFile result.phsp input1.IAEAphsp input2.egsphsp
 PHSPCombine --preserveConstants true --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
 ```
 
-### PHSPImage - Visualization
+### PHSPImage - Visualization and Third Party Analysis
 
-Creates 2D particle fluence or energy fluence images from phase space data. Can output either a detailed TIFF image with raw fluence data stored in 32-bit floats (default), or in a simple bitmap BMP image with automatic constrast for easy visualization:
+Creates 2D particle fluence or energy fluence images from phase space data. Can output either a detailed TIFF image with raw fluence data stored in 32-bit floats (default) which can be analyzed directly in third party tools like ImageJ, or in a simple bitmap BMP image with automatic constrast for easy visualization:
 
 ```bash
 # Generate XY plane image at Z=0
