@@ -144,13 +144,13 @@ namespace ParticleZoo
             if (fixedValues_.xIsConstant) particle.setX(fixedValues_.constantX);
             if (fixedValues_.yIsConstant) particle.setY(fixedValues_.constantY);
             if (fixedValues_.zIsConstant) particle.setZ(fixedValues_.constantZ);
-            if (fixedValues_.pxIsConstant) { particle.setPx(fixedValues_.constantPx); recheckDirectionNormalization = true; }
-            if (fixedValues_.pyIsConstant) { particle.setPy(fixedValues_.constantPy); recheckDirectionNormalization = true; }
-            if (fixedValues_.pzIsConstant) { particle.setPz(fixedValues_.constantPz); recheckDirectionNormalization = true; }
+            if (fixedValues_.pxIsConstant) { particle.setDirectionalCosineX(fixedValues_.constantPx); recheckDirectionNormalization = true; }
+            if (fixedValues_.pyIsConstant) { particle.setDirectionalCosineY(fixedValues_.constantPy); recheckDirectionNormalization = true; }
+            if (fixedValues_.pzIsConstant) { particle.setDirectionalCosineZ(fixedValues_.constantPz); recheckDirectionNormalization = true; }
             if (fixedValues_.weightIsConstant) particle.setWeight(fixedValues_.constantWeight);
 
             if (recheckDirectionNormalization) {
-                float directionMagnitude = particle.getPx()*particle.getPx() + particle.getPy()*particle.getPy() + particle.getPz()*particle.getPz();
+                float directionMagnitude = particle.getDirectionalCosineX()*particle.getDirectionalCosineX() + particle.getDirectionalCosineY()*particle.getDirectionalCosineY() + particle.getDirectionalCosineZ()*particle.getDirectionalCosineZ();
                 constexpr float EPSILON = 1e-6f;
                 if (directionMagnitude < 1.0f - EPSILON || directionMagnitude > 1.0f + EPSILON) {
                     throw std::runtime_error("Particle direction is not normalized.");

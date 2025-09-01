@@ -266,12 +266,12 @@ namespace ParticleZoo::TOPASphspFile
         oss << std::setw(12) << particle.getX() / cm << " "
             << std::setw(12) << particle.getY() / cm << " "
             << std::setw(12) << particle.getZ() / cm << " "
-            << std::setw(12) << particle.getPx() << " "
-            << std::setw(12) << particle.getPy() << " "
+            << std::setw(12) << particle.getDirectionalCosineX() << " "
+            << std::setw(12) << particle.getDirectionalCosineY() << " "
             << std::setw(12) << particle.getKineticEnergy() / MeV << " "
             << std::setw(12) << particle.getWeight() << " "
             << std::setw(12) << getPDGIDFromParticleType(particle.getType()) << " "
-            << std::setw(2) << (particle.getPz() < 0 ? 1 : 0) << " "
+            << std::setw(2) << (particle.getDirectionalCosineZ() < 0 ? 1 : 0) << " "
             << std::setw(2) << (particle.isNewHistory() ? 1 : 0);
 
         // Write any additional properties
@@ -343,12 +343,12 @@ namespace ParticleZoo::TOPASphspFile
             buffer.write(particle.getX() / cm);
             buffer.write(particle.getY() / cm);
             buffer.write(particle.getZ() / cm);
-            buffer.write(particle.getPx());
-            buffer.write(particle.getPy());
+            buffer.write(particle.getDirectionalCosineX());
+            buffer.write(particle.getDirectionalCosineY());
             buffer.write(particle.getKineticEnergy() / MeV);
             buffer.write(particle.getWeight());
             buffer.write(getPDGIDFromParticleType(particle.getType()));
-            buffer.write(particle.getPz() < 0 ? true : false);
+            buffer.write(particle.getDirectionalCosineZ() < 0 ? true : false);
             buffer.write(particle.isNewHistory());
         }
 
@@ -429,7 +429,7 @@ namespace ParticleZoo::TOPASphspFile
                 std::string particleTypeName = std::string(getParticleTypeName(particle.getType()));
                 throw std::runtime_error("Attempted to write particle type '" + particleTypeName + "' (" + std::to_string(pdgID) + ") which is not compatible with a TOPAS Limited phase space file.");
         }
-        if (particle.getPz() < 0) {
+        if (particle.getDirectionalCosineZ() < 0) {
             particleTypeCode = -particleTypeCode;
         }
 
@@ -438,8 +438,8 @@ namespace ParticleZoo::TOPASphspFile
         buffer.write(particle.getX() / cm);
         buffer.write(particle.getY() / cm);
         buffer.write(particle.getZ() / cm);
-        buffer.write(particle.getPx());
-        buffer.write(particle.getPy());
+        buffer.write(particle.getDirectionalCosineX());
+        buffer.write(particle.getDirectionalCosineY());
         buffer.write(particle.getWeight());
     }
 

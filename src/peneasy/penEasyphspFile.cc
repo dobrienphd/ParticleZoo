@@ -48,9 +48,9 @@ namespace ParticleZoo::penEasyphspFile
         float x = particle.getX();
         float y = particle.getY();
         float z = particle.getZ();
-        float u = particle.getPx();
-        float v = particle.getPy();
-        float w = particle.getPz();
+        float u = particle.getDirectionalCosineX();
+        float v = particle.getDirectionalCosineY();
+        float w = particle.getDirectionalCosineZ();
         float weight = particle.getWeight();
 
         int dn = 0;

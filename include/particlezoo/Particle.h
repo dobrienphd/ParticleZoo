@@ -106,7 +106,7 @@ namespace ParticleZoo {
 
         public:
             Particle() = default;
-            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory = true, float weight = 1.0);
+            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0);
 
             // Getters and setters for basic particle properties
 
@@ -114,9 +114,9 @@ namespace ParticleZoo {
             void setX(float x);
             void setY(float y);
             void setZ(float z);
-            void setPx(float px);
-            void setPy(float py);
-            void setPz(float pz);
+            void setDirectionalCosineX(float px);
+            void setDirectionalCosineY(float py);
+            void setDirectionalCosineZ(float pz);
             void setWeight(float weight);
             void setNewHistory(bool isNewHistory);
 
@@ -125,9 +125,9 @@ namespace ParticleZoo {
             float getX() const;
             float getY() const;
             float getZ() const;
-            float getPx() const;
-            float getPy() const;
-            float getPz() const;
+            float getDirectionalCosineX() const;
+            float getDirectionalCosineY() const;
+            float getDirectionalCosineZ() const;
             float getWeight() const;
             bool  isNewHistory() const;
 
@@ -200,9 +200,9 @@ namespace ParticleZoo {
     inline void Particle::setX(float x) { x_ = x; }
     inline void Particle::setY(float y) { y_ = y; }
     inline void Particle::setZ(float z) { z_ = z; }
-    inline void Particle::setPx(float px) { px_ = px; }
-    inline void Particle::setPy(float py) { py_ = py; }
-    inline void Particle::setPz(float pz) { pz_ = pz; }
+    inline void Particle::setDirectionalCosineX(float px) { px_ = px; }
+    inline void Particle::setDirectionalCosineY(float py) { py_ = py; }
+    inline void Particle::setDirectionalCosineZ(float pz) { pz_ = pz; }
     inline void Particle::setWeight(float weight) { weight_ = weight; }
     inline void Particle::setNewHistory(bool isNewHistory) { isNewHistory_ = isNewHistory; }
 
@@ -211,9 +211,9 @@ namespace ParticleZoo {
     inline float Particle::getX() const { return x_; }
     inline float Particle::getY() const { return y_; }
     inline float Particle::getZ() const { return z_; }
-    inline float Particle::getPx() const { return px_; }
-    inline float Particle::getPy() const { return py_; }
-    inline float Particle::getPz() const { return pz_; }
+    inline float Particle::getDirectionalCosineX() const { return px_; }
+    inline float Particle::getDirectionalCosineY() const { return py_; }
+    inline float Particle::getDirectionalCosineZ() const { return pz_; }
     inline float Particle::getWeight() const { return weight_; }
     inline bool  Particle::isNewHistory() const { return isNewHistory_; }
 

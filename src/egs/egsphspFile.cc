@@ -167,8 +167,8 @@ namespace ParticleZoo::EGSphspFile
         float x = particle.getX();
         float y = particle.getY();
         // EGS doesn't store the Z value
-        float u = particle.getPx();
-        float v = particle.getPy();
+        float u = particle.getDirectionalCosineX();
+        float v = particle.getDirectionalCosineY();
         float weight = particle.getWeight();
 
         if (energy > maxKineticEnergy_) {
