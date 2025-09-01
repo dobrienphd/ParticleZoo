@@ -4,6 +4,9 @@
 namespace ParticleZoo::IAEAphspFile
 {
 
+    constexpr float energyUnits = MeV;
+    constexpr float distanceUnits = cm;
+
     // Implementations for the IAEAphspFileReader class
 
     Reader::Reader(const std::string & filename, const UserOptions & options)
@@ -48,10 +51,12 @@ namespace ParticleZoo::IAEAphspFile
             kineticEnergy = -kineticEnergy;
         } else isNewHistory = false;
 
+        kineticEnergy *= energyUnits;
+
         float x, y, z, u, v, w, weight;
-        if (header_.xIsStored()) x = buffer.read<float>(); else x = header_.getConstantX();
-        if (header_.yIsStored()) y = buffer.read<float>(); else y = header_.getConstantY();
-        if (header_.zIsStored()) z = buffer.read<float>(); else z = header_.getConstantZ();
+        if (header_.xIsStored()) x = buffer.read<float>() * distanceUnits; else x = header_.getConstantX();
+        if (header_.yIsStored()) y = buffer.read<float>() * distanceUnits; else y = header_.getConstantY();
+        if (header_.zIsStored()) z = buffer.read<float>() * distanceUnits; else z = header_.getConstantZ();
         if (header_.uIsStored()) u = buffer.read<float>(); else u = header_.getConstantU();
         if (header_.vIsStored()) v = buffer.read<float>(); else v = header_.getConstantV();
         if (header_.wIsStored()) {
@@ -190,15 +195,17 @@ namespace ParticleZoo::IAEAphspFile
             typeCode = -typeCode;
         }
 
-        float kineticEnergy = particle.getKineticEnergy();
+        constexpr float inverseEnergyUnits = 1.f / energyUnits;
+        float kineticEnergy = particle.getKineticEnergy() * inverseEnergyUnits;
         if (particle.isNewHistory()) kineticEnergy *= -1.f;
 
         buffer.write<signed_byte>(typeCode);
         buffer.write<float>(kineticEnergy);
 
-        if (header_.xIsStored()) buffer.write<float>(particle.getX());
-        if (header_.yIsStored()) buffer.write<float>(particle.getY());
-        if (header_.zIsStored()) buffer.write<float>(particle.getZ());
+        constexpr float inverseDistanceUnits = 1.f / distanceUnits;
+        if (header_.xIsStored()) buffer.write<float>(particle.getX() * inverseDistanceUnits);
+        if (header_.yIsStored()) buffer.write<float>(particle.getY() * inverseDistanceUnits);
+        if (header_.zIsStored()) buffer.write<float>(particle.getZ() * inverseDistanceUnits);
         if (header_.uIsStored()) buffer.write<float>(particle.getDirectionalCosineX());
         if (header_.vIsStored()) buffer.write<float>(particle.getDirectionalCosineY());
         if (header_.weightIsStored()) buffer.write<float>(particle.getWeight());
