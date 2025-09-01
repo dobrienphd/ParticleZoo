@@ -352,9 +352,9 @@ namespace ParticleZoo::ROOT {
         x_ = particle.getX() * inverseXUnits_;
         y_ = particle.getY() * inverseYUnits_;
         z_ = particle.getZ() * inverseZUnits_;
-        px_ = particle.getPx();
-        py_ = particle.getPy();
-        pz_ = particle.getPz();
+        px_ = particle.getDirectionalCosineX();
+        py_ = particle.getDirectionalCosineY();
+        pz_ = particle.getDirectionalCosineZ();
         pzIsNegative_ = (pz_ < 0.0); // Store the sign of the Z directional cosine
         weight_ = particle.getWeight();
         pdgCode_ = getPDGIDFromParticleType(particle.getType());

@@ -185,7 +185,7 @@ namespace ParticleZoo::IAEAphspFile
         }
 
         // The sign of the type code indicates the direction of the particle.
-        float wValue = particle.getPz();
+        float wValue = particle.getDirectionalCosineZ();
         if (wValue < 0.f) {
             typeCode = -typeCode;
         }
@@ -199,8 +199,8 @@ namespace ParticleZoo::IAEAphspFile
         if (header_.xIsStored()) buffer.write<float>(particle.getX());
         if (header_.yIsStored()) buffer.write<float>(particle.getY());
         if (header_.zIsStored()) buffer.write<float>(particle.getZ());
-        if (header_.uIsStored()) buffer.write<float>(particle.getPx());
-        if (header_.vIsStored()) buffer.write<float>(particle.getPy());
+        if (header_.uIsStored()) buffer.write<float>(particle.getDirectionalCosineX());
+        if (header_.vIsStored()) buffer.write<float>(particle.getDirectionalCosineY());
         if (header_.weightIsStored()) buffer.write<float>(particle.getWeight());
 
         unsigned int N_extraFloats = header_.getNumberOfExtraFloats();
