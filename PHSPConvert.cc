@@ -114,12 +114,15 @@ int main(int argc, char* argv[]) {
         reader = FormatRegistry::CreateReader(inputFormat, inputFile, args);
     }
 
+    // Try to keep the same constant values in the new phase space file if it supports them
+    FixedValues fixedValues = reader->getFixedValues();
+
     // Create the writer for the output file
     std::unique_ptr<PhaseSpaceFileWriter> writer;
     if (outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, args);
+        writer = FormatRegistry::CreateWriter(outputFile, args, fixedValues);
     } else {
-        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args);
+        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args, fixedValues);
     }
 
     // Error handling for both reader and writer

@@ -9,7 +9,13 @@ namespace ParticleZoo::IAEAphspFile
     Reader::Reader(const std::string & filename, const UserOptions & options)
         : PhaseSpaceFileReader("IAEA", filename, options), header_(IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename)))
     {
-        // nothing to do
+        if (!header_.xIsStored()) setConstantX(header_.getConstantX());
+        if (!header_.yIsStored()) setConstantY(header_.getConstantY());
+        if (!header_.zIsStored()) setConstantZ(header_.getConstantZ());
+        if (!header_.uIsStored()) setConstantPx(header_.getConstantU());
+        if (!header_.vIsStored()) setConstantPy(header_.getConstantV());
+        if (!header_.wIsStored()) setConstantPz(header_.getConstantW());
+        if (!header_.weightIsStored()) setConstantWeight(header_.getConstantWeight());
     }
 
     Particle Reader::readBinaryParticle(ByteBuffer & buffer)
@@ -77,12 +83,12 @@ namespace ParticleZoo::IAEAphspFile
         return particle;
     }
 
-    
+
     // Implementations for the IAEAphspFileWriter class
 
 
-    Writer::Writer(const std::string & filename, const UserOptions & userOptions)
-        : PhaseSpaceFileWriter("IAEA", filename, userOptions),
+    Writer::Writer(const std::string & filename, const UserOptions & userOptions, const FixedValues & fixedValues)
+        : PhaseSpaceFileWriter("IAEA", filename, userOptions, FormatType::BINARY, fixedValues),
           header_([&]() {
             IAEAHeader header = userOptions.contains("IAEAHeaderTemplate") ? 
                 IAEAHeader(IAEAHeader(userOptions.at("IAEAHeaderTemplate").front())) : 
@@ -102,55 +108,6 @@ namespace ParticleZoo::IAEAphspFile
                     header.setFileType(IAEAHeader::FileType::PHSP_GENERATOR);
                 } else {
                     throw std::invalid_argument("Invalid IAEA file type specified: " + fileType);
-                }
-            }
-            if (userOptions.contains("IAEAConstantX")) {
-                try {
-                    header.setConstantX(std::stof(userOptions.at("IAEAConstantX").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantX value specified: " + userOptions.at("IAEAConstantX").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantY")) {
-                try {
-                    header.setConstantY(std::stof(userOptions.at("IAEAConstantY").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantY value specified: " + userOptions.at("IAEAConstantY").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantZ")) {
-                try {
-                    header.setConstantZ(std::stof(userOptions.at("IAEAConstantZ").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantZ value specified: " + userOptions.at("IAEAConstantZ").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantU")) {
-                try {
-                    header.setConstantU(std::stof(userOptions.at("IAEAConstantU").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantU value specified: " + userOptions.at("IAEAConstantU").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantV")) {
-                try {
-                    header.setConstantV(std::stof(userOptions.at("IAEAConstantV").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantV value specified: " + userOptions.at("IAEAConstantV").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantW")) {
-                try {
-                    header.setConstantW(std::stof(userOptions.at("IAEAConstantW").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantW value specified: " + userOptions.at("IAEAConstantW").front());
-                }
-            }
-            if (userOptions.contains("IAEAConstantWeight")) {
-                try {
-                    header.setConstantWeight(std::stof(userOptions.at("IAEAConstantWeight").front()));
-                } catch (const std::invalid_argument&) {
-                    throw std::invalid_argument("Invalid IAEAConstantWeight value specified: " + userOptions.at("IAEAConstantWeight").front());
                 }
             }
             if (userOptions.contains("IAEAAddIncHistNumber")) {
@@ -203,11 +160,11 @@ namespace ParticleZoo::IAEAphspFile
                     header.addExtraFloat(IAEAHeader::EXTRA_FLOAT_TYPE::ZLAST);
                 }
             }
-
             return header;
           }())
     {
-        // nothing to do
+        // update constants in the header
+        fixedValuesHaveChanged();
     }
 
     void Writer::setNumberOfOriginalHistories(std::uint64_t numberOfHistories) {

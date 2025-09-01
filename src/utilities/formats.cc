@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "particlezoo/Particle.h"
 #include "particlezoo/egs/egsphspFile.h"
 #include "particlezoo/IAEA/IAEAphspFile.h"
 #include "particlezoo/TOPAS/TOPASphspFile.h"
@@ -27,8 +28,8 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::IAEAphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options) {
-                           return std::make_unique<ParticleZoo::IAEAphspFile::Writer>(filename, options);
+                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
+                           return std::make_unique<ParticleZoo::IAEAphspFile::Writer>(filename, options, fixedValues);
                        });
 
         // Register TOPAS format
@@ -37,7 +38,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::TOPASphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
                            return std::make_unique<ParticleZoo::TOPASphspFile::Writer>(filename, options);
                        });
         
@@ -47,7 +48,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::penEasyphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
                            return std::make_unique<ParticleZoo::penEasyphspFile::Writer>(filename, options);
                        });
 
@@ -57,7 +58,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::EGSphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
                            return std::make_unique<ParticleZoo::EGSphspFile::Writer>(filename, options);
                        });
 
@@ -68,7 +69,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::ROOT::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
                            return std::make_unique<ParticleZoo::ROOT::Writer>(filename, options);
                        });
     #endif
@@ -139,7 +140,7 @@ namespace ParticleZoo
         return it->second(filename, options);
     }
 
-    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& filename, const UserOptions & options)
+    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& filename, const UserOptions & options, const FixedValues & fixedValues)
     {
         std::filesystem::path p{filename};
         auto ext = p.extension().string();
@@ -150,10 +151,10 @@ namespace ParticleZoo
         if (supportedFormats.empty() || supportedFormats.size() > 1) {
             throw std::runtime_error("No unique format found for file extension: " + ext);
         }
-        return CreateWriter(supportedFormats[0].name, filename, options);
+        return CreateWriter(supportedFormats[0].name, filename, options, fixedValues);
     }
 
-    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options)
+    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options, const FixedValues & fixedValues)
     {
         FormatRegistry& registry = instance();
         std::unique_lock lock(registry.mutex_);
@@ -161,7 +162,7 @@ namespace ParticleZoo
         if (it == registry.writerFactories_.end()) {
             throw std::runtime_error("Unsupported format: " + name);
         }
-        return it->second(filename, options);
+        return it->second(filename, options, fixedValues);
     }
 
     std::vector<SupportedFormat> FormatRegistry::FormatsForExtension(const std::string& extension)

@@ -2,13 +2,12 @@
 
 namespace ParticleZoo
 {
-    PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
+    PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, const FixedValues fixedValues, unsigned int bufferSize)
     : phspFormat_(phspFormat),
       fileName_(fileName),
       userOptions_(userOptions),
       BUFFER_SIZE(bufferSize),
       formatType_(formatType),
-//      file_(fileName, std::ios::binary),
       file_([&]() {
             if (formatType_ == FormatType::NONE) {
                 return std::ofstream{};
@@ -19,12 +18,55 @@ namespace ParticleZoo
       historiesWritten_(0),
       particleRecordLength_(0),
       buffer_(BUFFER_SIZE),
-      writeParticleDepth_(0)
+      writeParticleDepth_(0),
+      fixedValues_(fixedValues)
     {
         if (formatType != FormatType::NONE && !file_.is_open())
         {
             throw std::runtime_error("Failed to open file: " + fileName_);
         }
+        if (userOptions_.find("constantX") != userOptions_.end()) {
+            if (userOptions_.at("constantX").size() != 1) {
+                throw std::invalid_argument("User option 'constantX' must have exactly one value.");
+            }
+            setConstantX(std::stof(userOptions_.at("constantX")[0]));
+        }
+        if (userOptions_.find("constantY") != userOptions_.end()) {
+            if (userOptions_.at("constantY").size() != 1) {
+                throw std::invalid_argument("User option 'constantY' must have exactly one value.");
+            }
+            setConstantY(std::stof(userOptions_.at("constantY")[0]));
+        }
+        if (userOptions_.find("constantZ") != userOptions_.end()) {
+            if (userOptions_.at("constantZ").size() != 1) {
+                throw std::invalid_argument("User option 'constantZ' must have exactly one value.");
+            }
+            setConstantZ(std::stof(userOptions_.at("constantZ")[0]));
+        }
+        if (userOptions_.find("constantPx") != userOptions_.end()) {
+            if (userOptions_.at("constantPx").size() != 1) {
+                throw std::invalid_argument("User option 'constantPx' must have exactly one value.");
+            }
+            setConstantPx(std::stof(userOptions_.at("constantPx")[0]));
+        }
+        if (userOptions_.find("constantPy") != userOptions_.end()) {
+            if (userOptions_.at("constantPy").size() != 1) {
+                throw std::invalid_argument("User option 'constantPy' must have exactly one value.");
+            }
+            setConstantPy(std::stof(userOptions_.at("constantPy")[0]));
+        }
+        if (userOptions_.find("constantPz") != userOptions_.end()) {
+            if (userOptions_.at("constantPz").size() != 1) {
+                throw std::invalid_argument("User option 'constantPz' must have exactly one value.");
+            }
+            setConstantPz(std::stof(userOptions_.at("constantPz")[0]));
+        }
+        if (userOptions_.find("constantWeight") != userOptions_.end()) {
+            if (userOptions_.at("constantWeight").size() != 1) {
+                throw std::invalid_argument("User option 'constantWeight' must have exactly one value.");
+            }
+            setConstantWeight(std::stof(userOptions_.at("constantWeight")[0]));
+        }        
     }
 
     PhaseSpaceFileWriter::~PhaseSpaceFileWriter() {
@@ -97,6 +139,23 @@ namespace ParticleZoo
 
         // do not attempt to write pseudoparticles to the file unless the writer explicitly supports that
         if (type != ParticleType::PseudoParticle || canWritePseudoParticlesExplicitly()) {
+
+            bool recheckDirectionNormalization = false;
+            if (fixedValues_.xIsConstant) particle.setX(fixedValues_.constantX);
+            if (fixedValues_.yIsConstant) particle.setY(fixedValues_.constantY);
+            if (fixedValues_.zIsConstant) particle.setZ(fixedValues_.constantZ);
+            if (fixedValues_.pxIsConstant) { particle.setPx(fixedValues_.constantPx); recheckDirectionNormalization = true; }
+            if (fixedValues_.pyIsConstant) { particle.setPy(fixedValues_.constantPy); recheckDirectionNormalization = true; }
+            if (fixedValues_.pzIsConstant) { particle.setPz(fixedValues_.constantPz); recheckDirectionNormalization = true; }
+            if (fixedValues_.weightIsConstant) particle.setWeight(fixedValues_.constantWeight);
+
+            if (recheckDirectionNormalization) {
+                float directionMagnitude = particle.getPx()*particle.getPx() + particle.getPy()*particle.getPy() + particle.getPz()*particle.getPz();
+                constexpr float EPSILON = 1e-6f;
+                if (directionMagnitude < 1.0f - EPSILON || directionMagnitude > 1.0f + EPSILON) {
+                    throw std::runtime_error("Particle direction is not normalized.");
+                }
+            }
 
             switch (formatType_) {
 

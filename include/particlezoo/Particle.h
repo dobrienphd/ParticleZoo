@@ -44,6 +44,41 @@ namespace ParticleZoo {
         CUSTOM
     };
 
+    struct FixedValues
+    {
+        bool xIsConstant{0};
+        bool yIsConstant{0};
+        bool zIsConstant{0};
+        bool pxIsConstant{0};
+        bool pyIsConstant{0};
+        bool pzIsConstant{0};
+        bool weightIsConstant{0};
+        float constantX{0};
+        float constantY{0};
+        float constantZ{0};
+        float constantPx{0};
+        float constantPy{0};
+        float constantPz{0};
+        float constantWeight{1};
+
+        bool operator==(const FixedValues& other) const {
+            return xIsConstant == other.xIsConstant &&
+                yIsConstant == other.yIsConstant &&
+                zIsConstant == other.zIsConstant &&
+                pxIsConstant == other.pxIsConstant &&
+                pyIsConstant == other.pyIsConstant &&
+                pzIsConstant == other.pzIsConstant &&
+                weightIsConstant == other.weightIsConstant &&
+                constantX == other.constantX &&
+                constantY == other.constantY &&
+                constantZ == other.constantZ &&
+                constantPx == other.constantPx &&
+                constantPy == other.constantPy &&
+                constantPz == other.constantPz &&
+                constantWeight == other.constantWeight;
+        }
+    };
+
 
     /* Particle Class Definition */
 
@@ -123,6 +158,12 @@ namespace ParticleZoo {
             const std::vector<float>& getCustomFloatProperties() const;
             const std::vector<std::int32_t>& getCustomIntProperties() const;
             const std::vector<std::string>& getCustomStringProperties() const;
+
+            // Methods for projecting the particle's position
+
+            bool projectToXValue(float X);
+            bool projectToYValue(float Y);
+            bool projectToZValue(float Z);
 
         private:
 
@@ -340,6 +381,33 @@ namespace ParticleZoo {
         px_ /= magnitude;
         py_ /= magnitude;
         pz_ /= magnitude;
+    }
+
+    inline bool Particle::projectToXValue(float X) {
+        if (px_ == 0.f) return false; // Cannot project if no movement in x
+        float t = (X - x_) / px_;
+        x_ = X;
+        y_ += py_ * t;
+        z_ += pz_ * t;
+        return true;
+    }
+
+    inline bool Particle::projectToYValue(float Y) {
+        if (py_ == 0.f) return false; // Cannot project if no movement in y
+        float t = (Y - y_) / py_;
+        y_ = Y;
+        x_ += px_ * t;
+        z_ += pz_ * t;
+        return true;
+    }
+
+    inline bool Particle::projectToZValue(float Z) {
+        if (pz_ == 0.f) return false; // Cannot project if no movement in z
+        float t = (Z - z_) / pz_;
+        z_ = Z;
+        x_ += px_ * t;
+        y_ += py_ * t;
+        return true;
     }
 
 } // namespace ParticleZoo
