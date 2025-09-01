@@ -275,7 +275,7 @@ PHSPCombine --outputFile combined.IAEAphsp file1.egsphsp file2.egsphsp file3.egs
 PHSPCombine --outputFile result.phsp input1.IAEAphsp input2.egsphsp
 
 # Preserve constant values in the output file if all input files have the same constant values
-PHSPCombine --preserveConstants --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
+PHSPCombine --preserveConstants true --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
 ```
 
 ### PHSPImage - Visualization
