@@ -163,9 +163,11 @@ int main(int argc, char* argv[]) {
                 throw std::runtime_error("Failed to create reader for file: " + inputFile);
             }
 
-            FixedValues currentFixedValues = reader->getFixedValues();
-            if (currentFixedValues != fixedValues) {
-                throw std::runtime_error("Inconsistent constant values found in file: " + inputFile);
+            if (preserveConstants) {
+                FixedValues currentFixedValues = reader->getFixedValues();
+                if (currentFixedValues != fixedValues) {
+                    throw std::runtime_error("Inconsistent constant values found in file: " + inputFile);
+                }
             }
 
             // Error handling for the reader
