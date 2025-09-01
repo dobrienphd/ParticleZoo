@@ -22,6 +22,8 @@ namespace ParticleZoo::EGSphspFile
             particleZValue_ = std::stof(options.at("EGSParticleZValue").front());
         }
 
+        setConstantZ(particleZValue_);
+
         readHeader(ignoreHeaderParticleCount);
     }
 
@@ -164,7 +166,7 @@ namespace ParticleZoo::EGSphspFile
         float energy = particle.getKineticEnergy();
         float x = particle.getX();
         float y = particle.getY();
-        float z = particle.getZ();
+        // EGS doesn't store the Z value
         float u = particle.getPx();
         float v = particle.getPy();
         float weight = particle.getWeight();

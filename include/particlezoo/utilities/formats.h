@@ -29,7 +29,7 @@ namespace ParticleZoo
         constexpr static bool FILE_EXTENSION_CAN_HAVE_SUFFIX = true;
 
         using ReaderFactoryFn = std::function<std::unique_ptr<PhaseSpaceFileReader>(const std::string& filename, const UserOptions& options)>;
-        using WriterFactoryFn = std::function<std::unique_ptr<PhaseSpaceFileWriter>(const std::string& filename, const UserOptions& options)>;
+        using WriterFactoryFn = std::function<std::unique_ptr<PhaseSpaceFileWriter>(const std::string& filename, const UserOptions& options, const FixedValues& fixedValues)>;
 
         static void RegisterFormat(const SupportedFormat& fmt, ReaderFactoryFn reader, WriterFactoryFn writer);
 
@@ -38,8 +38,8 @@ namespace ParticleZoo
         static std::unique_ptr<PhaseSpaceFileReader> CreateReader(const std::string& filename, const UserOptions & options = {});
         static std::unique_ptr<PhaseSpaceFileReader> CreateReader(const std::string& name, const std::string& filename, const UserOptions & options = {});
 
-        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& filename, const UserOptions & options = {});
-        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options = {});
+        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& filename, const UserOptions & options = {}, const FixedValues & fixedValues = {});
+        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options = {}, const FixedValues & fixedValues = {});
 
         static std::vector<SupportedFormat> FormatsForExtension(const std::string& extension);
 

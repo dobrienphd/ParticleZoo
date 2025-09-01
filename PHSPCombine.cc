@@ -30,6 +30,7 @@
  *                             Valid formats: IAEA, EGS, TOPAS, penEasy, ROOT
  *                             (default: auto-detect format from file extension)
  *   --formats                 Display a list of all supported file formats and exit
+ *   --preserveConstants <true|false>  Preserve constant values from input files if present (default: false)
  * 
  * USAGE EXAMPLES:
  *   # Combine two EGS files into an IAEA format output
@@ -72,6 +73,7 @@ int main(int argc, char* argv[]) {
     using namespace ParticleZoo;
     int errorCode = 0;
     uint64_t particlesSoFar = 0;
+    bool preserveConstants = false;
     FormatRegistry::RegisterStandardFormats();
 
     // Define usage message and parse command line arguments
@@ -89,6 +91,7 @@ int main(int argc, char* argv[]) {
                             "  --inputFormat <format>    Force input file format (default: auto-detect from extension)\n"
                             "  --outputFormat <format>   Force output file format (default: auto-detect from extension)\n"
                             "  --formats                 List all supported file formats\n"
+                            "  --preserveConstants <true|false>  Preserve constant values from input files if present (default: false)\n"
                             "\n"
                             "Examples:\n"
                             "  PHSPCombine --output combined.IAEAphsp input1.egsphsp input2.egsphsp\n"
@@ -104,13 +107,33 @@ int main(int argc, char* argv[]) {
     std::vector<std::string> inputFiles = args["positionals"];
     if (inputFiles.empty()) throw std::runtime_error("No input files provided.");
     if (outputFile == "") throw std::runtime_error("No output file specified.");
+    if (!args["preserveConstants"].empty()) {
+        preserveConstants = (args["preserveConstants"][0] == "true");
+    }
+
+    FixedValues fixedValues; // start with default fixed values
+    if (preserveConstants) {
+        // If preserving constants, we need to determine which values are constant by checking the first file.
+        // Throw an error during the reading loop later if a subsequent file has a different set of constants.
+        std::unique_ptr<PhaseSpaceFileReader> firstReader;
+        if (inputFormat.empty()) {
+            firstReader = FormatRegistry::CreateReader(inputFiles[0], args);
+        } else {
+            firstReader = FormatRegistry::CreateReader(inputFormat, inputFiles[0], args);
+        }
+        if (!firstReader) {
+            throw std::runtime_error("Failed to create reader for file: " + inputFiles[0]);
+        }
+        fixedValues = firstReader->getFixedValues();
+        firstReader->close();
+    }
 
     // Create the writer
     std::unique_ptr<PhaseSpaceFileWriter> writer;
     if (outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, args);
+        writer = FormatRegistry::CreateWriter(outputFile, args, fixedValues);
     } else {
-        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args);
+        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args, fixedValues);
     }
 
     // Error handling for the writer
@@ -138,6 +161,11 @@ int main(int argc, char* argv[]) {
             // Check if reader was created successfully
             if (!reader) {
                 throw std::runtime_error("Failed to create reader for file: " + inputFile);
+            }
+
+            FixedValues currentFixedValues = reader->getFixedValues();
+            if (currentFixedValues != fixedValues) {
+                throw std::runtime_error("Inconsistent constant values found in file: " + inputFile);
             }
 
             // Error handling for the reader

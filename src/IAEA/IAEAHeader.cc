@@ -296,7 +296,8 @@ namespace ParticleZoo::IAEAphspFile
 
                         // Sometimes "W is stored ?" is marked as 0 when both U and V are stored.
                         // It should be marked as 1 in that case as it's value is derived from U
-                        // and V and so it is not recorded explicitly in the header.
+                        // and V and so it is not recorded explicitly in the header. It is "stored"
+                        // implicitly in the binary data.
                         if (!wIsStored_ && uIsStored_ && vIsStored_) {
                             wIsStored_ = true;
                         }

@@ -34,7 +34,7 @@ namespace ParticleZoo::IAEAphspFile
     class Writer : public PhaseSpaceFileWriter
     {
         public:
-            Writer(const std::string &filename, const UserOptions & userOptions = UserOptions{});
+            Writer(const std::string &filename, const UserOptions & userOptions = UserOptions{}, const FixedValues & fixedValues = FixedValues{});
             Writer(const std::string & filename, const IAEAHeader & templateHeader);
 
             void setNumberOfOriginalHistories(std::uint64_t numberOfHistories);
@@ -46,6 +46,16 @@ namespace ParticleZoo::IAEAphspFile
             std::size_t getParticleRecordLength() const override;
             void writeHeaderData(ByteBuffer & buffer) override;
             void writeBinaryParticle(ByteBuffer & buffer, Particle & particle) override;
+
+            bool canHaveConstantX() const override {return true;}
+            bool canHaveConstantY() const override {return true;}
+            bool canHaveConstantZ() const override {return true;}
+            bool canHaveConstantPx() const override {return true;}
+            bool canHaveConstantPy() const override {return true;}
+            bool canHaveConstantPz() const override {return true;}
+            bool canHaveConstantWeight() const override {return true;}
+
+            void fixedValuesHaveChanged() override;
 
         private:
             IAEAHeader header_;
@@ -66,6 +76,17 @@ namespace ParticleZoo::IAEAphspFile
     inline IAEAHeader & Writer::getHeader() { return header_; }
     inline std::uint64_t Writer::getMaximumSupportedParticles() const { return std::numeric_limits<std::uint64_t>::max(); }
     inline std::size_t Writer::getParticleRecordLength() const { return header_.getRecordLength(); }
+    inline void Writer::fixedValuesHaveChanged() {
+        // Update the header
+        if (isXConstant()) header_.setConstantX(getConstantX());
+        if (isYConstant()) header_.setConstantY(getConstantY());
+        if (isZConstant()) header_.setConstantZ(getConstantZ());
+        if (isPxConstant()) header_.setConstantU(getConstantPx());
+        if (isPyConstant()) header_.setConstantV(getConstantPy());
+        if (isPzConstant()) header_.setConstantW(getConstantPz());
+        if (isWeightConstant()) header_.setConstantWeight(getConstantWeight());
+    }
+
 }
 
 #endif // IAEAPHSPFILE_H

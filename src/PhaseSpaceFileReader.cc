@@ -3,7 +3,7 @@
 
 namespace ParticleZoo
 {
-    PhaseSpaceFileReader::PhaseSpaceFileReader(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, unsigned int bufferSize)
+    PhaseSpaceFileReader::PhaseSpaceFileReader(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, const FixedValues fixedValues, unsigned int bufferSize)
     :   phspFormat_(phspFormat),
         fileName_(fileName),
         userOptions_(userOptions),
@@ -37,7 +37,8 @@ namespace ParticleZoo
         historiesRead_(0),
         numberOfParticlesToRead_(0),
         particleRecordLength_(0),
-        buffer_(BUFFER_SIZE)
+        buffer_(BUFFER_SIZE),
+        fixedValues_(fixedValues)
     {
         if (formatType != FormatType::NONE) {
             file_.seekg(0);
@@ -56,6 +57,10 @@ namespace ParticleZoo
 
     const ByteBuffer PhaseSpaceFileReader::getHeaderData() {
         std::size_t headerSize = getParticleRecordStartOffset();
+        return getHeaderData(headerSize);
+    }
+
+    const ByteBuffer PhaseSpaceFileReader::getHeaderData(std::size_t headerSize) {
         if (headerSize == 0 || formatType_ == FormatType::NONE) {
             return ByteBuffer(0, buffer_.getByteOrder());
         }
