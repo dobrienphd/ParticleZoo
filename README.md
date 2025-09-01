@@ -168,6 +168,23 @@ options["rootFormat"] = {"TOPAS"};
 auto reader = FormatRegistry::CreateReader("ROOT", "simulation.root", options);
 ```
 
+### Advanced Usage with Fixed Values
+
+Many formats support holding certain values (e.g. X, Y, Z) constant across all particles to reduce file sizes.
+
+```cpp
+// Create default options map
+UserOptions options;
+
+// Create the flags for the fixed values and set the Z value to be constant at 100 cm
+FixedValues fixedValues;
+fixedValues.zIsConstant = true;
+fixedValues.constantZ = 100 * cm;
+
+// Create writer with explicit format, options, and a fixed Z value
+auto writer = FormatRegistry::CreateWriter("IAEA", "simulation.IAEAphsp", options, fixedValues);
+```
+
 ### Working with Particles
 
 The `Particle` class provides extensive access to particle properties:
@@ -256,6 +273,9 @@ PHSPCombine --outputFile combined.IAEAphsp file1.egsphsp file2.egsphsp file3.egs
 
 # Mix formats during combination
 PHSPCombine --outputFile result.phsp input1.IAEAphsp input2.egsphsp
+
+# Preserve constant values in the output file if all input files have the same constant values
+PHSPCombine --preserveConstants --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
 ```
 
 ### PHSPImage - Visualization
@@ -289,8 +309,8 @@ FormatRegistry::RegisterFormat(
     [](const std::string& file, const UserOptions& opts) -> std::unique_ptr<PhaseSpaceFileReader> {
         return std::make_unique<MyFormatReader>(file, opts);
     },
-    [](const std::string& file, const UserOptions& opts) -> std::unique_ptr<PhaseSpaceFileWriter> {
-        return std::make_unique<MyFormatWriter>(file, opts);
+    [](const std::string& file, const UserOptions& opts, const FixedValues & fixedValues) -> std::unique_ptr<PhaseSpaceFileWriter> {
+        return std::make_unique<MyFormatWriter>(file, opts, fixedValues);
     }
 );
 ```
