@@ -283,11 +283,14 @@ PHSPCombine --preserveConstants true --outputFile result.IAEAphsp input1.IAEAphs
 Creates 2D particle fluence or energy fluence images from phase space data. Can output either a detailed TIFF image with raw fluence data stored in 32-bit floats (default) which can be analyzed directly in third party tools like ImageJ, or in a simple bitmap BMP image with automatic constrast for easy visualization:
 
 ```bash
-# Generate XY plane image at Z=0
-PHSPImage 0.0 beam.egsphsp fluence_map.tiff
+# Generate a flattened XY plane image (default)
+PHSPImage beam.egsphsp fluence_map.tiff
 
-# Custom plane and energy weighting
-PHSPImage --outputFormat BMP --plane XZ --energyWeighted true 5.0 simulation.IAEAphsp dose_profile.bmp
+# Generate project the particles to a specific XY plane (e.g. 100 cm or isocenter)
+PHSPImage --projectTo 100 beam.egsphsp projection.tiff
+
+# Custom plane and energy weighting, particles are not relocated, only particles located at Y = 5cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed with the --widthY parameter)
+PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted true simulation.IAEAphsp dose_profile.bmp
 ```
 
 ## Extending the Library
