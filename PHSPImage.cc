@@ -21,13 +21,15 @@
  * 
  * COMMAND LINE OPTIONS:
  * Required Arguments:
- *   planeLocation             Location of the imaging plane in cm (e.g., 0.0 for Z=0 plane)
  *   inputfile                 Input phase space file
  *   outputfile                Output image file path
  * 
  * Optional Arguments:
  *   --plane <XY|XZ|YZ>        Imaging plane orientation (default: XY)
  *                             XY: view from Z-axis, XZ: view from Y-axis, YZ: view from X-axis
+ *   --planeLocation <value>   Location of the imaging plane in cm (default: 0.0)
+ *   --projectTo <value>       Project particles to this plane location in cm
+ *   --projectionType <type>   Projection scheme: none, project, or flatten (default: flatten)
  *   
  *   Image Dimensions:
  *   --imageWidth <pixels>     Output image width in pixels (default: 1024)
@@ -40,6 +42,7 @@
  *   --maxY <value>            Maximum Y coordinate for imaging region (default: 40 cm)
  *   --minZ <value>            Minimum Z coordinate for imaging region (default: -40 cm)
  *   --maxZ <value>            Maximum Z coordinate for imaging region (default: 40 cm)
+ *   --square <value>          Side length of square region for imaging
  *   
  *   Plane Thickness:
  *   --widthX <value>          Half-width tolerance in X direction (cm) for YZ plane (default: 0.25 cm)
@@ -49,6 +52,7 @@
  *   Processing Options:
  *   --maxParticles <N>             Limit the maximum number of particles to process (default: all)
  *   --energyWeighted <true|false>  Set to true to produce energy fluence instead of particle fluence (default: false)
+ *   --normalizeByParticles <true|false>  Normalize by particles instead of histories (default: false)
  *   --inputFormat <format>         Force input file format (default: auto-detect from extension)
  *   --outputFormat <tiff|bmp>      Force output image format (default: tiff)
  *   --formats                      Display supported input file formats and exit
@@ -56,16 +60,19 @@
  *
  * USAGE EXAMPLES:
  *   # Generate XY plane image at Z=0 with default settings
- *   PHSPImage 0.0 beam.egsphsp output.tiff
+ *   PHSPImage beam.egsphsp output.tiff
  * 
  *   # Create XZ plane view at Y=5cm with custom dimensions
- *   PHSPImage --plane XZ --minX -10 --maxX 10 --minZ -5 --maxZ 15 5.0 beam.IAEAphsp profile.tiff
+ *   PHSPImage --plane XZ --projectionType none --planeLocation 5.0 --minX -10 --maxX 10 --minZ -5 --maxZ 15 beam.IAEAphsp profile.tiff
  * 
  *   # Energy-weighted image with 1000x1000 resolution
- *   PHSPImage --energyWeighted true --imageWidth 1000 --imageHeight 1000 0.0 dose.phsp dose_map.bmp
+ *   PHSPImage --energyWeighted true --imageWidth 1000 --imageHeight 1000 dose.phsp dose_map.bmp
  * 
  *   # Process only first 100,000 particles with thick imaging plane
- *   PHSPImage --maxParticles 100000 --widthZ 1.0 0.0 simulation.root beam_profile.tiff
+ *   PHSPImage --maxParticles 100000 --widthZ 1.0 simulation.root beam_profile.tiff
+ * 
+ *   # Project particles to a specific plane location
+ *   PHSPImage --projectionType project --projectTo 10.0 beam.phsp projected.tiff
  * 
  * BEHAVIOR:
  * - Particles are projected onto the specified 2D plane within the tolerance thickness
@@ -103,6 +110,12 @@ enum ImageFormat {
     BMP
 };
 
+enum ProjectionType {
+    FLATTEN,    // All particle Z coordinates will be forced to the plane location
+    PROJECTION, // Particles will be projected onto the plane based on their direction
+    NONE        // Only particles that are already at the plane location will be counted
+};
+
 int main(int argc, char* argv[]) {
 
     // Initial setup
@@ -113,7 +126,8 @@ int main(int argc, char* argv[]) {
     bool energyWeighted = false; // default to particle fluence instead of energy fluence
     bool normalizeByParticles = false; // default to normalizing by histories instead of particles
     Plane plane = XY; // default plane
-    float planeLocation;
+    float planeLocation = 0; // default plane location
+    ProjectionType projectionType = FLATTEN; // default projection type
 
     // Set default dimensions and image size
     float minDim1 = -40 * cm;
@@ -125,17 +139,19 @@ int main(int argc, char* argv[]) {
     int imageHeight = 1024;
 
     // Define usage message and parse command line arguments
-    std::string usageMessage = "Usage: PHSPImage [OPTIONS] <planeLocation> <inputfile> <outputfile>\n"
+    std::string usageMessage = "Usage: PHSPImage [OPTIONS] <inputfile> <outputfile>\n"
                                 "\n"
                                 "Convert particle phase space files to 2D images of the fluence distributions.\n"
                                 "\n"
                                 "Required Arguments:\n"
-                                "  <planeLocation>           Location of imaging plane in cm (e.g., 0.0 for Z=0)\n"
                                 "  <inputfile>               Input phase space file to visualize\n"
                                 "  <outputfile>              Output image file path\n"
                                 "\n"
                                 "Optional Arguments:\n"
                                 "  --plane <XY|XZ|YZ>             Imaging plane orientation (default: XY)\n"
+                                "  --planeLocation <cm>           Location of imaging plane in cm (default: 0.0)\n"
+                                "  --projectTo <cm>               Project particles to this plane location in cm\n"
+                                "  --projectionType <type>        Projection scheme: none, project, or flatten (default: flatten)\n"
                                 "  --imageWidth <pixels>          Image width in pixels (default: 1024)\n"
                                 "  --imageHeight <pixels>         Image height in pixels (default: 1024)\n"
                                 "  --minX <cm>                    Minimum X coordinate (default: -40 cm)\n"
@@ -144,33 +160,59 @@ int main(int argc, char* argv[]) {
                                 "  --maxY <cm>                    Maximum Y coordinate (default: 40 cm)\n"
                                 "  --minZ <cm>                    Minimum Z coordinate (default: -40 cm)\n"
                                 "  --maxZ <cm>                    Maximum Z coordinate (default: 40 cm)\n"
+                                "  --square <cm>                  Score over a square region of this side length\n"
                                 "  --widthX <cm>                  Half-width tolerance for YZ plane\n"
                                 "  --widthY <cm>                  Half-width tolerance for XZ plane\n"
                                 "  --widthZ <cm>                  Half-width tolerance for XY plane (default: 0.25 cm)\n"
                                 "  --maxParticles <N>             Maximum particles to process (default: all)\n"
                                 "  --energyWeighted <true|false>  Set to true to produce energy fluence instead of particle fluence (default: false)\n"
+                                "  --normalizeByParticles <true|false>  Normalize by particles instead of histories (default: false)\n"
                                 "  --inputFormat <format>         Force input format (default: auto-detect)\n"
                                 "  --outputFormat <tiff|bmp>      Output image format (default: tiff)\n"
                                 "  --formats                      List supported input formats\n"
                                 "\n"
                                 "Examples:\n"
-                                "  PHSPImage 0.0 beam.egsphsp output.tiff\n"
-                                "  PHSPImage --plane XZ --minX -10 --maxX 10 5.0 beam.IAEAphsp profile.tiff\n"
-                                "  PHSPImage --energyWeighted true --imageWidth 2048 0.0 dose.phsp dose_map.bmp";
-    auto args = parseArgs(argc, argv, usageMessage, 3);
+                                "  PHSPImage beam.egsphsp output.tiff\n"
+                                "  PHSPImage --plane XZ --square 10 beam.IAEAphsp XZ10x10.tiff\n"
+                                "  PHSPImage --energyWeighted true --imageWidth 2048 input.phsp hiResEnergyFluence.bmp\n"
+                                "  PHSPImage --projectTo 100.0 beam.phsp projectedAtIso.tiff";
+    auto args = parseArgs(argc, argv, usageMessage, 2);
 
     // Validate parameters
-    std::string planeLocation_str = args["positionals"][0];
-    std::string inputFile = args["positionals"][1];
-    std::string outputFile = args["positionals"][2];
+    std::string inputFile = args["positionals"][0];
+    std::string outputFile = args["positionals"][1];
     std::string inputFormat = args["inputFormat"].empty() ? "" : args["inputFormat"][0];
     if (inputFile.empty()) throw std::runtime_error("No input file specified.");
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
-    try {
-        planeLocation = atof(planeLocation_str.c_str());
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Invalid plane location: " + planeLocation_str);
+    if (args["projectTo"].size() == 1) {
+        projectionType = PROJECTION;
+        std::string planeLocation_str = args["projectTo"][0];
+        try {
+            planeLocation = atof(planeLocation_str.c_str()) * cm;
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Invalid plane location: " + planeLocation_str);
+        }
+    }
+    if (args["planeLocation"].size() == 1) {
+        std::string planeLocation_str = args["planeLocation"][0];
+        try {
+            planeLocation = atof(planeLocation_str.c_str()) * cm;
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Invalid plane location: " + planeLocation_str);
+        }
+    }
+    if (args["projectionType"].size() == 1) {
+        std::string projectionType_str = args["projectionType"][0];
+        if (projectionType_str == "none") {
+            projectionType = NONE;
+        } else if (projectionType_str == "project") {
+            projectionType = PROJECTION;
+        } else if (projectionType_str == "flatten") {
+            projectionType = FLATTEN;
+        } else {
+            throw std::runtime_error("Invalid projection type specified. Use none, project, or flatten.");
+        }
     }
     if (!args["plane"].empty()) {
         std::string planeStr = args["plane"][0];
@@ -195,6 +237,13 @@ int main(int argc, char* argv[]) {
         if (imageHeight <= 0) {
             throw std::runtime_error("Image height must be a positive integer.");
         }
+    }
+    if (args["square"].size() == 1) {
+        float squareSide = atof(args["square"][0].c_str()) * cm;
+        minDim1 = -squareSide/2.f;
+        minDim2 = minDim1;
+        maxDim1 = squareSide/2.f;
+        maxDim2 = maxDim1;
     }
     if (plane == XY && args["minX"].size() == 1) {
         minDim1 = atof(args["minX"][0].c_str()) * cm;
@@ -271,17 +320,20 @@ int main(int argc, char* argv[]) {
     std::cout << "Parameters:" << std::endl;
     std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
     std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
-    std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
+    if (projectionType != FLATTEN) {
+        std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
+    }
+    std::cout << "  Projection Scheme: " << (projectionType == PROJECTION ? "Projection" : projectionType == FLATTEN ? "Flatten" : "None") << std::endl;
     std::cout << "  Input File: " << inputFile << " (Format: " << reader->getPHSPFormat() << ")" << std::endl;
     std::cout << "  Output File: " << outputFile << std::endl; 
     std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
     std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
-    std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" 
-              << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
-    std::cout << "  Thickness in third dimension: " << widthDim3 << " cm" << std::endl;
+    std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
+    if (projectionType == NONE) {
+        std::cout << "  Thickness in third dimension: " << widthDim3 << " cm" << std::endl;
+    }
     std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
-    std::cout << "  Max Particles to Read: " 
-              << (args["maxParticles"].empty() ? "all" : args["maxParticles"][0]) << std::endl;
+    std::cout << "  Max Particles to Read: " << (args["maxParticles"].empty() ? "all" : args["maxParticles"][0]) << std::endl;
 
     // Error handling for both reader and writer
     try {
@@ -333,6 +385,24 @@ int main(int argc, char* argv[]) {
         for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
             Particle particle = reader->getNextParticle();
 
+            // project particle to the scoring plane based on selected projection scheme
+            switch (projectionType)
+            {
+                case(FLATTEN):
+                    particle.setZ(planeLocation);
+                    break;
+                case(PROJECTION):
+                    switch (plane)
+                    {
+                        case(XY): particle.projectToZValue(planeLocation); break;
+                        case(XZ): particle.projectToYValue(planeLocation); break;
+                        case(YZ): particle.projectToXValue(planeLocation); break;
+                    };
+                    break;
+                default:
+                    break;
+            }
+            
             // Process particle
             float x = particle.getX() / cm;
             float y = particle.getY() / cm;
