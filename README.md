@@ -289,7 +289,9 @@ PHSPImage beam.egsphsp fluence_map.tiff
 # Generate project the particles to a specific XY plane (e.g. 100 cm or isocenter)
 PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 
-# Custom plane and energy weighting, particles are not relocated, only particles located at Y = 5cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed with the --widthY parameter)
+# Custom plane and energy weighting, particles are not relocated, only particles located at
+# Y = 5cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
+# with the --widthY parameter)
 PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted true simulation.IAEAphsp dose_profile.bmp
 ```
 
