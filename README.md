@@ -161,10 +161,10 @@ Many format readers and writers accept configuration options:
 ```cpp
 // Create options map for custom behavior
 UserOptions options;
-options["maxParticles"] = {"1000000"};
-options["rootFormat"] = {"TOPAS"};
+// Example: select predefined ROOT template when reading ROOT files
+options[ParticleZoo::ROOT::ROOTFormatCommand] = { std::string("TOPAS") };
 
-// Create reader with explicit format and options
+// Create reader with our user options
 auto reader = FormatRegistry::CreateReader("ROOT", "simulation.root", options);
 ```
 
@@ -275,7 +275,7 @@ PHSPCombine --outputFile combined.IAEAphsp file1.egsphsp file2.egsphsp file3.egs
 PHSPCombine --outputFile result.phsp input1.IAEAphsp input2.egsphsp
 
 # Preserve constant values in the output file if all input files have the same constant values
-PHSPCombine --preserveConstants true --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
+PHSPCombine --preserveConstants --outputFile result.IAEAphsp input1.IAEAphsp input2.IAEAphsp
 ```
 
 ### PHSPImage - Visualization and Third Party Analysis
@@ -292,7 +292,7 @@ PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 # Custom plane and energy weighting, particles are not relocated, only particles located at
 # Y = 5 cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
 # with the --widthY parameter)
-PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted true simulation.IAEAphsp dose_profile.bmp
+PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
 ```
 
 ## Extending the Library
@@ -343,10 +343,10 @@ When compiled with ROOT support, ParticleZoo can read and write ROOT-based phase
 
 ```bash
 # Use TOPAS template
-PHSPConvert --inputFormat ROOT --rootFormat TOPAS input.root output.IAEAphsp
+PHSPConvert --inputFormat ROOT --ROOT-format TOPAS input.root output.IAEAphsp
 
 # Use OpenGATE template  
-PHSPConvert --inputFormat ROOT --rootFormat OpenGATE simulation.root converted.egsphsp
+PHSPConvert --inputFormat ROOT --ROOT-format OpenGATE simulation.root converted.egsphsp
 ```
 
 ### Custom Branch Mapping
@@ -355,23 +355,24 @@ For ROOT files with non-standard branch names:
 
 ```bash
 PHSPConvert --inputFormat ROOT \
-  --rootTreeName MyTree \
-  --rootEnergy E_kin \
-  --rootPositionX pos_x \
-  --rootPositionY pos_y \
-  --rootPositionZ pos_z \
-  --rootWeight stat_weight \
-  input.root output.phsp
+    --ROOT-tree-name MyTree \
+    --ROOT-energy E_kin \
+    --ROOT-position-x pos_x \
+    --ROOT-position-y pos_y \
+    --ROOT-position-z pos_z \
+    --ROOT-weight stat_weight \
+    input.root output.phsp
 ```
 
 Available branch mapping options:
-- `--rootTreeName <name>` - ROOT tree name
-- `--rootEnergy <branch>` - Energy branch
-- `--rootWeight <branch>` - Statistical weight branch  
-- `--rootPositionX/Y/Z <branch>` - Position branches
-- `--rootDirectionalCosineX/Y/Z <branch>` - Direction cosines
-- `--rootNegativeZCosine <branch>` - Boolean flag for Z-direction sign
-- `--rootPDGCode <branch>` - Particle type identifier
+- `--ROOT-tree-name <name>` - ROOT tree name
+- `--ROOT-energy <branch>` - Energy branch
+- `--ROOT-weight <branch>` - Statistical weight branch  
+- `--ROOT-position-x/y/z <branch>` - Position branches
+- `--ROOT-cosine-x/y/z <branch>` - Direction cosines
+- `--ROOT-cosine-z-sign <branch>` - Boolean flag for Z-direction sign
+- `--ROOT-pdg-code <branch>` - Particle type identifier
+- `--ROOT-history-number <branch>` - History counter
 
 ## Performance Considerations
 
