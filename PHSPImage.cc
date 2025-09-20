@@ -45,9 +45,7 @@
  *   --square <value>          Side length of square region for imaging
  *   
  *   Plane Thickness:
- *   --widthX <value>          Half-width tolerance in X direction (cm) for YZ plane (default: 0.25 cm)
- *   --widthY <value>          Half-width tolerance in Y direction (cm) for XZ plane (default: 0.25 cm)
- *   --widthZ <value>          Half-width tolerance in Z direction (cm) for XY plane (default: 0.25 cm)
+ *   --tolerance <value>          Tolerance in the perpendicular direction (default: 0.25 cm)
  *   
  *   Processing Options:
  *   --maxParticles <N>             Limit the maximum number of particles to process (default: all)
@@ -69,7 +67,7 @@
  *   PHSPImage --energyWeighted true --imageWidth 1000 --imageHeight 1000 dose.phsp dose_map.bmp
  * 
  *   # Process only first 100,000 particles with thick imaging plane
- *   PHSPImage --maxParticles 100000 --widthZ 1.0 simulation.root beam_profile.tiff
+ *   PHSPImage --maxParticles 100000 --tolerance 1.0 simulation.root beam_profile.tiff
  * 
  *   # Project particles to a specific plane location
  *   PHSPImage --projectionType project --projectTo 10.0 beam.phsp projected.tiff
@@ -133,7 +131,7 @@ int main(int argc, char* argv[]) {
     float maxDim1 = 40 * cm;
     float minDim2 = -40 * cm;
     float maxDim2 = 40 * cm;
-    float widthDim3 = 0.25 * cm; // tolerance for the third dimension
+    float tolerance = 0.25 * cm; // tolerance for the third dimension
     int imageWidth = 1024;
     int imageHeight = 1024;
 
@@ -153,9 +151,7 @@ int main(int argc, char* argv[]) {
     const CLICommand MIN_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z coordinate for imaging region in cm", { CLI_FLOAT }, { -40.0f });
     const CLICommand MAX_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm", { CLI_FLOAT }, { 40.0f });
     const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
-    const CLICommand WIDTH_X_COMMAND = CLICommand(NONE, "", "widthX", "Half-width tolerance in X direction (cm) for YZ plane", { CLI_FLOAT }, { 0.25f });
-    const CLICommand WIDTH_Y_COMMAND = CLICommand(NONE, "", "widthY", "Half-width tolerance in Y direction (cm) for XZ plane", { CLI_FLOAT }, { 0.25f });
-    const CLICommand WIDTH_Z_COMMAND = CLICommand(NONE, "", "widthZ", "Half-width tolerance in Z direction (cm) for XY plane", { CLI_FLOAT }, { 0.25f });
+    const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { 0.25f });
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
     const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence instead of particle fluence", { CLI_VALUELESS });
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
@@ -174,9 +170,7 @@ int main(int argc, char* argv[]) {
     ArgParser::RegisterCommand(MIN_Z_COMMAND);
     ArgParser::RegisterCommand(MAX_Z_COMMAND);
     ArgParser::RegisterCommand(SQUARE_COMMAND);
-    ArgParser::RegisterCommand(WIDTH_X_COMMAND);
-    ArgParser::RegisterCommand(WIDTH_Y_COMMAND);
-    ArgParser::RegisterCommand(WIDTH_Z_COMMAND);
+    ArgParser::RegisterCommand(TOLERANCE_COMMAND);
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(ENERGY_WEIGHTED_COMMAND);
     ArgParser::RegisterCommand(NORMALIZE_BY_PARTICLES_COMMAND);
@@ -207,16 +201,15 @@ int main(int argc, char* argv[]) {
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
     if (userOptions.contains(PROJECT_TO_COMMAND)) {
-        projectionType = ProjectionType::PROJECTION;
-        std::string planeLocation_str = std::get<std::string>(userOptions.at(PROJECT_TO_COMMAND)[0]);
         try {
-            planeLocation = atof(planeLocation_str.c_str()) * cm;
+            projectionType = ProjectionType::PROJECTION;
+            planeLocation = std::get<float>(userOptions.at(PROJECT_TO_COMMAND)[0]) * cm;
         } catch (const std::exception& e) {
-            throw std::runtime_error("Invalid plane location: " + planeLocation_str);
+            throw std::runtime_error("Invalid project-to plane location");
         }
     }
     if (userOptions.contains(PLANE_LOCATION_COMMAND)) {
-        planeLocation = std::get<float>(userOptions.at(PLANE_LOCATION_COMMAND)[0]);
+        planeLocation = std::get<float>(userOptions.at(PLANE_LOCATION_COMMAND)[0]) * cm;
     }
     if (userOptions.contains(PROJECTION_TYPE_COMMAND)) {
         std::string projectionType_str = std::get<std::string>(userOptions.at(PROJECTION_TYPE_COMMAND)[0]);
@@ -230,7 +223,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Invalid projection type specified. Use none, project, or flatten.");
         }
     }
-    if (!userOptions.contains(PLANE_COMMAND)) {
+    if (userOptions.contains(PLANE_COMMAND)) {
         std::string planeStr = std::get<std::string>(userOptions.at(PLANE_COMMAND)[0]);
         if (planeStr == "XY") {
             plane = XY;
@@ -297,21 +290,20 @@ int main(int argc, char* argv[]) {
     if (plane == YZ && userOptions.contains(MAX_Z_COMMAND)) {
         maxDim2 = std::get<float>(userOptions.at(MAX_Z_COMMAND)[0]) * cm;
     }
-    if (plane == XY && userOptions.contains(WIDTH_Z_COMMAND)) {
-        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_Z_COMMAND)[0]) * cm;
-    } else if (plane == XZ && userOptions.contains(WIDTH_Y_COMMAND)) {
-        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_Y_COMMAND)[0]) * cm;
-    } else if (plane == YZ && userOptions.contains(WIDTH_X_COMMAND)) {
-        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_X_COMMAND)[0]) * cm;
+    if (userOptions.contains(TOLERANCE_COMMAND)) {
+        tolerance = std::get<float>(userOptions.at(TOLERANCE_COMMAND)[0]) * cm;
+        if (tolerance < 0) {
+            throw std::runtime_error("Tolerance cannot be a negative number.");
+        }
     }
     if (minDim1 >= maxDim1 || minDim2 >= maxDim2) {
         throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
     }
-    if (!userOptions.contains(ENERGY_WEIGHTED_COMMAND)) {
-        energyWeighted = (std::get<bool>(userOptions.at(ENERGY_WEIGHTED_COMMAND)[0]) == true);
+    if (userOptions.contains(ENERGY_WEIGHTED_COMMAND)) {
+        energyWeighted = true;
     }
-    if (!userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)) {
-        normalizeByParticles = (std::get<bool>(userOptions.at(NORMALIZE_BY_PARTICLES_COMMAND)[0]) == true);
+    if (userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)) {
+        normalizeByParticles = true;
     }
     if (userOptions.contains(OUTPUT_FORMAT_COMMAND)) {
         std::string formatStr = std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0]);
@@ -346,7 +338,7 @@ int main(int argc, char* argv[]) {
     std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
     std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
     if (projectionType == ProjectionType::NONE) {
-        std::cout << "  Thickness in third dimension: " << widthDim3 << " cm" << std::endl;
+        std::cout << "  Thickness in third dimension: " << tolerance << " cm" << std::endl;
     }
     std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
     std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
@@ -426,15 +418,15 @@ int main(int argc, char* argv[]) {
             // Determine pixel coordinates based on the selected plane
             int pixelX = 0, pixelY = 0;
             bool validPixel = false;
-            if (plane == XY && std::abs(z - planeLocation) < widthDim3 && x >= minDim1 && x <= maxDim1 && y >= minDim2 && y <= maxDim2) {
+            if (plane == XY && std::abs(z - planeLocation) < tolerance && x >= minDim1 && x <= maxDim1 && y >= minDim2 && y <= maxDim2) {
                 pixelX = static_cast<int>((x - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((y - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;
-            } else if (plane == XZ && std::abs(y - planeLocation) < widthDim3 && x >= minDim1 && x <= maxDim1 && z >= minDim2 && z <= maxDim2) {
+            } else if (plane == XZ && std::abs(y - planeLocation) < tolerance && x >= minDim1 && x <= maxDim1 && z >= minDim2 && z <= maxDim2) {
                 pixelX = static_cast<int>((x - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((z - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;
-            } else if (plane == YZ && std::abs(x - planeLocation) < widthDim3 && y >= minDim1 && y <= maxDim1 && z >= minDim2 && z <= maxDim2) {
+            } else if (plane == YZ && std::abs(x - planeLocation) < tolerance && y >= minDim1 && y <= maxDim1 && z >= minDim2 && z <= maxDim2) {
                 pixelX = static_cast<int>((y - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((z - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;

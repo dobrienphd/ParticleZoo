@@ -20,11 +20,15 @@ namespace ParticleZoo::EGSphspFile
     {
         bool ignoreHeaderParticleCount = false;
 
-        CLIValue ignoreHeaderParticleCountValue = options.at(EGSIgnoreHeaderCountCommand)[0];
-        ignoreHeaderParticleCount = std::get<bool>(ignoreHeaderParticleCountValue);
+        if (options.contains(EGSIgnoreHeaderCountCommand)) {
+            CLIValue ignoreHeaderParticleCountValue = options.at(EGSIgnoreHeaderCountCommand)[0];
+            ignoreHeaderParticleCount = std::get<bool>(ignoreHeaderParticleCountValue);
+        }
 
-        CLIValue particleZValue = options.at(EGSParticleZValueCommand)[0];
-        particleZValue_ = std::get<float>(particleZValue) * cm;
+        if (options.contains(EGSParticleZValueCommand)) {
+            CLIValue particleZValue = options.at(EGSParticleZValueCommand)[0];
+            particleZValue_ = std::get<float>(particleZValue) * cm;
+        }
 
         setConstantZ(particleZValue_);
 

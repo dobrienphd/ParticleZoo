@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
     ArgParser::RegisterCommand(PRESERVE_CONSTANTS_COMMAND);
 
     // Define usage message and parse command line arguments
-    std::string usageMessage = "Usage: PHSPCombine [OPTIONS] --output <outputfile> <inputfile1> <inputfile2> ... <inputfileN>\n"
+    std::string usageMessage = "Usage: PHSPCombine [OPTIONS] --outputFile <outputfile> <inputfile1> <inputfile2> ... <inputfileN>\n"
                             "\n"
                             "Combine multiple particle phase space files into a single output file.\n"
                             "Supports multiple file formats. Input and output formats do not need to be the same.\n"
@@ -98,8 +98,8 @@ int main(int argc, char* argv[]) {
                             "  <inputfiles>              One or more input phase space files\n"
                             "\n"
                             "Examples:\n"
-                            "  PHSPCombine --output combined.IAEAphsp input1.egsphsp input2.egsphsp\n"
-                            "  PHSPCombine --output result.phsp --maxParticles 1000000 file1.phsp file2.phsp\n"
+                            "  PHSPCombine --outputFile combined.IAEAphsp input1.egsphsp input2.egsphsp\n"
+                            "  PHSPCombine --outputFile result.phsp --maxParticles 1000000 file1.phsp file2.phsp\n"
                             "  PHSPCombine --inputFormat IAEA --outputFormat EGS --output out.egsphsp in1.IAEAphsp in2.IAEAphsp";
     auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 1);
 
@@ -115,8 +115,8 @@ int main(int argc, char* argv[]) {
     }
     if (inputFiles.empty()) throw std::runtime_error("No input files provided.");
     if (outputFile == "") throw std::runtime_error("No output file specified.");
-    if (!userOptions.contains(PRESERVE_CONSTANTS_COMMAND)) {
-        preserveConstants = (std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) == true);
+    if (userOptions.contains(PRESERVE_CONSTANTS_COMMAND)) {
+        preserveConstants = true;
     }
 
     FixedValues fixedValues; // start with default fixed values
