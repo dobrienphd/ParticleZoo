@@ -7,6 +7,8 @@
 
 namespace ParticleZoo::TOPASphspFile
 {
+    CLICommand TOPASFormatCommand { WRITER, "", "TOPAS-format", "Specify the TOPAS phase space file format to write (ASCII, BINARY or LIMITED)", { CLI_STRING }, { "BINARY" } };
+
     // read the header, decide ASCII vs BINARY, then hand back the header and it's format type
     inline std::pair<FormatType,Header> readHeader(const std::string &filename)
     {
@@ -33,6 +35,8 @@ namespace ParticleZoo::TOPASphspFile
       readFullDetails_(true),
       emptyHistoriesCount_(0)
     {}
+    
+    std::vector<CLICommand> Reader::getFormatSpecificCLICommands() { return {}; }
 
     Particle Reader::readASCIIParticle(const std::string & line)
     {
@@ -218,8 +222,8 @@ namespace ParticleZoo::TOPASphspFile
             options,
             [&]() {
                 TOPASFormat format = TOPASFormat::BINARY; // default to BINARY
-                if (options.contains("TOPASformat")) {
-                    const auto & formatStr = options.at("TOPASformat").front();
+                if (options.contains(TOPASFormatCommand)) {
+                    std::string formatStr = std::get<std::string>(options.at(TOPASFormatCommand).front());
                     if (formatStr == "ASCII") {
                         format = TOPASFormat::ASCII;
                     } else if (formatStr == "LIMITED") {
@@ -237,6 +241,8 @@ namespace ParticleZoo::TOPASphspFile
     Writer::Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType)
         : PhaseSpaceFileWriter(Header::getTOPASFormatName(formatType), filename, options, getFormatTypeFromTOPASFormat(formatType)), formatType_(formatType), header_(filename, formatType)
     {}
+
+    std::vector<CLICommand> Writer::getFormatSpecificCLICommands() { return { TOPASFormatCommand }; }
 
     void Writer::writeHeaderData(ByteBuffer & buffer)
     {

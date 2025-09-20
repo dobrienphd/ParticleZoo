@@ -9,6 +9,20 @@
 
 namespace ParticleZoo::ROOT {
 
+    CLICommand ROOTFormatCommand{ BOTH, "", "ROOT-format", "Specify the predefined template for the ROOT branches, options are 'TOPAS' or 'OpenGATE'.", { CLI_STRING }, { "TOPAS" } };
+    CLICommand ROOTTreeNameCommand{ BOTH, "", "ROOT-tree-name", "Name of the ROOT TTree to read from or write to.", { CLI_STRING } };
+    CLICommand ROOTEnergyCommand{ BOTH, "", "ROOT-energy", "Name of the ROOT branch containing the particle energy.", { CLI_STRING } };
+    CLICommand ROOTWeightCommand{ BOTH, "", "ROOT-weight", "Name of the ROOT branch containing the particle weight.", { CLI_STRING } };
+    CLICommand ROOTPositionXCommand{ BOTH, "", "ROOT-position-x", "Name of the ROOT branch containing the particle X position.", { CLI_STRING } };
+    CLICommand ROOTPositionYCommand{ BOTH, "", "ROOT-position-y", "Name of the ROOT branch containing the particle Y position.", { CLI_STRING } };
+    CLICommand ROOTPositionZCommand{ BOTH, "", "ROOT-position-z", "Name of the ROOT branch containing the particle Z position.", { CLI_STRING } };
+    CLICommand ROOTDirectionalCosineXCommand{ BOTH, "", "ROOT-cosine-x", "Name of the ROOT branch containing the particle X directional cosine.", { CLI_STRING } };
+    CLICommand ROOTDirectionalCosineYCommand{ BOTH, "", "ROOT-cosine-y", "Name of the ROOT branch containing the particle Y directional cosine.", { CLI_STRING } };
+    CLICommand ROOTDirectionalCosineZCommand{ BOTH, "", "ROOT-cosine-z", "Name of the ROOT branch containing the particle Z directional cosine.", { CLI_STRING } };
+    CLICommand ROOTDirectionalCosineZIsNegativeCommand{ BOTH, "", "ROOT-cosine-z-sign", "Name of the ROOT branch containing the flag to indicate if the particle Z directional cosine is negative.", { CLI_STRING } };
+    CLICommand ROOTPDGCodeCommand{ BOTH, "", "ROOT-pdg-code", "Name of the ROOT branch containing the particle PDG code.", { CLI_STRING } };
+    CLICommand ROOTHistoryNumberCommand{ BOTH, "", "ROOT-history-number", "Name of the ROOT branch containing the particle history number.", { CLI_STRING } };
+
     inline std::string extractStringFromMap(const std::map<std::string, BranchInfo> & branchNames, const std::string & key) {
         auto it = branchNames.find(key);
         if (it != branchNames.end()) {
@@ -21,8 +35,9 @@ namespace ParticleZoo::ROOT {
     inline const std::map<std::string,BranchInfo> getBranchDetailsFromUserOptions(const UserOptions & options) {
         std::map<std::string,BranchInfo> branchNames;
 
-        if (options.contains("rootFormat")) {
-            std::string format = options.at("rootFormat").front();
+        if (options.contains(ROOTFormatCommand)) {
+            CLIValue formatValue = options.at(ROOTFormatCommand).front();
+            std::string format = std::get<std::string>(formatValue);
             if (format == "TOPAS") {
                 branchNames = TOPASBranches;
             } else if (format == "OpenGATE") {
@@ -36,30 +51,30 @@ namespace ParticleZoo::ROOT {
 
         // Override branch names and based on user options
         for (const auto & [key, value] : options) {
-            if (key == "rootTreeName") {
-                branchNames["treeName"].branchName = value[0];
-            } else if (key == "rootEnergy") {
-                branchNames["energy"].branchName = value[0];
-            } else if (key == "rootWeight") {
-                branchNames["weight"].branchName = value[0];
-            } else if (key == "rootPositionX") {
-                branchNames["positionX"].branchName = value[0];
-            } else if (key == "rootPositionY") {
-                branchNames["positionY"].branchName = value[0];
-            } else if (key == "rootPositionZ") {
-                branchNames["positionZ"].branchName = value[0];
-            } else if (key == "rootDirectionalCosineX") {
-                branchNames["directionalCosineX"].branchName = value[0];
-            } else if (key == "rootDirectionalCosineY") {
-                branchNames["directionalCosineY"].branchName = value[0];
-            } else if (key == "rootDirectionalCosineZ") {
-                branchNames["directionalCosineZ"].branchName = value[0];
-            } else if (key == "rootNegativeZCosine") {
-                branchNames["directionalCosineZIsNegative"].branchName = value[0];
-            } else if (key == "rootPDGCode") {
-                branchNames["pdgCode"].branchName = value[0];
-            } else if (key == "rootHistoryNumber") {
-                branchNames["historyNumber"].branchName = value[0];
+            if (key == ROOTTreeNameCommand) {
+                branchNames["treeName"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTEnergyCommand) {
+                branchNames["energy"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTWeightCommand) {
+                branchNames["weight"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTPositionXCommand) {
+                branchNames["positionX"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTPositionYCommand) {
+                branchNames["positionY"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTPositionZCommand) {
+                branchNames["positionZ"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTDirectionalCosineXCommand) {
+                branchNames["directionalCosineX"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTDirectionalCosineYCommand) {
+                branchNames["directionalCosineY"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTDirectionalCosineZCommand) {
+                branchNames["directionalCosineZ"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTDirectionalCosineZIsNegativeCommand) {
+                branchNames["directionalCosineZIsNegative"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTPDGCodeCommand) {
+                branchNames["pdgCode"].branchName = std::get<std::string>(value[0]);
+            } else if (key == ROOTHistoryNumberCommand) {
+                branchNames["historyNumber"].branchName = std::get<std::string>(value[0]);
             }
         }
 
@@ -223,6 +238,24 @@ namespace ParticleZoo::ROOT {
         }
     }
 
+    std::vector<CLICommand> Reader::getFormatSpecificCLICommands() {
+        return {
+            ROOTFormatCommand,
+            ROOTTreeNameCommand,
+            ROOTEnergyCommand,
+            ROOTWeightCommand,
+            ROOTPositionXCommand,
+            ROOTPositionYCommand,
+            ROOTPositionZCommand,
+            ROOTDirectionalCosineXCommand,
+            ROOTDirectionalCosineYCommand,
+            ROOTDirectionalCosineZCommand,
+            ROOTDirectionalCosineZIsNegativeCommand,
+            ROOTPDGCodeCommand,
+            ROOTHistoryNumberCommand
+        };
+    }
+
     Particle Reader::readParticleManually()
     {
         std::uint64_t particlesRead = getParticlesRead();
@@ -344,6 +377,24 @@ namespace ParticleZoo::ROOT {
             file_->Close();
             delete file_;
         }
+    }
+
+    std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
+        return { 
+            ROOTFormatCommand,
+            ROOTTreeNameCommand,
+            ROOTEnergyCommand,
+            ROOTWeightCommand,
+            ROOTPositionXCommand,
+            ROOTPositionYCommand,
+            ROOTPositionZCommand,
+            ROOTDirectionalCosineXCommand,
+            ROOTDirectionalCosineYCommand,
+            ROOTDirectionalCosineZCommand,
+            ROOTDirectionalCosineZIsNegativeCommand,
+            ROOTPDGCodeCommand,
+            ROOTHistoryNumberCommand
+        };
     }
 
     void Writer::writeParticleManually(Particle & particle)

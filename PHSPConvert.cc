@@ -70,8 +70,15 @@ int main(int argc, char* argv[]) {
     // Initial setup
     using namespace ParticleZoo;
     int errorCode = 0;
-    FormatRegistry::RegisterStandardFormats();
 
+    // Custom command line arguments
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
+    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
+    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
+    
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
                             "\n"
@@ -81,27 +88,20 @@ int main(int argc, char* argv[]) {
                             "  <inputfile>               Input phase space file to convert\n"
                             "  <outputfile>              Output file path (must be different from input)\n"
                             "\n"
-                            "Optional Arguments:\n"
-                            "  --maxParticles <N>        Maximum number of particles to convert (default: all)\n"
-                            "  --inputFormat <format>    Force input file format (default: auto-detect from extension)\n"
-                            "  --outputFormat <format>   Force output file format (default: auto-detect from extension)\n"
-                            "  --formats                 List all supported file formats\n"
-                            "\n"
-                            "Supported Formats:\n"
-                            "  IAEA, EGS, TOPAS, penEasy, ROOT (if compiled with ROOT support)\n"
-                            "\n"
                             "Examples:\n"
                             "  PHSPConvert input.egsphsp output.IAEAphsp\n"
                             "  PHSPConvert --maxParticles 500000 simulation.phsp converted.egsphsp\n"
                             "  PHSPConvert --inputFormat TOPAS --outputFormat IAEA input.phsp output.IAEAphsp\n"
                             "  PHSPConvert --formats";
-    auto args = parseArgs(argc, argv, usageMessage, 2);
+    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 2);
 
     // Validate parameters
-    std::string inputFile = args["positionals"][0];
-    std::string outputFile = args["positionals"][1];
-    std::string inputFormat = args["inputFormat"].empty() ? "" : args["inputFormat"][0];
-    std::string outputFormat = args["outputFormat"].empty() ? "" : args["outputFormat"][0];
+    std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
+    std::string inputFile = std::get<std::string>(positionals[0]);
+    std::string outputFile = std::get<std::string>(positionals[1]);
+    std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
+    std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
+    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
     if (inputFile.empty()) throw std::runtime_error("No input file specified.");
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
@@ -109,9 +109,9 @@ int main(int argc, char* argv[]) {
     // Create the reader for the input file
     std::unique_ptr<PhaseSpaceFileReader> reader;
     if (inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(inputFile, args);
+        reader = FormatRegistry::CreateReader(inputFile, userOptions);
     } else {
-        reader = FormatRegistry::CreateReader(inputFormat, inputFile, args);
+        reader = FormatRegistry::CreateReader(inputFormat, inputFile, userOptions);
     }
 
     // Try to keep the same constant values in the new phase space file if it supports them
@@ -120,9 +120,9 @@ int main(int argc, char* argv[]) {
     // Create the writer for the output file
     std::unique_ptr<PhaseSpaceFileWriter> writer;
     if (outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, args, fixedValues);
+        writer = FormatRegistry::CreateWriter(outputFile, userOptions, fixedValues);
     } else {
-        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args, fixedValues);
+        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, userOptions, fixedValues);
     }
 
     // Error handling for both reader and writer
@@ -134,7 +134,6 @@ int main(int argc, char* argv[]) {
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
         uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
 
         // Determine progress update interval

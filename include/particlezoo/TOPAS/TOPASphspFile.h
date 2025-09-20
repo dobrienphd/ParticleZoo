@@ -9,6 +9,8 @@ namespace ParticleZoo::TOPASphspFile
 {
     constexpr std::size_t TOPASmaxASCIILineLength = 1024;
 
+    extern CLICommand TOPASFormatCommand;
+
     // TOPASphspReader class definition
 
     class Reader : public PhaseSpaceFileReader
@@ -25,6 +27,7 @@ namespace ParticleZoo::TOPASphspFile
             const Header & getHeader() const;
 
             void setDetailedReading(bool enable);
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             // Override methods from PhaseSpaceFileReader
@@ -111,6 +114,7 @@ namespace ParticleZoo::TOPASphspFile
             // New methods specific to TOPASphspWriter
             TOPASFormat   getTOPASFormat() const;
             Header &      getHeader();
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             // Override methods from PhaseSpaceFileWriter

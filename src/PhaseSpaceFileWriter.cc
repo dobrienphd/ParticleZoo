@@ -2,6 +2,21 @@
 
 namespace ParticleZoo
 {
+
+    CLICommand ConstantXCommand{ WRITER, "X", "constantX", "Set all particles to be written with this constant value for the X position", { CLI_FLOAT } };
+    CLICommand ConstantYCommand{ WRITER, "Y", "constantY", "Set all particles to be written with this constant value for the Y position", { CLI_FLOAT } };
+    CLICommand ConstantZCommand{ WRITER, "Z", "constantZ", "Set all particles to be written with this constant value for the Z position", { CLI_FLOAT } };
+    CLICommand ConstantPxCommand{ WRITER, "Pz", "constantPx", "Set all particles to be written with this constant value for the X directional cosine", { CLI_FLOAT } };
+    CLICommand ConstantPyCommand{ WRITER, "Py", "constantPy", "Set all particles to be written with this constant value for the Y directional cosine", { CLI_FLOAT } };
+    CLICommand ConstantPzCommand{ WRITER, "Pz", "constantPz", "Set all particles to be written with this constant value for the Z directional cosine", { CLI_FLOAT } };
+    CLICommand ConstantWeightCommand{ WRITER, "W", "constantWeight", "Set all particles to be written with this constant value for the weight", { CLI_FLOAT } };
+
+    std::vector<CLICommand> PhaseSpaceFileWriter::getCLICommands() {
+        return { ConstantXCommand, ConstantYCommand, ConstantZCommand,
+                 ConstantPxCommand, ConstantPyCommand, ConstantPzCommand,
+                 ConstantWeightCommand };
+    }
+
     PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, const FixedValues fixedValues, unsigned int bufferSize)
     : phspFormat_(phspFormat),
       fileName_(fileName),
@@ -25,48 +40,34 @@ namespace ParticleZoo
         {
             throw std::runtime_error("Failed to open file: " + fileName_);
         }
-        if (userOptions_.find("constantX") != userOptions_.end()) {
-            if (userOptions_.at("constantX").size() != 1) {
-                throw std::invalid_argument("User option 'constantX' must have exactly one value.");
-            }
-            setConstantX(std::stof(userOptions_.at("constantX")[0]));
+        if (userOptions_.contains(ConstantXCommand)) {
+            CLIValue constantXValue = userOptions.at(ConstantXCommand).front();
+            setConstantX(std::get<float>(constantXValue));
         }
-        if (userOptions_.find("constantY") != userOptions_.end()) {
-            if (userOptions_.at("constantY").size() != 1) {
-                throw std::invalid_argument("User option 'constantY' must have exactly one value.");
-            }
-            setConstantY(std::stof(userOptions_.at("constantY")[0]));
+        if (userOptions_.contains(ConstantYCommand)) {
+            CLIValue constantYValue = userOptions.at(ConstantYCommand).front();
+            setConstantY(std::get<float>(constantYValue));
         }
-        if (userOptions_.find("constantZ") != userOptions_.end()) {
-            if (userOptions_.at("constantZ").size() != 1) {
-                throw std::invalid_argument("User option 'constantZ' must have exactly one value.");
-            }
-            setConstantZ(std::stof(userOptions_.at("constantZ")[0]));
+        if (userOptions_.contains(ConstantZCommand)) {
+            CLIValue constantZValue = userOptions.at(ConstantZCommand).front();
+            setConstantZ(std::get<float>(constantZValue));
         }
-        if (userOptions_.find("constantPx") != userOptions_.end()) {
-            if (userOptions_.at("constantPx").size() != 1) {
-                throw std::invalid_argument("User option 'constantPx' must have exactly one value.");
-            }
-            setConstantPx(std::stof(userOptions_.at("constantPx")[0]));
+        if (userOptions_.contains(ConstantPxCommand)) {
+            CLIValue constantPxValue = userOptions.at(ConstantPxCommand).front();
+            setConstantPx(std::get<float>(constantPxValue));
         }
-        if (userOptions_.find("constantPy") != userOptions_.end()) {
-            if (userOptions_.at("constantPy").size() != 1) {
-                throw std::invalid_argument("User option 'constantPy' must have exactly one value.");
-            }
-            setConstantPy(std::stof(userOptions_.at("constantPy")[0]));
+        if (userOptions_.contains(ConstantPyCommand)) {
+            CLIValue constantPyValue = userOptions.at(ConstantPyCommand).front();
+            setConstantPy(std::get<float>(constantPyValue));
         }
-        if (userOptions_.find("constantPz") != userOptions_.end()) {
-            if (userOptions_.at("constantPz").size() != 1) {
-                throw std::invalid_argument("User option 'constantPz' must have exactly one value.");
-            }
-            setConstantPz(std::stof(userOptions_.at("constantPz")[0]));
+        if (userOptions_.contains(ConstantPzCommand)) {
+            CLIValue constantPzValue = userOptions.at(ConstantPzCommand).front();
+            setConstantPz(std::get<float>(constantPzValue));
         }
-        if (userOptions_.find("constantWeight") != userOptions_.end()) {
-            if (userOptions_.at("constantWeight").size() != 1) {
-                throw std::invalid_argument("User option 'constantWeight' must have exactly one value.");
-            }
-            setConstantWeight(std::stof(userOptions_.at("constantWeight")[0]));
-        }        
+        if (userOptions_.contains(ConstantWeightCommand)) {
+            CLIValue constantWeightValue = userOptions.at(ConstantWeightCommand).front();
+            setConstantWeight(std::get<float>(constantWeightValue));
+        }
     }
 
     PhaseSpaceFileWriter::~PhaseSpaceFileWriter() {

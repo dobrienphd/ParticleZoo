@@ -44,6 +44,19 @@ namespace ParticleZoo::ROOT {
 
     inline const std::map<std::string, BranchInfo> defaultBranchNames = TOPASBranches;
 
+    extern CLICommand ROOTFormatCommand;
+    extern CLICommand ROOTTreeNameCommand;
+    extern CLICommand ROOTEnergyCommand;
+    extern CLICommand ROOTWeightCommand;
+    extern CLICommand ROOTPositionXCommand;
+    extern CLICommand ROOTPositionYCommand;
+    extern CLICommand ROOTPositionZCommand;
+    extern CLICommand ROOTDirectionalCosineXCommand;
+    extern CLICommand ROOTDirectionalCosineYCommand;
+    extern CLICommand ROOTDirectionalCosineZCommand;
+    extern CLICommand ROOTDirectionalCosineZIsNegativeCommand;
+    extern CLICommand ROOTPDGCodeCommand;
+    extern CLICommand ROOTHistoryNumberCommand;
 
     // Reader class
 
@@ -56,6 +69,8 @@ namespace ParticleZoo::ROOT {
 
             std::uint64_t getNumberOfParticles() const override;
             std::uint64_t getNumberOfOriginalHistories() const override;
+
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             Particle      readParticleManually() override;
@@ -109,6 +124,8 @@ namespace ParticleZoo::ROOT {
             ~Writer() override;
 
             std::uint64_t getMaximumSupportedParticles() const override;
+
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             void          writeParticleManually(Particle & particle) override;

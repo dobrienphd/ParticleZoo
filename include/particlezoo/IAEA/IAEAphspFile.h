@@ -1,5 +1,4 @@
-#ifndef IAEAPHSPFILE_H
-#define IAEAPHSPFILE_H
+#pragma once
 
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
@@ -8,6 +7,21 @@
 namespace ParticleZoo::IAEAphspFile
 {
     constexpr std::string_view IAEAphspFileExtension = ".IAEAphsp";
+
+    extern CLICommand IAEAHeaderTemplateCommand;
+    extern CLICommand IAEAIndexCommand;
+    extern CLICommand IAEATitleCommand;
+    extern CLICommand IAEAFileTypeCommand;
+    extern CLICommand IAEAAddIncHistNumberCommand;
+    extern CLICommand IAEAAddEGSLATCHCommand;
+    extern CLICommand IAEAAddPENELOPEILB5Command;
+    extern CLICommand IAEAAddPENELOPEILB4Command;
+    extern CLICommand IAEAAddPENELOPEILB3Command;
+    extern CLICommand IAEAAddPENELOPEILB2Command;
+    extern CLICommand IAEAAddPENELOPEILB1Command;
+    extern CLICommand IAEAAddXLASTCommand;
+    extern CLICommand IAEAAddYLASTCommand;
+    extern CLICommand IAEAAddZLASTCommand;
 
     class Reader : public PhaseSpaceFileReader
     {
@@ -19,6 +33,7 @@ namespace ParticleZoo::IAEAphspFile
             std::uint64_t getNumberOfParticles(ParticleType particleType) const;
 
             const IAEAHeader & getHeader() const;
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             std::size_t   getParticleRecordStartOffset() const override;
@@ -41,6 +56,7 @@ namespace ParticleZoo::IAEAphspFile
 
             std::uint64_t getMaximumSupportedParticles() const override;
             IAEAHeader & getHeader();
+            static std::vector<CLICommand> getFormatSpecificCLICommands();
 
         protected:
             std::size_t getParticleRecordLength() const override;
@@ -87,6 +103,4 @@ namespace ParticleZoo::IAEAphspFile
         if (isWeightConstant()) header_.setConstantWeight(getConstantWeight());
     }
 
-}
-
-#endif // IAEAPHSPFILE_H
+} // namespace ParticleZoo::IAEAphspFile

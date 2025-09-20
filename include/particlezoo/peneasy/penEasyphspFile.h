@@ -1,5 +1,4 @@
-#ifndef PENEASYPHSPFILEWRITER_H
-#define PENEASYPHSPFILEWRITER_H
+#pragma once
 
 #include <string>
 #include <limits>
@@ -67,7 +66,5 @@ namespace ParticleZoo
         inline std::uint64_t Reader::getNumberOfParticles() const { return numberOfParticles_; }
         inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
         inline size_t Reader::getMaximumASCIILineLength() const { return MAX_ASCII_LINE_LENGTH; }
-    }
-}
-
-#endif // PENEASYPHSPFILEWRITER_H
+    } // namespace penEasyphspFile
+} // namespace ParticleZoo

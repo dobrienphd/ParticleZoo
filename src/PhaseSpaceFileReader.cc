@@ -3,6 +3,11 @@
 
 namespace ParticleZoo
 {
+
+    std::vector<CLICommand> PhaseSpaceFileReader::getCLICommands() {
+        return {};
+    }
+
     PhaseSpaceFileReader::PhaseSpaceFileReader(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, const FixedValues fixedValues, unsigned int bufferSize)
     :   phspFormat_(phspFormat),
         fileName_(fileName),

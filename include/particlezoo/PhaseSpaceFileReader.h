@@ -1,17 +1,17 @@
 #pragma once
 
-#include "particlezoo/Particle.h"
-
 #include <fstream>
 #include <string>
 #include <cstdint>
 #include <list>
+#include <vector>
 
+#include "particlezoo/utilities/argParse.h"
+#include "particlezoo/Particle.h"
 #include "particlezoo/ByteBuffer.h"
 
 namespace ParticleZoo
 {
-    using UserOptions = std::unordered_map<std::string, std::vector<std::string>>;
 
     class PhaseSpaceFileReader
     {
@@ -53,8 +53,10 @@ namespace ParticleZoo
 
             const FixedValues     getFixedValues() const;
 
+            static std::vector<CLICommand> getCLICommands();
+
             void                  close();
-        
+
         protected:
 
             void                  setConstantX(float X);
@@ -184,4 +186,4 @@ namespace ParticleZoo
     inline Particle PhaseSpaceFileReader::readParticleManually() {
         throw std::runtime_error("readParticleManually() must be implemented for manual particle reading.");
     }
-}
+} // namespace ParticleZoo

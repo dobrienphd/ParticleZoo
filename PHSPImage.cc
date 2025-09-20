@@ -110,7 +110,7 @@ enum ImageFormat {
     BMP
 };
 
-enum ProjectionType {
+enum class ProjectionType {
     FLATTEN,    // All particle Z coordinates will be forced to the plane location
     PROJECTION, // Particles will be projected onto the plane based on their direction
     NONE        // Only particles that are already at the plane location will be counted
@@ -121,13 +121,12 @@ int main(int argc, char* argv[]) {
     // Initial setup
     using namespace ParticleZoo;
     int errorCode = 0;
-    FormatRegistry::RegisterStandardFormats();
     ImageFormat outputFormat = TIFF; // default output format
     bool energyWeighted = false; // default to particle fluence instead of energy fluence
     bool normalizeByParticles = false; // default to normalizing by histories instead of particles
     Plane plane = XY; // default plane
     float planeLocation = 0; // default plane location
-    ProjectionType projectionType = FLATTEN; // default projection type
+    ProjectionType projectionType = ProjectionType::FLATTEN; // default projection type
 
     // Set default dimensions and image size
     float minDim1 = -40 * cm;
@@ -138,6 +137,50 @@ int main(int argc, char* argv[]) {
     int imageWidth = 1024;
     int imageHeight = 1024;
 
+    // Custom command line arguments
+    const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output image format (tiff or bmp)", { CLI_STRING }, { "tiff" });
+    const CLICommand PLANE_COMMAND = CLICommand(NONE, "", "plane", "Imaging plane orientation (XY, XZ, or YZ)", { CLI_STRING }, { "XY" });
+    const CLICommand PLANE_LOCATION_COMMAND = CLICommand(NONE, "", "planeLocation", "Location of the imaging plane in cm", { CLI_FLOAT }, { 0.0f });
+    const CLICommand PROJECT_TO_COMMAND = CLICommand(NONE, "", "projectTo", "Project particles to this plane location in cm (enables projection mode)", { CLI_FLOAT });
+    const CLICommand PROJECTION_TYPE_COMMAND = CLICommand(NONE, "", "projectionType", "Projection scheme: none, project, or flatten", { CLI_STRING }, { "flatten" });
+    const CLICommand IMAGE_WIDTH_COMMAND = CLICommand(NONE, "", "imageWidth", "Output image width in pixels", { CLI_INT }, { 1024 });
+    const CLICommand IMAGE_HEIGHT_COMMAND = CLICommand(NONE, "", "imageHeight", "Output image height in pixels", { CLI_INT }, { 1024 });
+    const CLICommand MIN_X_COMMAND = CLICommand(NONE, "", "minX", "Minimum X coordinate for imaging region in cm", { CLI_FLOAT }, { -40.0f });
+    const CLICommand MAX_X_COMMAND = CLICommand(NONE, "", "maxX", "Maximum X coordinate for imaging region in cm", { CLI_FLOAT }, { 40.0f });
+    const CLICommand MIN_Y_COMMAND = CLICommand(NONE, "", "minY", "Minimum Y coordinate for imaging region in cm", { CLI_FLOAT }, { -40.0f });
+    const CLICommand MAX_Y_COMMAND = CLICommand(NONE, "", "maxY", "Maximum Y coordinate for imaging region in cm", { CLI_FLOAT }, { 40.0f });
+    const CLICommand MIN_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z coordinate for imaging region in cm", { CLI_FLOAT }, { -40.0f });
+    const CLICommand MAX_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm", { CLI_FLOAT }, { 40.0f });
+    const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
+    const CLICommand WIDTH_X_COMMAND = CLICommand(NONE, "", "widthX", "Half-width tolerance in X direction (cm) for YZ plane", { CLI_FLOAT }, { 0.25f });
+    const CLICommand WIDTH_Y_COMMAND = CLICommand(NONE, "", "widthY", "Half-width tolerance in Y direction (cm) for XZ plane", { CLI_FLOAT }, { 0.25f });
+    const CLICommand WIDTH_Z_COMMAND = CLICommand(NONE, "", "widthZ", "Half-width tolerance in Z direction (cm) for XY plane", { CLI_FLOAT }, { 0.25f });
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence instead of particle fluence", { CLI_VALUELESS });
+    const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
+    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(PLANE_COMMAND);
+    ArgParser::RegisterCommand(PLANE_LOCATION_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_COMMAND);
+    ArgParser::RegisterCommand(PROJECTION_TYPE_COMMAND);
+    ArgParser::RegisterCommand(IMAGE_WIDTH_COMMAND);
+    ArgParser::RegisterCommand(IMAGE_HEIGHT_COMMAND);
+    ArgParser::RegisterCommand(MIN_X_COMMAND);
+    ArgParser::RegisterCommand(MAX_X_COMMAND);
+    ArgParser::RegisterCommand(MIN_Y_COMMAND);
+    ArgParser::RegisterCommand(MAX_Y_COMMAND);
+    ArgParser::RegisterCommand(MIN_Z_COMMAND);
+    ArgParser::RegisterCommand(MAX_Z_COMMAND);
+    ArgParser::RegisterCommand(SQUARE_COMMAND);
+    ArgParser::RegisterCommand(WIDTH_X_COMMAND);
+    ArgParser::RegisterCommand(WIDTH_Y_COMMAND);
+    ArgParser::RegisterCommand(WIDTH_Z_COMMAND);
+    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
+    ArgParser::RegisterCommand(ENERGY_WEIGHTED_COMMAND);
+    ArgParser::RegisterCommand(NORMALIZE_BY_PARTICLES_COMMAND);
+    
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPImage [OPTIONS] <inputfile> <outputfile>\n"
                                 "\n"
@@ -147,75 +190,48 @@ int main(int argc, char* argv[]) {
                                 "  <inputfile>               Input phase space file to visualize\n"
                                 "  <outputfile>              Output image file path\n"
                                 "\n"
-                                "Optional Arguments:\n"
-                                "  --plane <XY|XZ|YZ>             Imaging plane orientation (default: XY)\n"
-                                "  --planeLocation <cm>           Location of imaging plane in cm (default: 0.0)\n"
-                                "  --projectTo <cm>               Project particles to this plane location in cm\n"
-                                "  --projectionType <type>        Projection scheme: none, project, or flatten (default: flatten)\n"
-                                "  --imageWidth <pixels>          Image width in pixels (default: 1024)\n"
-                                "  --imageHeight <pixels>         Image height in pixels (default: 1024)\n"
-                                "  --minX <cm>                    Minimum X coordinate (default: -40 cm)\n"
-                                "  --maxX <cm>                    Maximum X coordinate (default: 40 cm)\n"
-                                "  --minY <cm>                    Minimum Y coordinate (default: -40 cm)\n"
-                                "  --maxY <cm>                    Maximum Y coordinate (default: 40 cm)\n"
-                                "  --minZ <cm>                    Minimum Z coordinate (default: -40 cm)\n"
-                                "  --maxZ <cm>                    Maximum Z coordinate (default: 40 cm)\n"
-                                "  --square <cm>                  Score over a square region of this side length\n"
-                                "  --widthX <cm>                  Half-width tolerance for YZ plane\n"
-                                "  --widthY <cm>                  Half-width tolerance for XZ plane\n"
-                                "  --widthZ <cm>                  Half-width tolerance for XY plane (default: 0.25 cm)\n"
-                                "  --maxParticles <N>             Maximum particles to process (default: all)\n"
-                                "  --energyWeighted <true|false>  Set to true to produce energy fluence instead of particle fluence (default: false)\n"
-                                "  --normalizeByParticles <true|false>  Normalize by particles instead of histories (default: false)\n"
-                                "  --inputFormat <format>         Force input format (default: auto-detect)\n"
-                                "  --outputFormat <tiff|bmp>      Output image format (default: tiff)\n"
-                                "  --formats                      List supported input formats\n"
-                                "\n"
                                 "Examples:\n"
                                 "  PHSPImage beam.egsphsp output.tiff\n"
                                 "  PHSPImage --plane XZ --square 10 beam.IAEAphsp XZ10x10.tiff\n"
-                                "  PHSPImage --energyWeighted true --imageWidth 2048 input.phsp hiResEnergyFluence.bmp\n"
+                                "  PHSPImage --energyWeighted --imageWidth 2048 input.phsp hiResEnergyFluence.bmp\n"
                                 "  PHSPImage --projectTo 100.0 beam.phsp projectedAtIso.tiff";
-    auto args = parseArgs(argc, argv, usageMessage, 2);
+    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 2);
 
     // Validate parameters
-    std::string inputFile = args["positionals"][0];
-    std::string outputFile = args["positionals"][1];
-    std::string inputFormat = args["inputFormat"].empty() ? "" : args["inputFormat"][0];
+    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
+    std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
+    std::string inputFile = std::get<std::string>(positionals[0]);
+    std::string outputFile = std::get<std::string>(positionals[1]);
+    std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
     if (inputFile.empty()) throw std::runtime_error("No input file specified.");
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
-    if (args["projectTo"].size() == 1) {
-        projectionType = PROJECTION;
-        std::string planeLocation_str = args["projectTo"][0];
+    if (userOptions.contains(PROJECT_TO_COMMAND)) {
+        projectionType = ProjectionType::PROJECTION;
+        std::string planeLocation_str = std::get<std::string>(userOptions.at(PROJECT_TO_COMMAND)[0]);
         try {
             planeLocation = atof(planeLocation_str.c_str()) * cm;
         } catch (const std::exception& e) {
             throw std::runtime_error("Invalid plane location: " + planeLocation_str);
         }
     }
-    if (args["planeLocation"].size() == 1) {
-        std::string planeLocation_str = args["planeLocation"][0];
-        try {
-            planeLocation = atof(planeLocation_str.c_str()) * cm;
-        } catch (const std::exception& e) {
-            throw std::runtime_error("Invalid plane location: " + planeLocation_str);
-        }
+    if (userOptions.contains(PLANE_LOCATION_COMMAND)) {
+        planeLocation = std::get<float>(userOptions.at(PLANE_LOCATION_COMMAND)[0]);
     }
-    if (args["projectionType"].size() == 1) {
-        std::string projectionType_str = args["projectionType"][0];
+    if (userOptions.contains(PROJECTION_TYPE_COMMAND)) {
+        std::string projectionType_str = std::get<std::string>(userOptions.at(PROJECTION_TYPE_COMMAND)[0]);
         if (projectionType_str == "none") {
-            projectionType = NONE;
+            projectionType = ProjectionType::NONE;
         } else if (projectionType_str == "project") {
-            projectionType = PROJECTION;
+            projectionType = ProjectionType::PROJECTION;
         } else if (projectionType_str == "flatten") {
-            projectionType = FLATTEN;
+            projectionType = ProjectionType::FLATTEN;
         } else {
             throw std::runtime_error("Invalid projection type specified. Use none, project, or flatten.");
         }
     }
-    if (!args["plane"].empty()) {
-        std::string planeStr = args["plane"][0];
+    if (!userOptions.contains(PLANE_COMMAND)) {
+        std::string planeStr = std::get<std::string>(userOptions.at(PLANE_COMMAND)[0]);
         if (planeStr == "XY") {
             plane = XY;
         } else if (planeStr == "XZ") {
@@ -226,79 +242,79 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Invalid plane specified. Use XY, XZ, or YZ.");
         }
     }
-    if (args["imageWidth"].size() == 1) {
-        imageWidth = std::stoi(args["imageWidth"][0]);
+    if (userOptions.contains(IMAGE_WIDTH_COMMAND)) {
+        imageWidth = std::get<int>(userOptions.at(IMAGE_WIDTH_COMMAND)[0]);
         if (imageWidth <= 0) {
             throw std::runtime_error("Image width must be a positive integer.");
         }
     }
-    if (args["imageHeight"].size() == 1) {
-        imageHeight = std::stoi(args["imageHeight"][0]);
+    if (userOptions.contains(IMAGE_HEIGHT_COMMAND)) {
+        imageHeight = std::get<int>(userOptions.at(IMAGE_HEIGHT_COMMAND)[0]);
         if (imageHeight <= 0) {
             throw std::runtime_error("Image height must be a positive integer.");
         }
     }
-    if (args["square"].size() == 1) {
-        float squareSide = atof(args["square"][0].c_str()) * cm;
+    if (userOptions.contains(SQUARE_COMMAND)) {
+        float squareSide = std::get<float>(userOptions.at(SQUARE_COMMAND)[0]) * cm;
         minDim1 = -squareSide/2.f;
         minDim2 = minDim1;
         maxDim1 = squareSide/2.f;
         maxDim2 = maxDim1;
     }
-    if (plane == XY && args["minX"].size() == 1) {
-        minDim1 = atof(args["minX"][0].c_str()) * cm;
+    if (plane == XY && userOptions.contains(MIN_X_COMMAND)) {
+        minDim1 = std::get<float>(userOptions.at(MIN_X_COMMAND)[0]) * cm;
     }
-    if (plane == XY && args["maxX"].size() == 1) {
-        maxDim1 = atof(args["maxX"][0].c_str()) * cm;
+    if (plane == XY && userOptions.contains(MAX_X_COMMAND)) {
+        maxDim1 = std::get<float>(userOptions.at(MAX_X_COMMAND)[0]) * cm;
     }
-    if (plane == XY && args["minY"].size() == 1) {
-        minDim2 = atof(args["minY"][0].c_str()) * cm;
+    if (plane == XY && userOptions.contains(MIN_Y_COMMAND)) {
+        minDim2 = std::get<float>(userOptions.at(MIN_Y_COMMAND)[0]) * cm;
     }
-    if (plane == XY && args["maxY"].size() == 1) {
-        maxDim2 = atof(args["maxY"][0].c_str()) * cm;
+    if (plane == XY && userOptions.contains(MAX_Y_COMMAND)) {
+        maxDim2 = std::get<float>(userOptions.at(MAX_Y_COMMAND)[0]) * cm;
     }
-    if (plane == XZ && args["minX"].size() == 1) {
-        minDim1 = atof(args["minX"][0].c_str()) * cm;
+    if (plane == XZ && userOptions.contains(MIN_X_COMMAND)) {
+        minDim1 = std::get<float>(userOptions.at(MIN_X_COMMAND)[0]) * cm;
     }
-    if (plane == XZ && args["maxX"].size() == 1) {
-        maxDim1 = atof(args["maxX"][0].c_str()) * cm;
+    if (plane == XZ && userOptions.contains(MAX_X_COMMAND)) {
+        maxDim1 = std::get<float>(userOptions.at(MAX_X_COMMAND)[0]) * cm;
     }
-    if (plane == XZ && args["minZ"].size() == 1) {
-        minDim2 = atof(args["minZ"][0].c_str()) * cm;
+    if (plane == XZ && userOptions.contains(MIN_Z_COMMAND)) {
+        minDim2 = std::get<float>(userOptions.at(MIN_Z_COMMAND)[0]) * cm;
     }
-    if (plane == XZ && args["maxZ"].size() == 1) {
-        maxDim2 = atof(args["maxZ"][0].c_str()) * cm;
+    if (plane == XZ && userOptions.contains(MAX_Z_COMMAND)) {
+        maxDim2 = std::get<float>(userOptions.at(MAX_Z_COMMAND)[0]) * cm;
     }
-    if (plane == YZ && args["minY"].size() == 1) {
-        minDim1 = atof(args["minY"][0].c_str()) * cm;
+    if (plane == YZ && userOptions.contains(MIN_Y_COMMAND)) {
+        minDim1 = std::get<float>(userOptions.at(MIN_Y_COMMAND)[0]) * cm;
     }
-    if (plane == YZ && args["maxY"].size() == 1) {
-        maxDim1 = atof(args["maxY"][0].c_str()) * cm;
+    if (plane == YZ && userOptions.contains(MAX_Y_COMMAND)) {
+        maxDim1 = std::get<float>(userOptions.at(MAX_Y_COMMAND)[0]) * cm;
     }
-    if (plane == YZ && args["minZ"].size() == 1) {
-        minDim2 = atof(args["minZ"][0].c_str()) * cm;
+    if (plane == YZ && userOptions.contains(MIN_Z_COMMAND)) {
+        minDim2 = std::get<float>(userOptions.at(MIN_Z_COMMAND)[0]) * cm;
     }
-    if (plane == YZ && args["maxZ"].size() == 1) {
-        maxDim2 = atof(args["maxZ"][0].c_str()) * cm;
+    if (plane == YZ && userOptions.contains(MAX_Z_COMMAND)) {
+        maxDim2 = std::get<float>(userOptions.at(MAX_Z_COMMAND)[0]) * cm;
     }
-    if (plane == XY && args["widthZ"].size() == 1) {
-        widthDim3 = 0.5 * atof(args["widthZ"][0].c_str()) * cm;
-    } else if (plane == XZ && args["widthY"].size() == 1) {
-        widthDim3 = 0.5 * atof(args["widthY"][0].c_str()) * cm;
-    } else if (plane == YZ && args["widthX"].size() == 1) {
-        widthDim3 = 0.5 * atof(args["widthX"][0].c_str()) * cm;
+    if (plane == XY && userOptions.contains(WIDTH_Z_COMMAND)) {
+        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_Z_COMMAND)[0]) * cm;
+    } else if (plane == XZ && userOptions.contains(WIDTH_Y_COMMAND)) {
+        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_Y_COMMAND)[0]) * cm;
+    } else if (plane == YZ && userOptions.contains(WIDTH_X_COMMAND)) {
+        widthDim3 = 0.5 * std::get<float>(userOptions.at(WIDTH_X_COMMAND)[0]) * cm;
     }
     if (minDim1 >= maxDim1 || minDim2 >= maxDim2) {
         throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
     }
-    if (!args["energyWeighted"].empty()) {
-        energyWeighted = (args["energyWeighted"][0] == "true");
+    if (!userOptions.contains(ENERGY_WEIGHTED_COMMAND)) {
+        energyWeighted = (std::get<bool>(userOptions.at(ENERGY_WEIGHTED_COMMAND)[0]) == true);
     }
-    if (!args["normalizeByParticles"].empty()) {
-        normalizeByParticles = (args["normalizeByParticles"][0] == "true");
+    if (!userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)) {
+        normalizeByParticles = (std::get<bool>(userOptions.at(NORMALIZE_BY_PARTICLES_COMMAND)[0]) == true);
     }
-    if (args["outputFormat"].size() == 1) {
-        std::string formatStr = args["outputFormat"][0];
+    if (userOptions.contains(OUTPUT_FORMAT_COMMAND)) {
+        std::string formatStr = std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0]);
         if (formatStr == "tiff" || formatStr == "TIFF") {
             outputFormat = TIFF;
         } else if (formatStr == "bmp" || formatStr == "BMP") {
@@ -311,29 +327,29 @@ int main(int argc, char* argv[]) {
     // Create the reader for the input file
     std::unique_ptr<PhaseSpaceFileReader> reader;
     if (inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(inputFile, args);
+        reader = FormatRegistry::CreateReader(inputFile, userOptions);
     } else {
-        reader = FormatRegistry::CreateReader(inputFormat, inputFile, args);
+        reader = FormatRegistry::CreateReader(inputFormat, inputFile, userOptions);
     }
 
     // Print out the parameters
     std::cout << "Parameters:" << std::endl;
     std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
     std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
-    if (projectionType != FLATTEN) {
+    if (projectionType != ProjectionType::FLATTEN) {
         std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
     }
-    std::cout << "  Projection Scheme: " << (projectionType == PROJECTION ? "Projection" : projectionType == FLATTEN ? "Flatten" : "None") << std::endl;
+    std::cout << "  Projection Scheme: " << (projectionType == ProjectionType::PROJECTION ? "Projection" : projectionType == ProjectionType::FLATTEN ? "Flatten" : "None") << std::endl;
     std::cout << "  Input File: " << inputFile << " (Format: " << reader->getPHSPFormat() << ")" << std::endl;
     std::cout << "  Output File: " << outputFile << std::endl; 
     std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
     std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
     std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
-    if (projectionType == NONE) {
+    if (projectionType == ProjectionType::NONE) {
         std::cout << "  Thickness in third dimension: " << widthDim3 << " cm" << std::endl;
     }
     std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
-    std::cout << "  Max Particles to Read: " << (args["maxParticles"].empty() ? "all" : args["maxParticles"][0]) << std::endl;
+    std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
 
     // Error handling for both reader and writer
     try {
@@ -344,7 +360,6 @@ int main(int argc, char* argv[]) {
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t maxParticles = args["maxParticles"].empty() ? particlesInFile : std::stoull(args["maxParticles"][0]);
         uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
         
         // Determine progress update interval
@@ -388,10 +403,10 @@ int main(int argc, char* argv[]) {
             // project particle to the scoring plane based on selected projection scheme
             switch (projectionType)
             {
-                case(FLATTEN):
+                case(ProjectionType::FLATTEN):
                     particle.setZ(planeLocation);
                     break;
-                case(PROJECTION):
+                case(ProjectionType::PROJECTION):
                     switch (plane)
                     {
                         case(XY): particle.projectToZValue(planeLocation); break;

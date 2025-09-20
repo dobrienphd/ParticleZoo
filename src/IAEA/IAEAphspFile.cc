@@ -7,6 +7,21 @@ namespace ParticleZoo::IAEAphspFile
     constexpr float energyUnits = MeV;
     constexpr float distanceUnits = cm;
 
+    CLICommand IAEAHeaderTemplateCommand{ WRITER, "", "IAEA-header-template", "Path to an IAEA header file from which to copy the attributes of the phase space file", { CLI_STRING } };
+    CLICommand IAEAIndexCommand{ WRITER, "", "IAEA-index", "Index string for the IAEA phase space file header", { CLI_STRING } };
+    CLICommand IAEATitleCommand{ WRITER, "", "IAEA-title", "Title string for the IAEA phase space file header", { CLI_STRING } };
+    CLICommand IAEAFileTypeCommand{ WRITER, "", "IAEA-file-type", "File type for the IAEA phase space file header (PHSP_FILE or PHSP_GENERATOR)", { CLI_STRING }, { std::string("PHSP_FILE") } };
+    CLICommand IAEAAddIncHistNumberCommand{ WRITER, "", "IAEA-incrementals", "Include the incremental history number extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddEGSLATCHCommand{ WRITER, "", "IAEA-latch", "Include the EGS LATCH extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddPENELOPEILB5Command{ WRITER, "", "IAEA-ilb5", "Include the PENELOPE ILB5 extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddPENELOPEILB4Command{ WRITER, "", "IAEA-ilb4", "Include the PENELOPE ILB4 extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddPENELOPEILB3Command{ WRITER, "", "IAEA-ilb3", "Include the PENELOPE ILB3 extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddPENELOPEILB2Command{ WRITER, "", "IAEA-ilb2", "Include the PENELOPE ILB2 extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddPENELOPEILB1Command{ WRITER, "", "IAEA-ilb1", "Include the PENELOPE ILB1 extra long in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddXLASTCommand{ WRITER, "", "IAEA-xlast", "Include the XLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddYLASTCommand{ WRITER, "", "IAEA-ylast", "Include the YLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAAddZLASTCommand{ WRITER, "", "IAEA-zlast", "Include the ZLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
+
     // Implementations for the IAEAphspFileReader class
 
     Reader::Reader(const std::string & filename, const UserOptions & options)
@@ -19,6 +34,10 @@ namespace ParticleZoo::IAEAphspFile
         if (!header_.vIsStored()) setConstantPy(header_.getConstantV());
         if (!header_.wIsStored()) setConstantPz(header_.getConstantW());
         if (!header_.weightIsStored()) setConstantWeight(header_.getConstantWeight());
+    }
+
+    std::vector<CLICommand> Reader::getFormatSpecificCLICommands() {
+        return {};
     }
 
     Particle Reader::readBinaryParticle(ByteBuffer & buffer)
@@ -95,18 +114,26 @@ namespace ParticleZoo::IAEAphspFile
     Writer::Writer(const std::string & filename, const UserOptions & userOptions, const FixedValues & fixedValues)
         : PhaseSpaceFileWriter("IAEA", filename, userOptions, FormatType::BINARY, fixedValues),
           header_([&]() {
-            IAEAHeader header = userOptions.contains("IAEAHeaderTemplate") ? 
-                IAEAHeader(IAEAHeader(userOptions.at("IAEAHeaderTemplate").front())) : 
+            CLIValue headerFileTemplateValue = userOptions.contains(IAEAHeaderTemplateCommand) ? 
+                userOptions.at(IAEAHeaderTemplateCommand)[0] : std::string{};
+
+            std::string headerFileTemplatePath = std::get<std::string>(headerFileTemplateValue);
+
+            IAEAHeader header = headerFileTemplatePath.length() > 0 ? 
+                IAEAHeader(IAEAHeader(headerFileTemplatePath)) : 
                 IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename), true);
 
-            if (userOptions.contains("IAEAIndex")) {
-                header.setIAEAIndex(userOptions.at("IAEAIndex").front());
+            if (userOptions.contains(IAEAIndexCommand)) {
+                CLIValue indexValue = userOptions.at(IAEAIndexCommand).front();
+                header.setIAEAIndex(std::get<std::string>(indexValue));
             }
-            if (userOptions.contains("IAEATitle")) {
-                header.setTitle(userOptions.at("IAEATitle").front());
+            if (userOptions.contains(IAEATitleCommand)) {
+                CLIValue titleValue = userOptions.at(IAEATitleCommand).front();
+                header.setTitle(std::get<std::string>(titleValue));
             }
-            if (userOptions.contains("IAEAFileType")) {
-                std::string fileType = userOptions.at("IAEAFileType").front();
+            if (userOptions.contains(IAEAFileTypeCommand)) {
+                CLIValue fileTypeValue = userOptions.at(IAEAFileTypeCommand).front();
+                std::string fileType = std::get<std::string>(fileTypeValue);
                 if (fileType == "PHSP_FILE") {
                     header.setFileType(IAEAHeader::FileType::PHSP_FILE);
                 } else if (fileType == "PHSP_GENERATOR") {
@@ -115,53 +142,63 @@ namespace ParticleZoo::IAEAphspFile
                     throw std::invalid_argument("Invalid IAEA file type specified: " + fileType);
                 }
             }
-            if (userOptions.contains("IAEAAddIncHistNumber")) {
-                if (userOptions.at("IAEAAddIncHistNumber").front() == "true") {
+            if (userOptions.contains(IAEAAddIncHistNumberCommand)) {
+                CLIValue incHistNumberValue = userOptions.at(IAEAAddIncHistNumberCommand).front();
+                if (std::get<bool>(incHistNumberValue)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::INCREMENTAL_HISTORY_NUMBER);
                 }
             }
-            if (userOptions.contains("IAEAAddEGSLATCH")) {
-                if (userOptions.at("IAEAAddEGSLATCH").front() == "true") {
+            if (userOptions.contains(IAEAAddEGSLATCHCommand)) {
+                CLIValue egsLatchValue = userOptions.at(IAEAAddEGSLATCHCommand).front();
+                if (std::get<bool>(egsLatchValue)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::EGS_LATCH);
                 }
             }
-            if (userOptions.contains("IAEAAddPENELOPEILB5")) {
-                if (userOptions.at("IAEAAddPENELOPEILB5").front() == "true") {
+            if (userOptions.contains(IAEAAddPENELOPEILB5Command)) {
+                CLIValue penelopeILB5Value = userOptions.at(IAEAAddPENELOPEILB5Command).front();
+                if (std::get<bool>(penelopeILB5Value)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB5);
                 }
             }
-            if (userOptions.contains("IAEAAddPENELOPEILB4")) {
-                if (userOptions.at("IAEAAddPENELOPEILB4").front() == "true") {
+            if (userOptions.contains(IAEAAddPENELOPEILB4Command)) {
+                CLIValue penelopeILB4Value = userOptions.at(IAEAAddPENELOPEILB4Command).front();
+                if (std::get<bool>(penelopeILB4Value)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB4);
                 }
             }
-            if (userOptions.contains("IAEAAddPENELOPEILB3")) {
-                if (userOptions.at("IAEAAddPENELOPEILB3").front() == "true") {
+            if (userOptions.contains(IAEAAddPENELOPEILB3Command)) {
+                CLIValue penelopeILB3Value = userOptions.at(IAEAAddPENELOPEILB3Command).front();
+                if (std::get<bool>(penelopeILB3Value)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB3);
                 }
             }
-            if (userOptions.contains("IAEAAddPENELOPEILB2")) {
-                if (userOptions.at("IAEAAddPENELOPEILB2").front() == "true") {
+            if (userOptions.contains(IAEAAddPENELOPEILB2Command)) {
+                CLIValue penelopeILB2Value = userOptions.at(IAEAAddPENELOPEILB2Command).front();
+                if (std::get<bool>(penelopeILB2Value)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB2);
                 }
             }
-            if (userOptions.contains("IAEAAddPENELOPEILB1")) {
-                if (userOptions.at("IAEAAddPENELOPEILB1").front() == "true") {
+            if (userOptions.contains(IAEAAddPENELOPEILB1Command)) {
+                CLIValue penelopeILB1Value = userOptions.at(IAEAAddPENELOPEILB1Command).front();
+                if (std::get<bool>(penelopeILB1Value)) {
                     header.addExtraLong(IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB1);
                 }
             }
-            if (userOptions.contains("IAEAAddXLast")) {
-                if (userOptions.at("IAEAAddXLast").front() == "true") {
+            if (userOptions.contains(IAEAAddXLASTCommand)) {
+                CLIValue xLastValue = userOptions.at(IAEAAddXLASTCommand).front();
+                if (std::get<bool>(xLastValue)) {
                     header.addExtraFloat(IAEAHeader::EXTRA_FLOAT_TYPE::XLAST);
                 }
             }
-            if (userOptions.contains("IAEAAddYLast")) {
-                if (userOptions.at("IAEAAddYLast").front() == "true") {
+            if (userOptions.contains(IAEAAddYLASTCommand)) {
+                CLIValue yLastValue = userOptions.at(IAEAAddYLASTCommand).front();
+                if (std::get<bool>(yLastValue)) {
                     header.addExtraFloat(IAEAHeader::EXTRA_FLOAT_TYPE::YLAST);
                 }
             }
-            if (userOptions.contains("IAEAAddZLast")) {
-                if (userOptions.at("IAEAAddZLast").front() == "true") {
+            if (userOptions.contains(IAEAAddZLASTCommand)) {
+                CLIValue zLastValue = userOptions.at(IAEAAddZLASTCommand).front();
+                if (std::get<bool>(zLastValue)) {
                     header.addExtraFloat(IAEAHeader::EXTRA_FLOAT_TYPE::ZLAST);
                 }
             }
@@ -170,6 +207,25 @@ namespace ParticleZoo::IAEAphspFile
     {
         // update constants in the header
         fixedValuesHaveChanged();
+    }
+
+    std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
+        return {
+            IAEAHeaderTemplateCommand,
+            IAEAIndexCommand,
+            IAEATitleCommand,
+            IAEAFileTypeCommand,
+            IAEAAddIncHistNumberCommand,
+            IAEAAddEGSLATCHCommand,
+            IAEAAddPENELOPEILB5Command,
+            IAEAAddPENELOPEILB4Command,
+            IAEAAddPENELOPEILB3Command,
+            IAEAAddPENELOPEILB2Command,
+            IAEAAddPENELOPEILB1Command,
+            IAEAAddXLASTCommand,
+            IAEAAddYLASTCommand,
+            IAEAAddZLASTCommand
+        };
     }
 
     void Writer::setNumberOfOriginalHistories(std::uint64_t numberOfHistories) {

@@ -74,7 +74,18 @@ int main(int argc, char* argv[]) {
     int errorCode = 0;
     uint64_t particlesSoFar = 0;
     bool preserveConstants = false;
-    FormatRegistry::RegisterStandardFormats();
+
+    // Custom command line arguments
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand OUTPUT_FILE_COMMAND = CLICommand(NONE, "", "outputFile", "Output file path", { CLI_STRING });
+    const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_VALUELESS });
+    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
+    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(OUTPUT_FILE_COMMAND);
+    ArgParser::RegisterCommand(PRESERVE_CONSTANTS_COMMAND);
 
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPCombine [OPTIONS] --output <outputfile> <inputfile1> <inputfile2> ... <inputfileN>\n"
@@ -86,29 +97,26 @@ int main(int argc, char* argv[]) {
                             "  --outputFile <file>       Output file path\n"
                             "  <inputfiles>              One or more input phase space files\n"
                             "\n"
-                            "Optional Arguments:\n"
-                            "  --maxParticles <N>        Maximum number of particles to process (default: unlimited)\n"
-                            "  --inputFormat <format>    Force input file format (default: auto-detect from extension)\n"
-                            "  --outputFormat <format>   Force output file format (default: auto-detect from extension)\n"
-                            "  --formats                 List all supported file formats\n"
-                            "  --preserveConstants <true|false>  Preserve constant values from input files if present (default: false)\n"
-                            "\n"
                             "Examples:\n"
                             "  PHSPCombine --output combined.IAEAphsp input1.egsphsp input2.egsphsp\n"
                             "  PHSPCombine --output result.phsp --maxParticles 1000000 file1.phsp file2.phsp\n"
                             "  PHSPCombine --inputFormat IAEA --outputFormat EGS --output out.egsphsp in1.IAEAphsp in2.IAEAphsp";
-    auto args = parseArgs(argc, argv, usageMessage, 1);
+    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 1);
 
     // Validate parameters
-    uint64_t maxParticles = args["maxParticles"].empty() ? std::numeric_limits<uint64_t>::max() : std::stoull(args["maxParticles"][0]);
-    std::string inputFormat = args["inputFormat"].empty() ? "" : args["inputFormat"][0];
-    std::string outputFormat = args["outputFormat"].empty() ? "" : args["outputFormat"][0];
-    std::string outputFile = args["outputFile"].empty() ? "" : args["outputFile"][0];
-    std::vector<std::string> inputFiles = args["positionals"];
+    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
+    std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
+    std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
+    std::string outputFile = userOptions.contains(OUTPUT_FILE_COMMAND) ? (userOptions.at(OUTPUT_FILE_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FILE_COMMAND)[0])) : "";
+    std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{};
+    std::vector<std::string> inputFiles(positionals.size());
+    for (size_t i = 0; i < positionals.size(); i++) {
+        inputFiles[i] = std::get<std::string>(positionals[i]);
+    }
     if (inputFiles.empty()) throw std::runtime_error("No input files provided.");
     if (outputFile == "") throw std::runtime_error("No output file specified.");
-    if (!args["preserveConstants"].empty()) {
-        preserveConstants = (args["preserveConstants"][0] == "true");
+    if (!userOptions.contains(PRESERVE_CONSTANTS_COMMAND)) {
+        preserveConstants = (std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) == true);
     }
 
     FixedValues fixedValues; // start with default fixed values
@@ -117,9 +125,9 @@ int main(int argc, char* argv[]) {
         // Throw an error during the reading loop later if a subsequent file has a different set of constants.
         std::unique_ptr<PhaseSpaceFileReader> firstReader;
         if (inputFormat.empty()) {
-            firstReader = FormatRegistry::CreateReader(inputFiles[0], args);
+            firstReader = FormatRegistry::CreateReader(inputFiles[0], userOptions);
         } else {
-            firstReader = FormatRegistry::CreateReader(inputFormat, inputFiles[0], args);
+            firstReader = FormatRegistry::CreateReader(inputFormat, inputFiles[0], userOptions);
         }
         if (!firstReader) {
             throw std::runtime_error("Failed to create reader for file: " + inputFiles[0]);
@@ -131,9 +139,9 @@ int main(int argc, char* argv[]) {
     // Create the writer
     std::unique_ptr<PhaseSpaceFileWriter> writer;
     if (outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, args, fixedValues);
+        writer = FormatRegistry::CreateWriter(outputFile, userOptions, fixedValues);
     } else {
-        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, args, fixedValues);
+        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, userOptions, fixedValues);
     }
 
     // Error handling for the writer
@@ -153,9 +161,9 @@ int main(int argc, char* argv[]) {
             // Create the reader for the current input file
             std::unique_ptr<PhaseSpaceFileReader> reader;
             if (inputFormat.empty()) {
-                reader = FormatRegistry::CreateReader(inputFile, args);
+                reader = FormatRegistry::CreateReader(inputFile, userOptions);
             } else {
-                reader = FormatRegistry::CreateReader(inputFormat, inputFile, args);
+                reader = FormatRegistry::CreateReader(inputFormat, inputFile, userOptions);
             }
 
             // Check if reader was created successfully

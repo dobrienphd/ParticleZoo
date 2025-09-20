@@ -1,20 +1,26 @@
 #pragma once
 
-#include "particlezoo/Particle.h"
-#include "particlezoo/ByteBuffer.h"
-
 #include <fstream>
 #include <string>
 #include <cstdint>
 #include <memory>
 
+#include "particlezoo/utilities/argParse.h"
+#include "particlezoo/Particle.h"
+#include "particlezoo/ByteBuffer.h"
+
 namespace ParticleZoo
 {
-    using UserOptions = std::unordered_map<std::string, std::vector<std::string>>;
+    extern CLICommand ConstantXCommand;
+    extern CLICommand ConstantYCommand;
+    extern CLICommand ConstantZCommand;
+    extern CLICommand ConstantPxCommand;
+    extern CLICommand ConstantPyCommand;
+    extern CLICommand ConstantPzCommand;
+    extern CLICommand ConstantWeightCommand;
 
     class PhaseSpaceFileWriter
     {
-
         public:
             PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType = FormatType::BINARY, const FixedValues fixedValues = FixedValues(), unsigned int bufferSize = DEFAULT_BUFFER_SIZE);
             virtual ~PhaseSpaceFileWriter();
@@ -47,6 +53,8 @@ namespace ParticleZoo
             float                       getConstantWeight() const;
 
             const FixedValues           getFixedValues() const;
+
+            static std::vector<CLICommand> getCLICommands();
 
             void                        close();
 

@@ -1,5 +1,4 @@
-#ifndef IAEAHEADER_H
-#define IAEAHEADER_H
+#pragma once
 
 #include <string>
 #include <unordered_map>
@@ -612,6 +611,4 @@ namespace ParticleZoo::IAEAphspFile
         }
     }
 
-}
-
-#endif // IAEAHEADER_H
+} // namespace ParticleZoo

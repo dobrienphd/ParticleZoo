@@ -1,6 +1,4 @@
-
-#ifndef EGSPHSPFILE_H
-#define EGSPHSPFILE_H
+#pragma once
 
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
@@ -14,9 +12,15 @@ namespace ParticleZoo
 {
     namespace EGSphspFile {
 
+
+        extern CLICommand EGSIgnoreHeaderCountCommand;
+        extern CLICommand EGSParticleZValueCommand;
+        extern CLICommand EGSModeCommand;
+
         constexpr std::size_t MINIMUM_HEADER_DATA_LENGTH = 25;
         enum class EGSMODE { MODE0 = 28, MODE2 = 32 };
-        const double ELECTRON_REST_MASS = 0.5109989461f; // MeV
+        const double ELECTRON_REST_MASS_MEV = 0.5109989461f;
+
 
         class Reader : public PhaseSpaceFileReader
         {
@@ -30,6 +34,8 @@ namespace ParticleZoo
                 unsigned int getNumberOfPhotons() const { return numberOfPhotons_; };
                 float getMaxKineticEnergy() const { return maxKineticEnergy_; };
                 float getMinElectronEnergy() const { return minElectronEnergy_; };
+
+                static std::vector<CLICommand> getFormatSpecificCLICommands();
 
             protected:
                 std::size_t getParticleRecordLength() const override { return std::max(static_cast<std::size_t>(mode_), MINIMUM_HEADER_DATA_LENGTH); };
@@ -50,7 +56,6 @@ namespace ParticleZoo
         };
     
 
-
         class Writer : public PhaseSpaceFileWriter
         {
             public:
@@ -62,6 +67,8 @@ namespace ParticleZoo
                     numberOfOriginalHistories_ = (float)numberOfOriginalHistories;
                     historyCountManualSet_ = true;
                 }
+
+                static std::vector<CLICommand> getFormatSpecificCLICommands();
 
             protected:
                 std::size_t getParticleRecordLength() const override { return static_cast<std::size_t>(mode_); };
@@ -82,5 +89,3 @@ namespace ParticleZoo
     } // namespace EGSphspFile
 
 } // namespace ParticleZoo
-
-#endif

@@ -9,18 +9,22 @@
 #include <mutex>
 #include <filesystem>
 
-#include "particlezoo/PhaseSpaceFileReader.h"
-#include "particlezoo/PhaseSpaceFileWriter.h"
+#include "particlezoo/utilities/argParse.h"
+#include "particlezoo/Particle.h"
 
 namespace ParticleZoo
 {
 
+    class PhaseSpaceFileReader;
+    class PhaseSpaceFileWriter;
+    class FixedValues;
+
     struct SupportedFormat
     {
-        std::string name; // e.g. "egsphsp", "IAEAphsp", etc.
-        std::string description; // e.g. "EGS Phase Space File Format"
-        std::string fileExtension; // e.g. ".egsphsp", ".IAEAphsp", etc.
-        bool fileExtensionCanHaveSuffix{false}; // true if the file extension can have a suffix like ".egsphsp1"
+        const std::string name; // e.g. "egsphsp", "IAEAphsp", etc.
+        const std::string description; // e.g. "EGS Phase Space File Format"
+        const std::string fileExtension; // e.g. ".egsphsp", ".IAEAphsp", etc.
+        const bool fileExtensionCanHaveSuffix{false}; // true if the file extension can have a suffix like ".egsphsp1"
     };
 
     class FormatRegistry

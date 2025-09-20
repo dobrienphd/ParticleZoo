@@ -39,6 +39,7 @@ GCC_SRCS_CONVERT := \
     src/PhaseSpaceFileReader.cc \
     src/PhaseSpaceFileWriter.cc \
     src/utilities/formats.cc \
+    src/utilities/argParse.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
     src/IAEA/IAEAHeader.cc \
@@ -52,6 +53,7 @@ GCC_SRCS_COMBINE := \
     src/PhaseSpaceFileReader.cc \
     src/PhaseSpaceFileWriter.cc \
     src/utilities/formats.cc \
+    src/utilities/argParse.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
     src/IAEA/IAEAHeader.cc \
@@ -65,6 +67,7 @@ GCC_SRCS_IMAGE := \
     src/PhaseSpaceFileReader.cc \
     src/PhaseSpaceFileWriter.cc \
     src/utilities/formats.cc \
+    src/utilities/argParse.cc \
     src/egs/egsphspFile.cc \
     src/peneasy/penEasyphspFile.cc \
     src/IAEA/IAEAHeader.cc \
@@ -80,6 +83,7 @@ LIB_SRCS := \
         src/PhaseSpaceFileReader.cc \
         src/PhaseSpaceFileWriter.cc \
         src/utilities/formats.cc \
+        src/utilities/argParse.cc \
         src/egs/egsphspFile.cc \
         src/peneasy/penEasyphspFile.cc \
         src/IAEA/IAEAHeader.cc \

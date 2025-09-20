@@ -4,11 +4,16 @@
 #include <iostream>
 
 #include "particlezoo/Particle.h"
+#include "particlezoo/PhaseSpaceFileReader.h"
+#include "particlezoo/PhaseSpaceFileWriter.h"
 #include "particlezoo/egs/egsphspFile.h"
 #include "particlezoo/IAEA/IAEAphspFile.h"
 #include "particlezoo/TOPAS/TOPASphspFile.h"
 #include "particlezoo/peneasy/penEasyphspFile.h"
+
+#ifdef USE_ROOT
 #include "particlezoo/ROOT/ROOTphsp.h"
+#endif
 
 #ifdef PZ_USE_EXT
 #include "particlezoo/ext_formats.h"
@@ -21,9 +26,14 @@ namespace ParticleZoo
     {
         static bool standardFormatsRegistered = false;
         if (standardFormatsRegistered) return;
+        standardFormatsRegistered = true;
 
         // Register IAEAphsp format
         SupportedFormat iaeaFormat{"IAEA", "IAEA Phase Space File Format", ".IAEAphsp"};
+        auto iaeaReaderCommands = IAEAphspFile::Reader::getFormatSpecificCLICommands();
+        auto iaeaWriterCommands = IAEAphspFile::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(iaeaReaderCommands);
+        ArgParser::RegisterCommands(iaeaWriterCommands);
         RegisterFormat(iaeaFormat,
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::IAEAphspFile::Reader>(filename, options);
@@ -34,6 +44,10 @@ namespace ParticleZoo
 
         // Register TOPAS format
         SupportedFormat topasFormat{"TOPAS", "TOPAS Phase Space File Formats (Binary, ASCII and Limited)", ".phsp"};
+        auto topasReaderCommands = TOPASphspFile::Reader::getFormatSpecificCLICommands();
+        auto topasWriterCommands = TOPASphspFile::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(topasReaderCommands);
+        ArgParser::RegisterCommands(topasWriterCommands);
         RegisterFormat(topasFormat,
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::TOPASphspFile::Reader>(filename, options);
@@ -54,6 +68,10 @@ namespace ParticleZoo
 
         // Register EGS format
         SupportedFormat egsFormat{"EGS", "EGS Phase Space File Formats (MODE0 and MODE2)", ".egsphsp", FILE_EXTENSION_CAN_HAVE_SUFFIX};
+        auto egsReaderCommands = EGSphspFile::Reader::getFormatSpecificCLICommands();
+        auto egsWriterCommands = EGSphspFile::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(egsReaderCommands);
+        ArgParser::RegisterCommands(egsWriterCommands);
         RegisterFormat(egsFormat,
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::EGSphspFile::Reader>(filename, options);
@@ -65,6 +83,10 @@ namespace ParticleZoo
     #ifdef USE_ROOT
         // Register ROOT format
         SupportedFormat rootFormat{"ROOT", "ROOT Phase Space File Format (TOPAS and OpenGATE templates available)", ".root"};
+        auto rootReaderCommands = ROOT::Reader::getFormatSpecificCLICommands();
+        auto rootWriterCommands = ROOT::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(rootReaderCommands);
+        ArgParser::RegisterCommands(rootWriterCommands);
         RegisterFormat(rootFormat,
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::ROOT::Reader>(filename, options);
