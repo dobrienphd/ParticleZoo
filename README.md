@@ -88,6 +88,7 @@ make debug    # Debug build with symbols
 make release  # Explicitly build release version
 
 # Install (optional)
+make install  # defaults to /usr/local for the install PREFIX
 make install PREFIX=/usr/local
 ```
 
