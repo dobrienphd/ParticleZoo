@@ -53,6 +53,7 @@
  *   --normalizeByParticles <true|false>  Normalize by particles instead of histories (default: false)
  *   --inputFormat <format>         Force input file format (default: auto-detect from extension)
  *   --outputFormat <tiff|bmp>      Force output image format (default: tiff)
+ *   --showDetails                  Print detailed information about the parameters being used
  *   --formats                      Display supported input file formats and exit
  *   --help                         Display usage information and exit
  *
@@ -122,6 +123,7 @@ int main(int argc, char* argv[]) {
     ImageFormat outputFormat = TIFF; // default output format
     bool energyWeighted = false; // default to particle fluence instead of energy fluence
     bool normalizeByParticles = false; // default to normalizing by histories instead of particles
+    bool printDetails = false; // default to not printing detailed info about the parameters being used
     Plane plane = XY; // default plane
     float planeLocation = 0; // default plane location
     ProjectionType projectionType = ProjectionType::FLATTEN; // default projection type
@@ -155,6 +157,7 @@ int main(int argc, char* argv[]) {
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
     const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence instead of particle fluence", { CLI_VALUELESS });
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
+    const CLICommand SHOW_DETAILS_COMMAND = CLICommand(NONE, "", "showDetails", "Show detailed info about the parameters being used", { CLI_VALUELESS });
     ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
     ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
     ArgParser::RegisterCommand(PLANE_COMMAND);
@@ -305,6 +308,9 @@ int main(int argc, char* argv[]) {
     if (userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)) {
         normalizeByParticles = true;
     }
+    if (userOptions.contains(SHOW_DETAILS_COMMAND)) {
+        printDetails = true;
+    }
     if (userOptions.contains(OUTPUT_FORMAT_COMMAND)) {
         std::string formatStr = std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0]);
         if (formatStr == "tiff" || formatStr == "TIFF") {
@@ -324,24 +330,26 @@ int main(int argc, char* argv[]) {
         reader = FormatRegistry::CreateReader(inputFormat, inputFile, userOptions);
     }
 
-    // Print out the parameters
-    std::cout << "Parameters:" << std::endl;
-    std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
-    std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
-    if (projectionType != ProjectionType::FLATTEN) {
-        std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
+    if (printDetails) {
+        // Print out the parameters
+        std::cout << "Parameters:" << std::endl;
+        std::cout << "  Image Format: " << (outputFormat == TIFF ? "TIFF" : "BMP") << std::endl;
+        std::cout << "  Plane: " << (plane == XY ? "XY" : (plane == XZ ? "XZ" : "YZ")) << std::endl;
+        if (projectionType != ProjectionType::FLATTEN) {
+            std::cout << "  Plane Location: " << planeLocation << " cm" << std::endl;
+        }
+        std::cout << "  Projection Scheme: " << (projectionType == ProjectionType::PROJECTION ? "Projection" : projectionType == ProjectionType::FLATTEN ? "Flatten" : "None") << std::endl;
+        std::cout << "  Input File: " << inputFile << " (Format: " << reader->getPHSPFormat() << ")" << std::endl;
+        std::cout << "  Output File: " << outputFile << std::endl; 
+        std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
+        std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
+        std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
+        if (projectionType == ProjectionType::NONE) {
+            std::cout << "  Thickness in third dimension: " << tolerance << " cm" << std::endl;
+        }
+        std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
+        std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
     }
-    std::cout << "  Projection Scheme: " << (projectionType == ProjectionType::PROJECTION ? "Projection" : projectionType == ProjectionType::FLATTEN ? "Flatten" : "None") << std::endl;
-    std::cout << "  Input File: " << inputFile << " (Format: " << reader->getPHSPFormat() << ")" << std::endl;
-    std::cout << "  Output File: " << outputFile << std::endl; 
-    std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
-    std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
-    std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
-    if (projectionType == ProjectionType::NONE) {
-        std::cout << "  Thickness in third dimension: " << tolerance << " cm" << std::endl;
-    }
-    std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
-    std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
 
     // Error handling for both reader and writer
     try {

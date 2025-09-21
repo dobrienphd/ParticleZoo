@@ -260,11 +260,11 @@ namespace ParticleZoo::ROOT {
     {
         std::uint64_t particlesRead = getParticlesRead();
         if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
-        
+
         if (!readIncrementalHistories_) {
             historyNumber_ = getHistoriesRead();
         }
-
+        
         int lastHistoryNumber = historyNumber_;
 
         tree->GetEntry(particlesRead++);
