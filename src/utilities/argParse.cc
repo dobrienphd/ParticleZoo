@@ -172,7 +172,7 @@ namespace ParticleZoo {
                         try {
                             CLIValue value = parseValue(argv[i], argType);
                             values.push_back(value);
-                        } catch (const std::exception& e) {
+                        } catch (const std::exception&) {
                             std::cerr << "Invalid value for option --" << optName << ": " << argv[i] << std::endl;
                             PrintUsage(usageMessage);
                         }
@@ -217,7 +217,7 @@ namespace ParticleZoo {
                         try {
                             CLIValue value = parseValue(argv[i], argType);
                             values.push_back(value);
-                        } catch (const std::exception& e) {
+                        } catch (const std::exception&) {
                             std::cerr << "Invalid value for option -" << optName << ": " << argv[i] << std::endl;
                             PrintUsage(usageMessage);
                         }

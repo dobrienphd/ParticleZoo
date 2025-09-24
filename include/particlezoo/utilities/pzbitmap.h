@@ -154,12 +154,12 @@ namespace ParticleZoo {
                 if (scaledR > 255) scaledR = 255;
                 if (scaledG > 255) scaledG = 255;
                 if (scaledB > 255) scaledB = 255;
-                byte r = static_cast<byte>(scaledR);
-                byte g = static_cast<byte>(scaledG);
-                byte b = static_cast<byte>(scaledB);
-                buf.write<byte>(b);
-                buf.write<byte>(g);
-                buf.write<byte>(r);
+                byte red = static_cast<byte>(scaledR);
+                byte green = static_cast<byte>(scaledG);
+                byte blue = static_cast<byte>(scaledB);
+                buf.write<byte>(blue);
+                buf.write<byte>(green);
+                buf.write<byte>(red);
             }
             if (pad) buf.writeBytes(padding);
         }
