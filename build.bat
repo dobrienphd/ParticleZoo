@@ -107,34 +107,23 @@ set OUTDIR=build\msvc\%BUILD_TYPE%
 REM Create output directory if it doesn't exist
 if not exist "%OUTDIR%" mkdir "%OUTDIR%"
 
-REM Try to find Visual Studio installation using vswhere tool
-set "VS_PATH="
-for %%p in (
-    "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-    "%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
-) do (
-    if exist "%%~p" (
-        for /f "tokens=*" %%i in ('%%~p -latest -products * -requires Microsoft.Component.MSBuild -property installationPath') do (
-            set "VS_PATH=%%i"
-        )
-    )
+REM locate VS installation via vswhere
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" (
+  echo ERROR: vswhere.exe not found at "%VSWHERE%"
+  exit /b 1
+)
+for /f "usebackq tokens=*" %%I in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
+  set "VS_PATH=%%I"
 )
 
-if "%VS_PATH%"=="" (
-    echo ERROR: Visual Studio installation not found.
-    echo.
-    echo This script requires Visual Studio with C++ development tools.
-    echo Please ensure that:
-    echo   1. Visual Studio is installed with C++ components
-    echo   2. The Visual Studio Installer is in the default location
-    echo.
-    echo If Visual Studio is installed in a non-standard location, you may need to
-    echo manually edit this batch file to set the correct path to VsDevCmd.bat
-    exit /b 1
-) else (
-    echo Found Visual Studio at: %VS_PATH%
-    call "%VS_PATH%\Common7\Tools\VsDevCmd.bat"
+if not defined VS_PATH (
+  echo ERROR: Could not detect Visual Studio install.
+  echo Please ensure Visual Studio is installed with C++ development tools.
+  exit /b 1
 )
+echo Visual Studio installation found at: %VS_PATH%
+call "%VS_PATH%\Common7\Tools\VsDevCmd.bat"
 
 REM Common include paths
 set INCLUDES=/I include
