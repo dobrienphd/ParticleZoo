@@ -221,7 +221,8 @@ int main(int argc, char* argv[]) {
                 if (historiesWritten < historiesInOriginalFile) {
                     writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
                 } else if (historiesWritten > historiesInOriginalFile) {
-                    throw std::runtime_error("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file (" + std::to_string(historiesInOriginalFile) + ").");
+                    progress.Complete("Error occurred.");
+                    throw std::runtime_error("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
                 }
 
                 // Complete the progress bar
@@ -245,7 +246,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Time taken: " << elapsed << " seconds" << std::endl;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error occurred: " << e.what() << std::endl;
+        std::cerr << std::endl << "Error occurred: " << e.what() << std::endl;
         errorCode = 1;
     }
 

@@ -102,14 +102,16 @@ namespace ParticleZoo::ROOT {
 
             int historyNumber_{-1};
 
-            bool readIncrementalHistories_{false};
+            bool treeHasNewHistoryMarker_{false};
+            bool treeHasHistoryNumber_{false};
             std::uint64_t numberOfParticles_{};
+            std::uint64_t numberOfOriginalHistories_{};
             TFile * file{};
             TTree * tree{};
     };
 
     inline std::uint64_t Reader::getNumberOfParticles() const { return numberOfParticles_; }
-    inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return historyNumber_+1; } // currently no implemented way to know how many histories are in the file until they are all read
+    inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
 
 
     // Writer class

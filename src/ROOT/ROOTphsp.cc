@@ -177,10 +177,13 @@ namespace ParticleZoo::ROOT {
             throw std::runtime_error("Branch '" + pdgCodeBranchName + "' not found in TTree: " + treeName);
 
         // optional branches
-        if (isNewHistoryBranchName.length()>0 && tree->GetBranch(isNewHistoryBranchName.c_str()))
+        if (isNewHistoryBranchName.length()>0 && tree->GetBranch(isNewHistoryBranchName.c_str())) {
+            treeHasNewHistoryMarker_ = true;
             tree->SetBranchAddress(isNewHistoryBranchName.c_str(), &isNewHistory_);
-        else if (isNewHistoryBranchName.length()>0)
+        } else if (isNewHistoryBranchName.length()>0) {
+            treeHasNewHistoryMarker_ = false;
             std::cerr << "Warning: Branch '" << isNewHistoryBranchName << "' not found in TTree: " << treeName << ". All particles will be assumed to be new histories." << std::endl;
+        }
 
         if (weightBranchName.length()>0 && tree->GetBranch(weightBranchName.c_str()))
             tree->SetBranchAddress(weightBranchName.c_str(),    &weight_);
@@ -208,7 +211,7 @@ namespace ParticleZoo::ROOT {
         }
 
         if (historyNumberBranchName.length()>0 && tree->GetBranch(historyNumberBranchName.c_str())) {
-            readIncrementalHistories_ = true;
+            treeHasHistoryNumber_ = true;
             tree->SetBranchAddress(historyNumberBranchName.c_str(), &historyNumber_);
         } else if (historyNumberBranchName.length()>0) {
             std::cerr << "Warning: Branch '" << historyNumberBranchName << "' not found in TTree: " << treeName << ". Empty histories will not be accounted for." << std::endl;
@@ -228,6 +231,39 @@ namespace ParticleZoo::ROOT {
         if (pdgCodeBranchName.length()>0) tree->AddBranchToCache(pdgCodeBranchName.c_str(), true);
         if (isNewHistoryBranchName.length()>0) tree->AddBranchToCache(isNewHistoryBranchName.c_str(), true);
         if (historyNumberBranchName.length()>0) tree->AddBranchToCache(historyNumberBranchName.c_str(), true);
+
+        if (numberOfParticles_ > 0) {
+            // determine the number of original histories in the file, if possible
+            if (treeHasHistoryNumber_) { // if we have a history number branch, we can determine the number of original histories directly
+                int firstHistoryNumber, lastHistoryNumber;
+                tree->GetEntry(0);
+                firstHistoryNumber = historyNumber_;
+                tree->GetEntry(numberOfParticles_-1);
+                lastHistoryNumber = historyNumber_;
+                int originalHistories = lastHistoryNumber - firstHistoryNumber + 1;
+                if (originalHistories <= 0) {
+                    std::cerr << "Warning: The history numbers in branch '" << historyNumberBranchName << "' do not appear to be valid. Empty histories will not be accounted for." << std::endl;
+                    treeHasHistoryNumber_ = false;
+                    numberOfOriginalHistories_ = 0;
+                } else {
+                    numberOfOriginalHistories_ = static_cast<std::uint64_t>(originalHistories);
+                }
+                historyNumber_ = firstHistoryNumber - 1; // Adjust initial history number for incremental histories
+            } else if (treeHasNewHistoryMarker_) { // if we have a new history marker, we need to loop over all particles to count the number of histories
+                numberOfOriginalHistories_ = 0;
+                for (std::uint64_t i=0; i<numberOfParticles_; ++i) {
+                    tree->GetEntry(i);
+                    if (isNewHistory_) numberOfOriginalHistories_++;
+                }
+                historyNumber_ = -1; // Reset initial history number for incremental histories
+            } else { // if no history information is available, assume each particle is a new history
+                numberOfOriginalHistories_ = numberOfParticles_;
+                historyNumber_ = -1; // Reset initial history number for incremental histories
+            }
+        } else { // no particles in the file
+            numberOfOriginalHistories_ = 0;
+            historyNumber_ = -1;
+        }
     }
 
     Reader::~Reader()
@@ -261,13 +297,15 @@ namespace ParticleZoo::ROOT {
         std::uint64_t particlesRead = getParticlesRead();
         if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
 
-        if (!readIncrementalHistories_) {
+        if (!treeHasHistoryNumber_) {
             historyNumber_ = getHistoriesRead();
         }
         
         int lastHistoryNumber = historyNumber_;
 
         tree->GetEntry(particlesRead++);
+
+        if (!treeHasHistoryNumber_ && !treeHasNewHistoryMarker_) isNewHistory_ = true; // If no history info is available, assume each particle is a new history
 
         ParticleType type = getParticleTypeFromPDGID(pdgCode_);
 
@@ -292,7 +330,7 @@ namespace ParticleZoo::ROOT {
                         isNewHistory_,
                         weight_);
 
-        if (readIncrementalHistories_) {
+        if (treeHasHistoryNumber_) {
             particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, historyIncrement);
         }
 

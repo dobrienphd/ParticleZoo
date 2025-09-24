@@ -488,7 +488,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Time taken: " << elapsed << " seconds" << std::endl;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error occurred: " << e.what() << std::endl;
+        std::cerr << std::endl << "Error occurred: " << e.what() << std::endl;
         errorCode = 1;
     }
 
