@@ -182,6 +182,11 @@ if /I "%BUILD_TYPE%"=="debug" (
       %COMMON_SRCS% PHSPImage.cc ^
       /link /DEBUG /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%
 
+    REM --- Dynamic library (.dll) ---
+    if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
+    echo Building Debug dynamic library...
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /link /OUT:%OUTDIR%\bin\particlezoo.dll %ROOT_LIBS%
+
 ) else (
     echo Release build.
     
@@ -210,6 +215,10 @@ if /I "%BUILD_TYPE%"=="debug" (
       %INCLUDES% %ROOT_FLAGS% ^
       %COMMON_SRCS% PHSPImage.cc ^
       /link /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%
+
+    REM --- Dynamic library (.dll) ---
+    echo Building Release dynamic library...
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /link /OUT:%OUTDIR%\particlezoo.dll %ROOT_LIBS%
 )
 
 if %ERRORLEVEL%==0 (
@@ -219,8 +228,11 @@ if %ERRORLEVEL%==0 (
     echo.
     echo Build artifacts can be found in: %CD%\%OUTDIR%
     echo   - Executables: PHSPConvert.exe, PHSPCombine.exe, PHSPImage.exe
-    echo   - Library: %LIB_NAME%
-) else (
+    echo   - Libraries: libparticlezoo.lib, particlezoo.dll
+    echo.
+)
+
+if %ERRORLEVEL% NEQ 0 (
     echo Build failed. Intermediate object files are retained.
 )
 
@@ -228,45 +240,42 @@ REM Install if requested
 if defined DO_INSTALL (
     echo Installing to %PREFIX%...
     
-    REM Check if installation path requires admin privileges
-    set NEEDS_ADMIN=0
-    echo %PREFIX% | findstr /i "Program Files" > nul && set NEEDS_ADMIN=1
-    echo %PREFIX% | findstr /i "\Windows" > nul && set NEEDS_ADMIN=1
+    REM Try to create directories
+    echo Creating directories...
     
-    REM Check if user has admin privileges
-    net session >nul 2>&1
-    if %errorlevel% neq 0 (
-        if %NEEDS_ADMIN%==1 (
-            echo WARNING: Installing to %PREFIX% requires administrator privileges.
-            echo This installation will likely fail. Please run the script as administrator:
-            echo Right-click on the batch file and select "Run as administrator"
-            echo.
-            echo Press any key to attempt installation anyway, or Ctrl+C to cancel...
-            pause > nul
-        )
+    mkdir "%PREFIX%\bin" 2>nul
+    if not exist "%PREFIX%\bin" (
+        set INSTALL_FAILED=1
+    ) else (
+        mkdir "%PREFIX%\include" 2>nul
+        mkdir "%PREFIX%\lib" 2>nul
+        copy "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin" >nul
+        copy "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin" >nul
+        copy "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin" >nul
+        copy "%OUTDIR%\particlezoo.dll" "%PREFIX%\bin" >nul
+        copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib" >nul
+        xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo" >nul
     )
     
-    if not exist "%PREFIX%\bin" mkdir "%PREFIX%\bin"
-    if not exist "%PREFIX%\lib" mkdir "%PREFIX%\lib"
-    if not exist "%PREFIX%\include" mkdir "%PREFIX%\include"
-    
-    copy "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin"
-    copy "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin"
-    copy "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin"
-    copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib"
-    xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo"
-    
-    if %errorlevel% neq 0 (
-        echo Installation failed. This may be due to insufficient permissions.
+    if defined INSTALL_FAILED (
+        echo.
+        echo Installation failed. This is likely due to insufficient permissions.
+        echo.
+        echo Try running this script with administrator privileges:
+        echo   1. Right-click on build.bat 
+        echo   2. Select "Run as administrator"
+        echo.
     ) else (
         echo Installation complete.
         echo.
         echo Files have been installed to:
-        echo   - Binaries: %PREFIX%\bin
-        echo   - Library: %PREFIX%\lib
+        echo   - Executables and dynamic library: %PREFIX%\bin
+        echo   - Static library: %PREFIX%\lib
         echo   - Headers: %PREFIX%\include\particlezoo
         echo.
-        echo REMINDER: To use the executables from any directory, add %PREFIX%\bin to your PATH:
-        echo   setx PATH "%%PATH%%;%PREFIX%\bin"
+        echo REMINDER: To use the executables from any directory, add %PREFIX%\bin to your PATH
+        echo   You can do this by running this command:
+        echo    setx PATH "%%PATH%%;%PREFIX%\bin"
+        echo.
     )
 )
