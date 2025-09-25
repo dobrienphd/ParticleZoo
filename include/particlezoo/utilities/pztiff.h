@@ -103,12 +103,12 @@ namespace ParticleZoo {
     }
 
     template<typename T>
-    inline void TiffImage<T>::setPixel(int x, int y, const Pixel<T>& p) {
+    inline void TiffImage<T>::setPixel(int, int, const Pixel<T>&) {
         throw std::runtime_error("setPixel with Pixel<T> not supported for TiffImage");
     }
 
     template<typename T>
-    inline void TiffImage<T>::setPixel(int x, int y, const T& R, const T& G, const T& B) {
+    inline void TiffImage<T>::setPixel(int, int, const T&, const T&, const T&) {
         throw std::runtime_error("setPixel with RGB values not supported for TiffImage");
     }
 
@@ -198,7 +198,6 @@ namespace ParticleZoo {
         constexpr uint16_t TAG_YPOSITION = 287;
 
         // Data type constants for IFD entries
-        constexpr uint16_t TYPE_BYTE = 1;
         constexpr uint16_t TYPE_SHORT = 3;
         constexpr uint16_t TYPE_LONG = 4;
         constexpr uint16_t TYPE_RATIONAL = 5;
