@@ -70,14 +70,21 @@ float energy_MeV = particle.getKineticEnergy() / MeV;
 
 ### Prerequisites
 
-- **Operating System**: Linux or macOS
-- **Compiler**: C++20 compatible compiler (GCC 10+, Clang 13+)
-- **Build Tools**: GNU Make
-- **Optional Dependencies**: 
-  - CERN ROOT (for ROOT format support) - requires `root-config` in PATH
+- **Operating System**: Linux, macOS, or Windows
+- **Compiler / Toolchain**:
+    - Linux/macOS: C++20 compatible compiler (GCC 10+, Clang 13+)
+    - Windows: Visual Studio 2019 or later with C++ development tools (cl.exe)
+- **Build Tools**:
+    - Linux/macOS: GNU Make
+    - Windows: Windows Command Prompt or PowerShell (uses `build.bat`)
+- **Optional Dependencies**:
+    - CERN ROOT (for ROOT format support)
+        - Linux/macOS: requires `root-config` in PATH
+        - Windows: not supported by build.bat script, requires manual compilation
 
 ### Build Process
 
+#### Linux and macOS
 ```bash
 # Configure the build system (auto-detects compiler and dependencies)
 ./configure [--prefix=/your/installation/prefix]
@@ -92,29 +99,60 @@ make install  # defaults to /usr/local for the install PREFIX
 make install PREFIX=/usr/local
 ```
 
+#### Windows
+```powershell
+# Configure, build, and optionally install
+build.bat [--prefix=C:\path\to\install] [debug|release]
+build.bat install [--prefix=C:\path\to\install] [debug|release]
+```
+
 ### Build Outputs
 
 The build system creates the following artifacts:
 
-**Release build** (`build/gcc/release/`):
-- `libparticlezoo.a` - Static library
-- Command-line tools: `PHSPConvert`, `PHSPCombine`, `PHSPImage`
+**Release build**
+- Linux/macOS: `build/gcc/release/`
+- Windows:   `build/msvc/release/`
+    - Static library:
+        - Linux/macOS: `libparticlezoo.a`
+        - Windows:   `libparticlezoo.lib`
+    - Executables:
+        - Linux/macOS: `PHSPConvert`, `PHSPCombine`, `PHSPImage`
+        - Windows:   `PHSPConvert.exe`, `PHSPCombine.exe`, `PHSPImage.exe`
+    - Dynamic library (Windows only): `build/msvc/release/bin/particlezoo.dll`
 
-**Debug build** (`build/gcc/debug/`):
-- `libparticlezoo.a` - Static library with debug symbols
-- Debug versions of command-line tools
+**Debug build**
+- Linux/macOS: `build/gcc/debug/`
+- Windows:   `build/msvc/debug/`
+    - Static library with debug symbols:
+        - Linux/macOS: `libparticlezoo.a`
+        - Windows:   `libparticlezoo.lib`
+    - Debug executables:
+        - Linux/macOS: `PHSPConvert`, etc.
+        - Windows:   `PHSPConvert.exe`, etc.
+    - Dynamic library (Windows only): `build/msvc/debug/bin/particlezoo.dll`
 
-**Installation** (if `make install` is run):
-- Headers: `$PREFIX/include/particlezoo/`
-- Library: `$PREFIX/lib/libparticlezoo.a`
-- Executables: `$PREFIX/bin/PHSPConvert`, etc.
+**Installation** (optional)
+- Linux/macOS (with `make install`):
+    - Headers: `$PREFIX/include/particlezoo/`
+    - Static Library: `$PREFIX/lib/libparticlezoo.a`
+    - Executables: `$PREFIX/bin/PHSPConvert`, etc.
+- Windows (with `build.bat install`):
+    - Headers: `%PREFIX%\include\particlezoo\`
+    - Static Library: `%PREFIX%\lib\particlezoo.lib`
+    - Executables and DLL: `%PREFIX%\bin\PHSPConvert.exe`, etc.
 
 ### Configuration Options
 
-The `configure` script accepts the following options:
+The `configure` script (Linux/macOS) accepts the following options:
 
 - `--prefix=PATH` - Installation prefix (default: `/usr/local`)
 - `--no-root` - Disable ROOT support even if available
+
+The `build.bat` script (Windows) accepts the following options:
+
+- `--prefix=PATH` - Installation prefix (default: `%LOCALAPPDATA%`)
+
 
 ## Using the Library
 
