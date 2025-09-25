@@ -17,7 +17,7 @@ namespace ParticleZoo
 
     class PhaseSpaceFileReader;
     class PhaseSpaceFileWriter;
-    class FixedValues;
+    struct FixedValues;
 
     struct SupportedFormat
     {

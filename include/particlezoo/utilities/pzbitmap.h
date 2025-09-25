@@ -120,7 +120,7 @@ namespace ParticleZoo {
         if (range <= 0) {
             throw std::runtime_error("Invalid range for pixel values");
         }
-        double scale = 255.0 / (upperLimit - lowerLimit);
+        T scale = static_cast<T>(255.0) / (upperLimit - lowerLimit);
 
         ByteBuffer buf(54 + pixelDataSize, ByteOrder::LittleEndian);
         // file header
@@ -148,18 +148,18 @@ namespace ParticleZoo {
                 T scaledR = (p.r - lowerLimit) * scale;
                 T scaledG = (p.g - lowerLimit) * scale;
                 T scaledB = (p.b - lowerLimit) * scale;
-                if (scaledR < 0) scaledR = 0;
-                if (scaledG < 0) scaledG = 0;
-                if (scaledB < 0) scaledB = 0;
-                if (scaledR > 255) scaledR = 255;
-                if (scaledG > 255) scaledG = 255;
-                if (scaledB > 255) scaledB = 255;
-                byte r = static_cast<byte>(scaledR);
-                byte g = static_cast<byte>(scaledG);
-                byte b = static_cast<byte>(scaledB);
-                buf.write<byte>(b);
-                buf.write<byte>(g);
-                buf.write<byte>(r);
+                if (scaledR < 0) scaledR = static_cast<T>(0);
+                if (scaledG < 0) scaledG = static_cast<T>(0);
+                if (scaledB < 0) scaledB = static_cast<T>(0);
+                if (scaledR > 255) scaledR = static_cast<T>(255);
+                if (scaledG > 255) scaledG = static_cast<T>(255);
+                if (scaledB > 255) scaledB = static_cast<T>(255);
+                byte red = static_cast<byte>(scaledR);
+                byte green = static_cast<byte>(scaledG);
+                byte blue = static_cast<byte>(scaledB);
+                buf.write<byte>(blue);
+                buf.write<byte>(green);
+                buf.write<byte>(red);
             }
             if (pad) buf.writeBytes(padding);
         }

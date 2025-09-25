@@ -172,7 +172,7 @@ namespace ParticleZoo {
                         try {
                             CLIValue value = parseValue(argv[i], argType);
                             values.push_back(value);
-                        } catch (const std::exception& e) {
+                        } catch (const std::exception&) {
                             std::cerr << "Invalid value for option --" << optName << ": " << argv[i] << std::endl;
                             PrintUsage(usageMessage);
                         }
@@ -217,7 +217,7 @@ namespace ParticleZoo {
                         try {
                             CLIValue value = parseValue(argv[i], argType);
                             values.push_back(value);
-                        } catch (const std::exception& e) {
+                        } catch (const std::exception&) {
                             std::cerr << "Invalid value for option -" << optName << ": " << argv[i] << std::endl;
                             PrintUsage(usageMessage);
                         }
@@ -259,9 +259,9 @@ namespace ParticleZoo {
                   
                     // Convert to lowercase for case-insensitive comparison
                     std::transform(nameA.begin(), nameA.end(), nameA.begin(),
-                                    [](unsigned char c) { return std::tolower(c); });
+                                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                     std::transform(nameB.begin(), nameB.end(), nameB.begin(),
-                                    [](unsigned char c) { return std::tolower(c); });
+                                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                         return nameA < nameB;
                 });
 

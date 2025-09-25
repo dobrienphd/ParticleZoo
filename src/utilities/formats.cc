@@ -52,7 +52,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::TOPASphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::TOPASphspFile::Writer>(filename, options);
                        });
         
@@ -62,7 +62,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::penEasyphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::penEasyphspFile::Writer>(filename, options);
                        });
 
@@ -76,7 +76,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::EGSphspFile::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::EGSphspFile::Writer>(filename, options);
                        });
 
@@ -91,7 +91,7 @@ namespace ParticleZoo
                        [](const std::string& filename, const UserOptions & options) {
                            return std::make_unique<ParticleZoo::ROOT::Reader>(filename, options);
                        },
-                       [](const std::string& filename, const UserOptions & options, const FixedValues & fixedValues) {
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::ROOT::Writer>(filename, options);
                        });
     #endif

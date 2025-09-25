@@ -207,7 +207,7 @@ int main(int argc, char* argv[]) {
         try {
             projectionType = ProjectionType::PROJECTION;
             planeLocation = std::get<float>(userOptions.at(PROJECT_TO_COMMAND)[0]) * cm;
-        } catch (const std::exception& e) {
+        } catch (const std::exception&) {
             throw std::runtime_error("Invalid project-to plane location");
         }
     }
