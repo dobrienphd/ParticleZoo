@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 REM Parse command-line arguments
-set PREFIX=%PROGRAMFILES%\particlezoo
+set PREFIX=%LOCALAPPDATA%\particlezoo
 set USE_ROOT=0
 set BUILD_TYPE=release
 
@@ -216,6 +216,10 @@ if %ERRORLEVEL%==0 (
     echo Deleting intermediate object files...
     del /Q "%OUTDIR%\*.obj"
     echo Build successful.
+    echo.
+    echo Build artifacts can be found in: %CD%\%OUTDIR%
+    echo   - Executables: PHSPConvert.exe, PHSPCombine.exe, PHSPImage.exe
+    echo   - Library: %LIB_NAME%
 ) else (
     echo Build failed. Intermediate object files are retained.
 )
@@ -223,6 +227,25 @@ if %ERRORLEVEL%==0 (
 REM Install if requested
 if defined DO_INSTALL (
     echo Installing to %PREFIX%...
+    
+    REM Check if installation path requires admin privileges
+    set NEEDS_ADMIN=0
+    echo %PREFIX% | findstr /i "Program Files" > nul && set NEEDS_ADMIN=1
+    echo %PREFIX% | findstr /i "\Windows" > nul && set NEEDS_ADMIN=1
+    
+    REM Check if user has admin privileges
+    net session >nul 2>&1
+    if %errorlevel% neq 0 (
+        if %NEEDS_ADMIN%==1 (
+            echo WARNING: Installing to %PREFIX% requires administrator privileges.
+            echo This installation will likely fail. Please run the script as administrator:
+            echo Right-click on the batch file and select "Run as administrator"
+            echo.
+            echo Press any key to attempt installation anyway, or Ctrl+C to cancel...
+            pause > nul
+        )
+    )
+    
     if not exist "%PREFIX%\bin" mkdir "%PREFIX%\bin"
     if not exist "%PREFIX%\lib" mkdir "%PREFIX%\lib"
     if not exist "%PREFIX%\include" mkdir "%PREFIX%\include"
@@ -233,5 +256,17 @@ if defined DO_INSTALL (
     copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib"
     xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo"
     
-    echo Installation complete.
+    if %errorlevel% neq 0 (
+        echo Installation failed. This may be due to insufficient permissions.
+    ) else (
+        echo Installation complete.
+        echo.
+        echo Files have been installed to:
+        echo   - Binaries: %PREFIX%\bin
+        echo   - Library: %PREFIX%\lib
+        echo   - Headers: %PREFIX%\include\particlezoo
+        echo.
+        echo REMINDER: To use the executables from any directory, add %PREFIX%\bin to your PATH:
+        echo   setx PATH "%%PATH%%;%PREFIX%\bin"
+    )
 )
