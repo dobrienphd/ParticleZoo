@@ -3,8 +3,9 @@ setlocal enabledelayedexpansion
 
 REM Parse command-line arguments
 set PREFIX=%LOCALAPPDATA%\particlezoo
-set USE_ROOT=0
 set BUILD_TYPE=release
+set ROOT_FLAGS=
+set ROOT_LIBS=
 
 :parse_args
 if "%~1"=="" goto :end_parse_args
@@ -16,16 +17,6 @@ if /I "%~1"=="--prefix" (
 )
 if /I "%~1:~0,9%"=="--prefix=" (
     set "PREFIX=!%~1:~9!"
-    shift
-    goto :parse_args
-)
-if /I "%~1"=="--no-root" (
-    set USE_ROOT=0
-    shift
-    goto :parse_args
-)
-if /I "%~1"=="--with-root" (
-    set USE_ROOT=1
     shift
     goto :parse_args
 )
@@ -53,48 +44,11 @@ echo Configuration:
 echo   Build type: %BUILD_TYPE%
 echo   Install prefix: %PREFIX%
 
-REM Try to find ROOT if not disabled
-if "%USE_ROOT%"=="1" (
-    echo Checking for ROOT installation...
-    
-    REM Check if ROOT_DIR environment variable is set
-    if defined ROOT_DIR (
-        if exist "!ROOT_DIR!\bin\root.exe" (
-            echo Found ROOT at !ROOT_DIR!
-            set ROOT_INCLUDE=/I "!ROOT_DIR!\include"
-            set ROOT_LIBS="!ROOT_DIR!\lib\*.lib"
-        ) else (
-            echo WARNING: ROOT_DIR is set but doesn't appear to contain a valid ROOT installation
-            set USE_ROOT=0
-        )
-    ) else (
-        REM Try common ROOT installation locations
-        for %%D in ("%PROGRAMFILES%\root" "C:\root" "C:\Program Files\root") do (
-            if exist "%%~D\bin\root.exe" (
-                echo Found ROOT at %%~D
-                set ROOT_DIR=%%~D
-                set ROOT_INCLUDE=/I "%%~D\include"
-                set ROOT_LIBS="%%~D\lib\*.lib"
-                goto :root_found
-            )
-        )
-        
-        echo WARNING: ROOT not found. Disabling ROOT support.
-        set USE_ROOT=0
-    )
-)
-:root_found
 
 REM Write configuration to config.status
 echo Writing configuration to config.status...
 (
-echo USE_ROOT=%USE_ROOT%
 echo PREFIX=%PREFIX%
-if "%USE_ROOT%"=="1" (
-    echo ROOT_DIR=%ROOT_DIR%
-    echo ROOT_INCLUDE=%ROOT_INCLUDE%
-    echo ROOT_LIBS=%ROOT_LIBS%
-)
 ) > config.status
 
 echo Configuration complete. USE_ROOT=%USE_ROOT%
@@ -129,12 +83,7 @@ REM Common include paths
 set INCLUDES=/I include
 
 REM Add ROOT flags if enabled
-set ROOT_FLAGS=
-if "%USE_ROOT%"=="1" (
-    set ROOT_FLAGS=/DUSE_ROOT=1 %ROOT_INCLUDE%
-) else (
-    set ROOT_LIBS=
-)
+REM ROOT support removed
 
 REM Common source files
 set COMMON_SRCS=src\PhaseSpaceFileReader.cc ^
@@ -146,8 +95,7 @@ src\peneasy\penEasyphspFile.cc ^
 src\IAEA\IAEAHeader.cc ^
 src\IAEA\IAEAphspFile.cc ^
 src\topas\TOPASHeader.cc ^
-src\topas\TOPASphspFile.cc ^
-src\ROOT\ROOTphsp.cc
+src\topas\TOPASphspFile.cc
 
 REM Static Library sources (same as common sources)
 set LIB_SRCS=%COMMON_SRCS%
