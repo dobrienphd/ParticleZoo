@@ -177,6 +177,7 @@ int main(int argc, char* argv[]) {
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(ENERGY_WEIGHTED_COMMAND);
     ArgParser::RegisterCommand(NORMALIZE_BY_PARTICLES_COMMAND);
+    ArgParser::RegisterCommand(SHOW_DETAILS_COMMAND);
     
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPImage [OPTIONS] <inputfile> <outputfile>\n"
