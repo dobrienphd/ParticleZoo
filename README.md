@@ -73,7 +73,7 @@ float energy_MeV = particle.getKineticEnergy() / MeV;
 - **Operating System**: Linux, macOS, or Windows
 - **Compiler / Toolchain**:
     - Linux/macOS: C++20 compatible compiler (GCC 10+, Clang 13+)
-    - Windows: Visual Studio 2019 or later with C++ development tools (cl.exe)
+    - Windows: Visual Studio 2019 or later with C++ development tools (MSVC)
 - **Build Tools**:
     - Linux/macOS: GNU Make
     - Windows: Windows Command Prompt or PowerShell (uses `build.bat`)
