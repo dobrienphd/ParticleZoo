@@ -147,9 +147,9 @@ SPLIT_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPSplit$(BINEXT)
 .DEFAULT_GOAL := release
 
 .PHONY: release debug \
-		gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib \
-		gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib \
-		clean install install-debug
+        gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib \
+        gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib \
+        clean install install-debug
 
 # Default (release)
 release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib
@@ -157,11 +157,17 @@ release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-s
 # Debug bundle
 debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-split gcc-debug-lib
 
-# Object lists for executables
+# Release object lists for executables
 CONVERT_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_CONVERT))
 COMBINE_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_COMBINE))
 IMAGE_OBJS_REL   := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_IMAGE))
 SPLIT_OBJS_REL   := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_SPLIT))
+
+# Debug object lists for executables
+CONVERT_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_CONVERT))
+COMBINE_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_COMBINE))
+IMAGE_OBJS_DBG   := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_IMAGE))
+SPLIT_OBJS_DBG   := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_SPLIT))
 
 # Release executable targets
 gcc-release-convert: $(CONVERT_BIN_REL)
@@ -184,7 +190,7 @@ $(IMAGE_BIN_REL): $(IMAGE_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Linking Release (PHSPImage)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
-   	
+
 $(SPLIT_BIN_REL): $(SPLIT_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Linking Release (PHSPSplit)..."
@@ -198,25 +204,25 @@ $(LIB_REL): $(LIB_OBJS_REL)
 	ar rcs $@ $^
 
 # Debug executable targets (could be parallelized similarly)
-gcc-debug-convert:
+gcc-debug-convert: $(CONVERT_OBJS_DBG)
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
 	@echo "Building Debug (PHSPConvert)..."
-	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_CONVERT) -o $(CONVERT_BIN_DBG) $(ROOT_LIBS)
+	$(CXX) $(CXXFLAGS_DEBUG) $(CONVERT_OBJS_DBG) -o $(CONVERT_BIN_DBG) $(ROOT_LIBS)
 
-gcc-debug-combine:
+gcc-debug-combine: $(COMBINE_OBJS_DBG)
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
 	@echo "Building Debug (PHSPCombine)..."
-	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_COMBINE) -o $(COMBINE_BIN_DBG) $(ROOT_LIBS)
+	$(CXX) $(CXXFLAGS_DEBUG) $(COMBINE_OBJS_DBG) -o $(COMBINE_BIN_DBG) $(ROOT_LIBS)
 
-gcc-debug-image:
+gcc-debug-image: $(IMAGE_OBJS_DBG)
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
 	@echo "Building Debug (PHSPImage)..."
-	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_IMAGE) -o $(IMAGE_BIN_DBG) $(ROOT_LIBS)
+	$(CXX) $(CXXFLAGS_DEBUG) $(IMAGE_OBJS_DBG) -o $(IMAGE_BIN_DBG) $(ROOT_LIBS)
 
-gcc-debug-split:
+gcc-debug-split: $(SPLIT_OBJS_DBG)
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
 	@echo "Building Debug (PHSPSplit)..."
-	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_SPLIT) -o $(SPLIT_BIN_DBG) $(ROOT_LIBS)
+	$(CXX) $(CXXFLAGS_DEBUG) $(SPLIT_OBJS_DBG) -o $(SPLIT_BIN_DBG) $(ROOT_LIBS)
 
 gcc-debug-lib: $(LIB_DBG)
 $(LIB_DBG): $(LIB_OBJS_DBG)
