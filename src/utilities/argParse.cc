@@ -82,6 +82,7 @@ namespace ParticleZoo {
         // Register the --help and --formats command
         parser.commands.insert(CLICommand(BOTH, "h", "help",    "Display this help message",       { CLI_VALUELESS }));
         parser.commands.insert(CLICommand(BOTH, "f", "formats", "List all supported file formats", { CLI_VALUELESS }));
+        parser.commands.insert(CLICommand(BOTH, "v", "version", "Display version information",     { CLI_VALUELESS }));
 
         auto readerCommands = PhaseSpaceFileReader::getCLICommands();
         auto writerCommands = PhaseSpaceFileWriter::getCLICommands();
