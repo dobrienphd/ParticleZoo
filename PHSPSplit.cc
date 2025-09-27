@@ -141,6 +141,8 @@ int main(int argc, char* argv[]) {
                   << inputFile << " (" << reader->getPHSPFormat() << ") into "
                   << splitNumber << " parts each with format " << writer->getPHSPFormat() << "..." << std::endl;
 
+        std::uint64_t totalHistoriesWritten = 0;
+
         std::uint64_t particlesWrittenAtStartOfSplit = 0;
         // Loop over the number of files to create
         for (filesSplit = 0; filesSplit < splitNumber; filesSplit++) {
@@ -154,6 +156,7 @@ int main(int argc, char* argv[]) {
 
             // Buffer the last particle read so that it can be written to the next file if needed
             Particle particle;
+            bool hasBufferedParticle = false;
 
             // Loop until we reach the particle limit for this file, ensuring we don't split a history across files and exceeding the limit for the last file if there are remaining particles
             for (std::uint64_t j = particlesWrittenAtStartOfSplit; reader->hasMoreParticles() && (belowLimit || !isNewHistory || isLastFile); j++) {
@@ -164,12 +167,27 @@ int main(int argc, char* argv[]) {
                 // Write the particle if we are below the limit, or if we're not below the limit but it's not a new history (to avoid splitting histories), or if it's the last file (to write any remaining particles)
                 if (belowLimit || !isNewHistory || isLastFile) {
                     writer->writeParticle(particle);
+                } else {
+                    // Buffer this particle to write to the next file
+                    hasBufferedParticle = true;
                 }
                 // Update the below limit flag for the next iteration
                 belowLimit = (j+1 < particlesPerSplit);
 
                 if (j % onePercentInterval == 0) {
                     progress.Update(j, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
+                }
+            }
+
+            totalHistoriesWritten += writer->getHistoriesWritten();
+            if (isLastFile) {
+                std::uint64_t totalOriginalHistories = reader->getNumberOfOriginalHistories();
+                if (totalOriginalHistories > totalHistoriesWritten) {
+                    writer->addAdditionalHistories(totalOriginalHistories - totalHistoriesWritten);
+                    totalHistoriesWritten = totalOriginalHistories;
+                } else if (totalHistoriesWritten > totalOriginalHistories) {
+                    progress.Complete("Error occurred.");
+                    throw std::runtime_error("The number of histories written (" + std::to_string(totalHistoriesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(totalOriginalHistories) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
                 }
             }
 
@@ -189,9 +207,13 @@ int main(int argc, char* argv[]) {
                 } else {
                     writer = FormatRegistry::CreateWriter(outputFormat, outputFilePath, userOptions, fixedValues);
                 }
-                // Write the last particle read to the new file
-                writer->writeParticle(particle);
-                particlesWrittenAtStartOfSplit = 1;
+                // Write the last buffered particle to the new file
+                if (hasBufferedParticle) {
+                    writer->writeParticle(particle);
+                    particlesWrittenAtStartOfSplit = 1;
+                } else {
+                    particlesWrittenAtStartOfSplit = 0;
+                }
             }
         }
 
@@ -199,6 +221,7 @@ int main(int argc, char* argv[]) {
         auto endTime = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsedSeconds = endTime - startTime;
         std::cout << "Split completed in " << elapsedSeconds.count() << " seconds\n";
+        std::cout << totalHistoriesWritten << " total histories written across " << filesSplit << " files\n";
 
     } catch (const std::exception & e) {
         std::cerr << std::endl << "Error occurred: " << e.what() << std::endl;
