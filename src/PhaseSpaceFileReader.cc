@@ -80,7 +80,7 @@ namespace ParticleZoo
             // Calculate byte offset to seek to
             std::size_t particleRecordStartOffset = getParticleRecordStartOffset();
             std::size_t particleRecordLength = getParticleRecordLength();
-            std::size_t bytesToSkip = particleRecordStartOffset + particleIndex * particleRecordLength;
+            std::size_t bytesToSkip = particleRecordStartOffset + static_cast<std::size_t>(particleIndex) * particleRecordLength;
 
             // Seek to the calculated position
             if (bytesToSkip + particleRecordLength > bytesInFile_) {

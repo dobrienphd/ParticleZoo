@@ -334,6 +334,18 @@ PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
 ```
 
+### PHSPSplit - File Splitting
+
+Split a single phase space file into multiple equally sized files.
+
+```bash
+# Split a file into multiple parts
+PHSPSplit --splitNumber 10 input.egsphsp
+
+# Use short flag and specify output format
+PHSPSplit -n 5 --outputFormat IAEA input.egsphsp
+```
+
 ## Extending the Library
 
 ### Adding New Formats
