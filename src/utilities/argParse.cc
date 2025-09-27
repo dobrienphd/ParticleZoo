@@ -1,6 +1,7 @@
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
+#include "particlezoo/utilities/version.h"
 
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
@@ -99,6 +100,12 @@ namespace ParticleZoo {
             std::exit(0);
         };
 
+        // Lambda to print version information and exit
+        auto printVersion = []() {
+            std::cout << Version::GetVersionString() << std::endl;
+            std::exit(0);
+        };
+
         // Lambda to parse a value based on expected type
         auto parseValue = [](const std::string& value, CLIArgType type) -> CLIValue {
             switch (type) {
@@ -151,6 +158,11 @@ namespace ParticleZoo {
                     printFormats();
                 }
 
+                // Handle special case for version command
+                if (optName == "version") {
+                    printVersion();
+                }
+
                 const CLICommand* cmd = findCommand(optName, false);
                 
                 if (!cmd) {
@@ -194,6 +206,11 @@ namespace ParticleZoo {
                 // Handle special case for formats command
                 if (optName == "f") {
                     printFormats();
+                }
+
+                // Handle special case for version command
+                if (optName == "v") {
+                    printVersion();
                 }
 
                 const CLICommand* cmd = findCommand(optName, true);

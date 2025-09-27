@@ -109,7 +109,7 @@ namespace ParticleZoo {
 
             // Reserve commands that cannot be used for user options
             // to avoid conflicts with built-in functionality
-            inline static const std::array<std::string, 5> reservedCommands { "h", "help", "f", "formats", "positionals" };
+            inline static const std::array<std::string, 7> reservedCommands { "h", "help", "f", "formats", "v", "version", "positionals" };
         public:
             ~ArgParser() = default;
 
