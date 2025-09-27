@@ -198,13 +198,14 @@ if defined DO_INSTALL (
     ) else (
         mkdir "%PREFIX%\include" 2>nul
         mkdir "%PREFIX%\lib" 2>nul
-        copy "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin" >nul
-        copy "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin" >nul
-        copy "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin" >nul
-        copy "%OUTDIR%\PHSPSplit.exe" "%PREFIX%\bin" >nul
-    copy "%OUTDIR%\bin\particlezoo.dll" "%PREFIX%\bin" >nul
-        copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib" >nul
-        xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo" >nul
+    REM Added /Y to suppress overwrite prompts (prevents hidden hang when artifacts already exist)
+    copy /Y "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin\" >nul
+    copy /Y "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin\" >nul
+    copy /Y "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin\" >nul
+    copy /Y "%OUTDIR%\PHSPSplit.exe" "%PREFIX%\bin\" >nul
+	copy /Y "%OUTDIR%\bin\particlezoo.dll" "%PREFIX%\bin\" >nul
+    copy /Y "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib\" >nul
+    xcopy /E /I /Y "include\particlezoo" "%PREFIX%\include\particlezoo" >nul
     )
     
     if defined INSTALL_FAILED (
