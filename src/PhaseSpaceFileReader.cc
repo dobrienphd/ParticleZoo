@@ -60,6 +60,59 @@ namespace ParticleZoo
         }
     }
 
+    void PhaseSpaceFileReader::moveToParticle(std::uint64_t particleIndex) {
+        // Validate input
+        if (formatType_ == FormatType::NONE) {
+            throw std::runtime_error("moveToParticle is not supported for NONE format.");
+        }
+        if (particleIndex >= getNumberOfParticles()) {
+            throw std::out_of_range("Particle index out of range.");
+        }
+
+        // Reset reading state
+        file_.clear(); // Clear any EOF or fail flags
+        buffer_.clear();
+        asciiLineBuffer_.clear();
+        numberOfParticlesToRead_ = 0;
+
+        if (formatType_ == FormatType::BINARY) {
+            // Calculate byte offset to seek to
+            std::size_t particleRecordStartOffset = getParticleRecordStartOffset();
+            std::size_t particleRecordLength = getParticleRecordLength();
+            std::size_t bytesToSkip = particleRecordStartOffset + particleIndex * particleRecordLength;
+
+            // Seek to the calculated position
+            if (bytesToSkip + particleRecordLength > bytesInFile_) {
+                throw std::out_of_range("Attempted to seek beyond end of file.");
+            }
+            file_.seekg(bytesToSkip, std::ios::beg);
+            if (file_.fail()) {
+                throw std::runtime_error("Failed to seek to particle index " + std::to_string(particleIndex) + " in file: " + fileName_);
+            }
+
+            bytesRead_ = bytesToSkip;
+        } else if (formatType_ == FormatType::ASCII) {
+            // For ASCII, we need to read lines until we reach the desired particle index
+            file_.seekg(0, std::ios::beg);
+            if (file_.fail()) {
+                throw std::runtime_error("Failed to seek to beginning of file: " + fileName_);
+            }
+            // reset counters
+            bytesRead_  = 0;
+            particlesRead_ = 0;
+            historiesRead_ = 0;
+            for (std::size_t p = 0 ; p < particleIndex ; p++) {
+                getNextParticle(false); // Read without counting in statistics
+            }
+        } else {
+            throw std::runtime_error("Unsupported format type for moveToParticle."); // Just for safety
+        }
+
+        particlesRead_ = particleIndex;
+        particlesSkipped_ = particleIndex;
+        historiesRead_ = 0;
+    }
+
     const ByteBuffer PhaseSpaceFileReader::getHeaderData() {
         std::size_t headerSize = getParticleRecordStartOffset();
         return getHeaderData(headerSize);

@@ -294,7 +294,7 @@ namespace ParticleZoo::ROOT {
 
     Particle Reader::readParticleManually()
     {
-        std::uint64_t particlesRead = getParticlesRead();
+        std::uint64_t particlesRead = getParticlesRead(true);
         if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
 
         if (!treeHasHistoryNumber_) {

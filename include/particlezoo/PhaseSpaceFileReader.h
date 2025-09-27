@@ -55,6 +55,8 @@ namespace ParticleZoo
 
             static std::vector<CLICommand> getCLICommands();
 
+            void                  moveToParticle(std::uint64_t particleIndex);
+
             void                  close();
 
         protected:
@@ -69,6 +71,7 @@ namespace ParticleZoo
 
             Particle              getNextParticle(bool countParticleInStatistics);
 
+            virtual std::uint64_t getParticlesRead(bool includeSkippedParticles);
             virtual std::size_t   getParticleRecordStartOffset() const;
             virtual std::size_t   getParticleRecordLength() const; // must be implemented for binary formatted files
 
@@ -101,6 +104,7 @@ namespace ParticleZoo
             const std::uint64_t bytesInFile_;
             std::uint64_t bytesRead_;
             std::uint64_t particlesRead_;
+            std::uint64_t particlesSkipped_;
             std::uint64_t historiesRead_;
             std::uint64_t numberOfParticlesToRead_;
             std::size_t particleRecordLength_;
@@ -159,7 +163,8 @@ namespace ParticleZoo
         return historiesRead_;
     }
 
-    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead() { return particlesRead_; }
+    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead() { return getParticlesRead(false); }
+    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead(bool includeSkippedParticles) { return includeSkippedParticles ? particlesRead_ : particlesRead_ - particlesSkipped_; }
 
     inline void PhaseSpaceFileReader::setCommentMarkers(const std::vector<std::string> & commentMarkers) {
         asciiCommentMarkers_ = commentMarkers;
