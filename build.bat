@@ -128,7 +128,14 @@ if /I "%BUILD_TYPE%"=="debug" (
     cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
       %INCLUDES% %ROOT_FLAGS% ^
       %COMMON_SRCS% PHSPImage.cc ^
-      /link /DEBUG /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%
+      /link /DEBUG /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%      
+
+    REM --- PHSPSplit.exe ---
+    echo Building Debug PHSPSplit...
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
+      %INCLUDES% %ROOT_FLAGS% ^
+      %COMMON_SRCS% PHSPSplit.cc ^
+      /link /DEBUG /OUT:%OUTDIR%\PHSPSplit.exe %ROOT_LIBS%
 
     REM --- Dynamic library (.dll) ---
     if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
@@ -163,6 +170,13 @@ if /I "%BUILD_TYPE%"=="debug" (
       %INCLUDES% %ROOT_FLAGS% ^
       %COMMON_SRCS% PHSPImage.cc ^
       /link /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%
+      
+    REM --- PHSPSplit.exe ---
+    echo Building Release PHSPSplit...
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" ^
+      %INCLUDES% %ROOT_FLAGS% ^
+      %COMMON_SRCS% PHSPSplit.cc ^
+      /link /OUT:%OUTDIR%\PHSPSplit.exe %ROOT_LIBS%
 
     REM --- Dynamic library (.dll) ---
     echo Building Release dynamic library...
@@ -175,7 +189,7 @@ if %ERRORLEVEL%==0 (
     echo Build successful.
     echo.
     echo Build artifacts can be found in: %CD%\%OUTDIR%
-    echo   - Executables: PHSPConvert.exe, PHSPCombine.exe, PHSPImage.exe
+    echo   - Executables: PHSPConvert.exe, PHSPCombine.exe, PHSPImage.exe, PHSPSplit.exe
     echo   - Libraries: libparticlezoo.lib, particlezoo.dll
     echo.
 )
@@ -200,6 +214,7 @@ if defined DO_INSTALL (
         copy "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin" >nul
+        copy "%OUTDIR%\PHSPSplit.exe" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\particlezoo.dll" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib" >nul
         xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo" >nul
