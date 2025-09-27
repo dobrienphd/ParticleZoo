@@ -106,81 +106,81 @@ if /I "%BUILD_TYPE%"=="debug" (
     
     REM --- Static library ---
     echo Building Debug static library...
+    set "OBJ_LIST="
     cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" %INCLUDES% %ROOT_FLAGS% /c %LIB_SRCS%
-    lib.exe /OUT:%OUTDIR%\%LIB_NAME% %OUTDIR%\*.obj
+    for %%F in (%COMMON_SRCS%) do (
+      set "OBJ_LIST=!OBJ_LIST! %OUTDIR%\%%~nF.obj"
+    )    
+    lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST!
     
     REM --- PHSPConvert.exe ---
     echo Building Debug PHSPConvert...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPConvert.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPConvert.cc ^
-      /link /DEBUG /OUT:%OUTDIR%\PHSPConvert.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPConvert.cc %ROOT_LIBS%
 
     REM --- PHSPCombine.exe ---
     echo Building Debug PHSPCombine...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPCombine.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPCombine.cc ^
-      /link /DEBUG /OUT:%OUTDIR%\PHSPCombine.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPCombine.cc %ROOT_LIBS%
       
     REM --- PHSPImage.exe ---
     echo Building Debug PHSPImage...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPImage.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPImage.cc ^
-      /link /DEBUG /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%      
+      %COMMON_SRCS% PHSPImage.cc %ROOT_LIBS%
 
     REM --- PHSPSplit.exe ---
     echo Building Debug PHSPSplit...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPSplit.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPSplit.cc ^
-      /link /DEBUG /OUT:%OUTDIR%\PHSPSplit.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPSplit.cc %ROOT_LIBS%
 
     REM --- Dynamic library (.dll) ---
     if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
     echo Building Debug dynamic library...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /link /OUT:%OUTDIR%\bin\particlezoo.dll %ROOT_LIBS%
+    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /Fe"%OUTDIR%\\bin\\particlezoo.dll" %ROOT_LIBS%
 
 ) else (
     echo Release build.
     
     REM --- Static library ---
     echo Building Release static library...
+    set "OBJ_LIST="
     cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" %INCLUDES% %ROOT_FLAGS% /c %LIB_SRCS%
-    lib.exe /OUT:%OUTDIR%\%LIB_NAME% %OUTDIR%\*.obj
+    for %%F in (%COMMON_SRCS%) do (
+      set "OBJ_LIST=!OBJ_LIST! %OUTDIR%\%%~nF.obj"
+    )
+    lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST!
     
     REM --- PHSPConvert.exe ---
     echo Building Release PHSPConvert...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPConvert.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPConvert.cc ^
-      /link /OUT:%OUTDIR%\PHSPConvert.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPConvert.cc %ROOT_LIBS%
 
     REM --- PHSPCombine.exe ---
     echo Building Release PHSPCombine...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPCombine.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPCombine.cc ^
-      /link /OUT:%OUTDIR%\PHSPCombine.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPCombine.cc %ROOT_LIBS%
       
     REM --- PHSPImage.exe ---
     echo Building Release PHSPImage...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPImage.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPImage.cc ^
-      /link /OUT:%OUTDIR%\PHSPImage.exe %ROOT_LIBS%
-      
+      %COMMON_SRCS% PHSPImage.cc %ROOT_LIBS%
+
     REM --- PHSPSplit.exe ---
     echo Building Release PHSPSplit...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" ^
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPSplit.exe" ^
       %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPSplit.cc ^
-      /link /OUT:%OUTDIR%\PHSPSplit.exe %ROOT_LIBS%
+      %COMMON_SRCS% PHSPSplit.cc %ROOT_LIBS%
 
     REM --- Dynamic library (.dll) ---
     echo Building Release dynamic library...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /link /OUT:%OUTDIR%\particlezoo.dll %ROOT_LIBS%
+    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /Fe"%OUTDIR%\\particlezoo.dll" %ROOT_LIBS%
 )
 
 if %ERRORLEVEL%==0 (
