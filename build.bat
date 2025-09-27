@@ -57,9 +57,11 @@ REM Set output directories
 set GCC_BIN_DIR_REL=build\msvc\release
 set GCC_BIN_DIR_DBG=build\msvc\debug
 set OUTDIR=build\msvc\%BUILD_TYPE%
+set OBJDIR=%OUTDIR%\obj
 
-REM Create output directory if it doesn't exist
+REM Create output/object directories if they don't exist
 if not exist "%OUTDIR%" mkdir "%OUTDIR%"
+if not exist "%OBJDIR%" mkdir "%OBJDIR%"
 
 REM locate VS installation via vswhere
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -103,100 +105,60 @@ set LIB_NAME=libparticlezoo.lib
 
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
-    
-    REM --- Static library ---
-    echo Building Debug static library...
-    set "OBJ_LIST="
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" %INCLUDES% %ROOT_FLAGS% /c %LIB_SRCS%
-    for %%F in (%COMMON_SRCS%) do (
-      set "OBJ_LIST=!OBJ_LIST! %OUTDIR%\%%~nF.obj"
-    )    
-    lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST!
-    
-    REM --- PHSPConvert.exe ---
-    echo Building Debug PHSPConvert...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPConvert.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPConvert.cc %ROOT_LIBS%
-
-    REM --- PHSPCombine.exe ---
-    echo Building Debug PHSPCombine...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPCombine.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPCombine.cc %ROOT_LIBS%
-      
-    REM --- PHSPImage.exe ---
-    echo Building Debug PHSPImage...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPImage.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPImage.cc %ROOT_LIBS%
-
-    REM --- PHSPSplit.exe ---
-    echo Building Debug PHSPSplit...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPSplit.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPSplit.cc %ROOT_LIBS%
-
-    REM --- Dynamic library (.dll) ---
-    if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
-    echo Building Debug dynamic library...
-    cl.exe /EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /Fe"%OUTDIR%\\bin\\particlezoo.dll" %ROOT_LIBS%
-
+    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX
 ) else (
     echo Release build.
-    
-    REM --- Static library ---
-    echo Building Release static library...
-    set "OBJ_LIST="
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" %INCLUDES% %ROOT_FLAGS% /c %LIB_SRCS%
-    for %%F in (%COMMON_SRCS%) do (
-      set "OBJ_LIST=!OBJ_LIST! %OUTDIR%\%%~nF.obj"
-    )
-    lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST!
-    
-    REM --- PHSPConvert.exe ---
-    echo Building Release PHSPConvert...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPConvert.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPConvert.cc %ROOT_LIBS%
-
-    REM --- PHSPCombine.exe ---
-    echo Building Release PHSPCombine...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPCombine.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPCombine.cc %ROOT_LIBS%
-      
-    REM --- PHSPImage.exe ---
-    echo Building Release PHSPImage...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPImage.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPImage.cc %ROOT_LIBS%
-
-    REM --- PHSPSplit.exe ---
-    echo Building Release PHSPSplit...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX /Fo"%OUTDIR%\\" /Fe"%OUTDIR%\\PHSPSplit.exe" ^
-      %INCLUDES% %ROOT_FLAGS% ^
-      %COMMON_SRCS% PHSPSplit.cc %ROOT_LIBS%
-
-    REM --- Dynamic library (.dll) ---
-    echo Building Release dynamic library...
-    cl.exe /EHsc /std:c++20 /O2 /Ob2 /W4 /WX %INCLUDES% %ROOT_FLAGS% /LD %LIB_SRCS% /Fe"%OUTDIR%\\particlezoo.dll" %ROOT_LIBS%
+    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX
 )
 
-if %ERRORLEVEL%==0 (
-    echo Deleting intermediate object files...
-    del /Q "%OUTDIR%\*.obj"
-    echo Build successful.
-    echo.
-    echo Build artifacts can be found in: %CD%\%OUTDIR%
-    echo   - Executables: PHSPConvert.exe, PHSPCombine.exe, PHSPImage.exe, PHSPSplit.exe
-    echo   - Libraries: libparticlezoo.lib, particlezoo.dll
-    echo.
+echo Compiling common sources...
+set "OBJ_LIST="
+for %%F in (%COMMON_SRCS%) do (
+    set "OBJ=%OBJDIR%\%%~nF.obj"
+    cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% %ROOT_FLAGS% /c %%F || goto :build_fail
+    set "OBJ_LIST=!OBJ_LIST! !OBJ!"
 )
+REM Debug: show object list
+REM echo Objects: !OBJ_LIST!
 
-if %ERRORLEVEL% NEQ 0 (
-    echo Build failed. Intermediate object files are retained.
-)
+echo Building static library %LIB_NAME% ...
+lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST! || goto :build_fail
+REM Build executables (compile unique source then link with common objects)
+echo Building PHSPConvert.exe ...
+cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% %ROOT_FLAGS% /c PHSPConvert.cc || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPConvert.exe" !OBJ_LIST! %OBJDIR%\PHSPConvert.obj %ROOT_LIBS% || goto :build_fail
+
+echo Building PHSPCombine.exe ...
+cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% %ROOT_FLAGS% /c PHSPCombine.cc || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPCombine.exe" !OBJ_LIST! %OBJDIR%\PHSPCombine.obj %ROOT_LIBS% || goto :build_fail
+
+echo Building PHSPImage.exe ...
+cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% %ROOT_FLAGS% /c PHSPImage.cc || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPImage.exe" !OBJ_LIST! %OBJDIR%\PHSPImage.obj %ROOT_LIBS% || goto :build_fail
+
+echo Building PHSPSplit.exe ...
+cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% %ROOT_FLAGS% /c PHSPSplit.cc || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj %ROOT_LIBS% || goto :build_fail
+
+REM Build dynamic library
+if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
+echo Building dynamic library particlezoo.dll ...
+link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! %ROOT_LIBS% || goto :build_fail
+goto :build_success
+
+:build_success
+echo Build successful.
+echo Artifacts in %OUTDIR%
+goto :post_build
+
+:build_fail
+echo Build failed.
+exit /b 1
+
+:post_build
+
+REM Decide whether to keep objects; keeping helps incremental builds. Uncomment to delete.
+REM del /Q "%OBJDIR%\*.obj"
 
 REM Install if requested
 if defined DO_INSTALL (
@@ -215,7 +177,7 @@ if defined DO_INSTALL (
         copy "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\PHSPSplit.exe" "%PREFIX%\bin" >nul
-        copy "%OUTDIR%\particlezoo.dll" "%PREFIX%\bin" >nul
+    copy "%OUTDIR%\bin\particlezoo.dll" "%PREFIX%\bin" >nul
         copy "%OUTDIR%\%LIB_NAME%" "%PREFIX%\lib" >nul
         xcopy /E /I "include\particlezoo" "%PREFIX%\include\particlezoo" >nul
     )
