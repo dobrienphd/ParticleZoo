@@ -151,13 +151,13 @@ namespace ParticleZoo
         return CreateReader(supportedFormats[0].name, filename, options);
     }
 
-    std::unique_ptr<PhaseSpaceFileReader> FormatRegistry::CreateReader(const std::string& name, const std::string& filename, const UserOptions & options)
+    std::unique_ptr<PhaseSpaceFileReader> FormatRegistry::CreateReader(const std::string& formatName, const std::string& filename, const UserOptions & options)
     {
         FormatRegistry& registry = instance();
         std::unique_lock lock(registry.mutex_);
-        auto it = registry.readerFactories_.find(name);
+        auto it = registry.readerFactories_.find(formatName);
         if (it == registry.readerFactories_.end()) {
-            throw std::runtime_error("Unsupported format: " + name);
+            throw std::runtime_error("Unsupported format: " + formatName);
         }
         return it->second(filename, options);
     }
@@ -176,13 +176,13 @@ namespace ParticleZoo
         return CreateWriter(supportedFormats[0].name, filename, options, fixedValues);
     }
 
-    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options, const FixedValues & fixedValues)
+    std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& formatName, const std::string& filename, const UserOptions & options, const FixedValues & fixedValues)
     {
         FormatRegistry& registry = instance();
         std::unique_lock lock(registry.mutex_);
-        auto it = registry.writerFactories_.find(name);
+        auto it = registry.writerFactories_.find(formatName);
         if (it == registry.writerFactories_.end()) {
-            throw std::runtime_error("Unsupported format: " + name);
+            throw std::runtime_error("Unsupported format: " + formatName);
         }
         return it->second(filename, options, fixedValues);
     }
@@ -213,6 +213,17 @@ namespace ParticleZoo
             }
         }
         return result;
+    }
+
+    const std::string FormatRegistry::ExtensionForFormat(const std::string& formatName) {
+        auto& registry = FormatRegistry::instance();
+        std::unique_lock lock(registry.mutex_);
+        auto it = std::find_if(registry.formats_.begin(), registry.formats_.end(),
+            [&formatName](const SupportedFormat& f) { return f.name == formatName; });
+        if (it == registry.formats_.end()) {
+            throw std::runtime_error("Unsupported format: " + formatName);
+        }
+        return it->fileExtension;
     }
 
     void FormatRegistry::PrintSupportedFormats()

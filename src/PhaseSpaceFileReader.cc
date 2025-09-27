@@ -39,6 +39,7 @@ namespace ParticleZoo
             }()),
         bytesRead_(0),
         particlesRead_(0),
+        particlesSkipped_(0),
         historiesRead_(0),
         numberOfParticlesToRead_(0),
         particleRecordLength_(0),

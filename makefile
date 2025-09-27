@@ -77,6 +77,20 @@ GCC_SRCS_IMAGE := \
     src/ROOT/ROOTphsp.cc \
     PHSPImage.cc
 
+GCC_SRCS_SPLIT := \
+    src/PhaseSpaceFileReader.cc \
+    src/PhaseSpaceFileWriter.cc \
+    src/utilities/formats.cc \
+    src/utilities/argParse.cc \
+    src/egs/egsphspFile.cc \
+    src/peneasy/penEasyphspFile.cc \
+    src/IAEA/IAEAHeader.cc \
+    src/IAEA/IAEAphspFile.cc \
+    src/topas/TOPASHeader.cc \
+    src/topas/TOPASphspFile.cc \
+    src/ROOT/ROOTphsp.cc \
+    PHSPSplit.cc
+
 # --- static library settings ---
 LIB_NAME := libparticlezoo.a
 LIB_SRCS := \
@@ -122,56 +136,65 @@ endif
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
 COMBINE_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPCombine$(BINEXT)
 IMAGE_BIN_REL   := $(GCC_BIN_DIR_REL)/PHSPImage$(BINEXT)
+SPLIT_BIN_REL   := $(GCC_BIN_DIR_REL)/PHSPSplit$(BINEXT)
 
 CONVERT_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPConvert$(BINEXT)
 COMBINE_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPCombine$(BINEXT)
 IMAGE_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPImage$(BINEXT)
+SPLIT_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPSplit$(BINEXT)
 
 # Make release the default goal
 .DEFAULT_GOAL := release
 
 .PHONY: release debug \
-        gcc-release-convert gcc-release-combine gcc-release-image gcc-release-lib \
-        gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-lib \
-        clean install install-debug
+		gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib \
+		gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib \
+		clean install install-debug
 
 # Default (release)
-release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-lib
+release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib
 
 # Debug bundle
-debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-lib
+debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-split gcc-debug-lib
 
 # Object lists for executables
 CONVERT_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_CONVERT))
 COMBINE_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_COMBINE))
 IMAGE_OBJS_REL   := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_IMAGE))
+SPLIT_OBJS_REL   := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_SPLIT))
 
 # Release executable targets
 gcc-release-convert: $(CONVERT_BIN_REL)
 gcc-release-combine: $(COMBINE_BIN_REL)
 gcc-release-image:   $(IMAGE_BIN_REL)
+gcc-release-split:   $(SPLIT_BIN_REL)
 
 $(CONVERT_BIN_REL): $(CONVERT_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
-	@echo "Linking Release (PHSPConvert)…"
+	@echo "Linking Release (PHSPConvert)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
 	@echo " "
 
 $(COMBINE_BIN_REL): $(COMBINE_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
-	@echo "Linking Release (PHSPCombine)…"
+	@echo "Linking Release (PHSPCombine)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
 
 $(IMAGE_BIN_REL): $(IMAGE_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
-	@echo "Linking Release (PHSPImage)…"
+	@echo "Linking Release (PHSPImage)..."
+	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
+   	
+$(SPLIT_BIN_REL): $(SPLIT_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Linking Release (PHSPSplit)..."
 	$(CXX) $(CXXFLAGS_RELEASE) $^ -o $@ $(ROOT_LIBS)
 
 # Release static library
 gcc-release-lib: $(LIB_REL)
 $(LIB_REL): $(LIB_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
-	@echo "Building Release static library ($@)…"
+	@echo "Building Release static library ($@)..."
 	ar rcs $@ $^
 
 # Debug executable targets (could be parallelized similarly)
@@ -190,21 +213,26 @@ gcc-debug-image:
 	@echo "Building Debug (PHSPImage)..."
 	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_IMAGE) -o $(IMAGE_BIN_DBG) $(ROOT_LIBS)
 
+gcc-debug-split:
+	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
+	@echo "Building Debug (PHSPSplit)..."
+	$(CXX) $(CXXFLAGS_DEBUG) $(GCC_SRCS_SPLIT) -o $(SPLIT_BIN_DBG) $(ROOT_LIBS)
+
 gcc-debug-lib: $(LIB_DBG)
 $(LIB_DBG): $(LIB_OBJS_DBG)
 	@$(MKDIR_P) $(dir $@)
-	@echo "Building Debug static library ($@)…"
+	@echo "Building Debug static library ($@)..."
 	ar rcs $@ $^
 
 # --- compile object files into the right dirs ---
 $(GCC_BIN_DIR_REL)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
-	@echo "Compiling Release object $<…"
+	@echo "Compiling Release object $<..."
 	$(CXX) $(CXXFLAGS_RELEASE) -c $< -o $@
 
 $(GCC_BIN_DIR_DBG)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
-	@echo "Compiling Debug object $<…"
+	@echo "Compiling Debug object $<..."
 	$(CXX) $(CXXFLAGS_DEBUG) -c $< -o $@
 
 # Clean
@@ -221,7 +249,7 @@ LIBDIR := $(PREFIX)/lib
 install:
 	@printf "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
-	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(BINDIR)
+	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(SPLIT_BIN_REL) $(BINDIR)
 	@cp $(LIB_REL) $(LIBDIR)
 	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
@@ -229,14 +257,14 @@ install:
 install-debug:
 	@printf "Installing debug binaries and library to $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
-	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(BINDIR)
+	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(SPLIT_BIN_DBG) $(BINDIR)
 	@cp $(LIB_DBG) $(LIBDIR)
 	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
 
 uninstall:
 	@printf "Removing particlezoo installation from $(PREFIX)..."
-	@rm -f $(BINDIR)/PHSPConvert$(BINEXT) $(BINDIR)/PHSPCombine$(BINEXT) $(BINDIR)/PHSPImage$(BINEXT)
+	@rm -f $(BINDIR)/PHSPConvert$(BINEXT) $(BINDIR)/PHSPCombine$(BINEXT) $(BINDIR)/PHSPImage$(BINEXT) $(BINDIR)/PHSPSplit$(BINEXT)
 	@rm -f $(LIBDIR)/$(LIB_NAME)
 	@rm -rf $(PREFIX)/include/particlezoo
 	@echo " done."

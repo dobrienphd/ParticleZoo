@@ -40,12 +40,13 @@ namespace ParticleZoo
         static const std::vector<SupportedFormat> SupportedFormats();
 
         static std::unique_ptr<PhaseSpaceFileReader> CreateReader(const std::string& filename, const UserOptions & options = {});
-        static std::unique_ptr<PhaseSpaceFileReader> CreateReader(const std::string& name, const std::string& filename, const UserOptions & options = {});
+        static std::unique_ptr<PhaseSpaceFileReader> CreateReader(const std::string& formatName, const std::string& filename, const UserOptions & options = {});
 
         static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& filename, const UserOptions & options = {}, const FixedValues & fixedValues = {});
-        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& name, const std::string& filename, const UserOptions & options = {}, const FixedValues & fixedValues = {});
+        static std::unique_ptr<PhaseSpaceFileWriter> CreateWriter(const std::string& formatName, const std::string& filename, const UserOptions & options = {}, const FixedValues & fixedValues = {});
 
         static std::vector<SupportedFormat> FormatsForExtension(const std::string& extension);
+        static const std::string ExtensionForFormat(const std::string& formatName);
 
         static void PrintSupportedFormats();
 
