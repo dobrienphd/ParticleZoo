@@ -204,14 +204,6 @@ int main(int argc, char* argv[]) {
     if (inputFile.empty()) throw std::runtime_error("No input file specified.");
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
-    if (userOptions.contains(PROJECT_TO_COMMAND)) {
-        try {
-            projectionType = ProjectionType::PROJECTION;
-            planeLocation = std::get<float>(userOptions.at(PROJECT_TO_COMMAND)[0]) * cm;
-        } catch (const std::exception&) {
-            throw std::runtime_error("Invalid project-to plane location");
-        }
-    }
     if (userOptions.contains(PLANE_LOCATION_COMMAND)) {
         planeLocation = std::get<float>(userOptions.at(PLANE_LOCATION_COMMAND)[0]) * cm;
     }
@@ -225,6 +217,14 @@ int main(int argc, char* argv[]) {
             projectionType = ProjectionType::FLATTEN;
         } else {
             throw std::runtime_error("Invalid projection type specified. Use none, project, or flatten.");
+        }
+    }
+    if (userOptions.contains(PROJECT_TO_COMMAND)) {
+        try {
+            projectionType = ProjectionType::PROJECTION;
+            planeLocation = std::get<float>(userOptions.at(PROJECT_TO_COMMAND)[0]) * cm;
+        } catch (const std::exception&) {
+            throw std::runtime_error("Invalid project-to plane location");
         }
     }
     if (userOptions.contains(PLANE_COMMAND)) {
