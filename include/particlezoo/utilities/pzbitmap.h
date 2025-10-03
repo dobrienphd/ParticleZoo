@@ -40,7 +40,7 @@ namespace ParticleZoo {
 
     template<typename T>
     inline BitmapImage<T>::BitmapImage(int w, int h)
-        : width_(w), height_(h), minValue_(std::numeric_limits<T>::max()), maxValue_(std::numeric_limits<T>::min()), data_(w * h)
+        : width_(w), height_(h), minValue_(std::numeric_limits<T>::max()), maxValue_(std::numeric_limits<T>::min()), data_(w * h, Pixel<T>{})
     {
         if (w <= 0 || h <= 0) throw std::runtime_error("Invalid dimensions");
     }

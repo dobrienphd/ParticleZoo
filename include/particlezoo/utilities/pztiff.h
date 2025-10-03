@@ -82,7 +82,7 @@ namespace ParticleZoo {
           yPixelsPerUnitLength_(yPixelsPerUnitLength),
           xOffset_(xOffset),
           yOffset_(yOffset),
-          data_(static_cast<size_t>(w) * static_cast<size_t>(h))
+          data_(static_cast<size_t>(w) * static_cast<size_t>(h), T{})
     {
         if (w <= 0 || h <= 0) throw std::runtime_error("Invalid dimensions");
     }
@@ -209,7 +209,7 @@ namespace ParticleZoo {
         // Calculate exact buffer size by counting all write operations
         const size_t tiffHeaderSize = 8;                     // magic(2) + version(2) + ifd_offset(4)
         const size_t ifdHeaderSize = 2;                      // number of entries(2)
-        const size_t ifdEntriesSize = 15 * 12;               // 15 entries × 12 bytes each (not 14!)
+        const size_t ifdEntriesSize = 15 * 12;               // 15 entries × 12 bytes each
         const size_t nextIfdOffset = 4;                      // next IFD offset(4)
         const size_t rationalDataSize = 4 * 8;               // 4 rational values × 8 bytes each
         const size_t totalHeaderSize = tiffHeaderSize + ifdHeaderSize + ifdEntriesSize + nextIfdOffset + rationalDataSize;

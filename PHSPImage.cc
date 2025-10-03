@@ -400,6 +400,7 @@ int main(int argc, char* argv[]) {
         // Read the particles from the input file and build the image data
         for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
             Particle particle = reader->getNextParticle();
+            if (particle.getType() == ParticleType::PseudoParticle) continue; // Skip pseudo-particles
 
             // project particle to the scoring plane based on selected projection scheme
             switch (projectionType)
@@ -452,6 +453,10 @@ int main(int argc, char* argv[]) {
             if (energyWeighted) {
                 weight *= particle.getKineticEnergy() / MeV;
             }
+
+            // if (pixelX == 1886 && pixelY == 1886) {
+            //     int debugVar = 0;
+            // }
 
             // Set pixel color based on the particle's weight
             float weightPerUnitArea = weight / pixelArea; // counts per cm2 or MeV per cm2
