@@ -454,10 +454,6 @@ int main(int argc, char* argv[]) {
                 weight *= particle.getKineticEnergy() / MeV;
             }
 
-            // if (pixelX == 1886 && pixelY == 1886) {
-            //     int debugVar = 0;
-            // }
-
             // Set pixel color based on the particle's weight
             float weightPerUnitArea = weight / pixelArea; // counts per cm2 or MeV per cm2
             float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
