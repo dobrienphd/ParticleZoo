@@ -32,31 +32,28 @@ echo -n "checking for a C++ compiler... "
 if [ -z "$CXX" ]; then
     for comp in g++ clang++ c++; do
         if command -v "$comp" &> /dev/null; then
-            CXX="$comp"
-            break
+            # Test for C++20 support
+            echo 'int main(){}' > conftest.cpp
+            if "$comp" -std=c++20 -o conftest conftest.cpp &> /dev/null; then
+                CXX="$comp"
+                rm -f conftest.cpp conftest
+                break
+            fi
+            rm -f conftest.cpp conftest
         fi
     done
 fi
 if [ -z "$CXX" ]; then
     echo "no"
-    echo "Error: No C++ compiler found. Please install g++, clang++, or another C++ compiler."
+    echo "Error: No C++ compiler with C++20 support found. Please install g++, clang++, or another C++ compiler."
     exit 1
 else
     echo "$CXX"
 fi
 
-# Test for C++20 support
+# Confirm C++20 support
 echo -n "checking whether $CXX accepts -std=c++20... "
-echo 'int main(){}' > conftest.cpp
-if ! "$CXX" -std=c++20 -o conftest conftest.cpp &> /dev/null; then
-    echo "no"
-    rm -f conftest.cpp conftest
-    echo "Error: Compiler $CXX does not support C++20."
-    exit 1
-else
-    echo "yes"
-fi
-rm -f conftest.cpp conftest
+echo "yes"
 
 CXXFLAGS="-std=c++20"
 
