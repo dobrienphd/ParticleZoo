@@ -22,6 +22,7 @@ namespace ParticleZoo::IAEAphspFile
     extern CLICommand IAEAAddXLASTCommand;
     extern CLICommand IAEAAddYLASTCommand;
     extern CLICommand IAEAAddZLASTCommand;
+    extern CLICommand IAEAIgnoreChecksumCommand;
 
     class Reader : public PhaseSpaceFileReader
     {

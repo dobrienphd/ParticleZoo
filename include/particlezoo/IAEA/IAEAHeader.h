@@ -166,6 +166,8 @@ namespace ParticleZoo::IAEAphspFile
             bool                hasExtraLong(EXTRA_LONG_TYPE type) const;
             void                setRecordLength(std::size_t length);
             void                setOriginalHistories(std::uint64_t originalHistories);
+            void                setNumberOfParticles(std::uint64_t numberOfParticles);
+            void                setNumberOfParticles(ParticleType particleType, std::uint64_t numberOfParticles);
             void                countParticleStats(const Particle & particle);
             void                setSection(const std::string &sectionName, const std::string &sectionValue);
             void                setSection(SECTION section, const std::string &sectionValue);
@@ -327,6 +329,13 @@ namespace ParticleZoo::IAEAphspFile
     inline void IAEAHeader::setConstantWeight(float weight) { constantWeight_ = weight; if (weightIsStored_) { weightIsStored_ = false; recordLength_ -= sizeof(float); } }
     inline void IAEAHeader::setRecordLength(std::size_t length) { recordLength_ = length; }
     inline void IAEAHeader::setOriginalHistories(std::uint64_t originalHistories) { originalHistories_ = originalHistories; }
+    inline void IAEAHeader::setNumberOfParticles(std::uint64_t numberOfParticles) { numberOfParticles_ = numberOfParticles; }
+    inline void IAEAHeader::setNumberOfParticles(ParticleType particleType, std::uint64_t numberOfParticles) {
+        if (particleStatsTable_.find(particleType) == particleStatsTable_.end()) {
+            particleStatsTable_[particleType] = ParticleStats();
+        }
+        particleStatsTable_[particleType].count_ = numberOfParticles;
+    }
 
     inline void IAEAHeader::addExtraFloat(EXTRA_FLOAT_TYPE type) {
         if (!hasExtraFloat(type)) {

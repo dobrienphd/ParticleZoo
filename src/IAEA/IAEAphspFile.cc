@@ -1,6 +1,8 @@
 
 #include "particlezoo/IAEA/IAEAphspFile.h"
 
+#include <filesystem>
+
 namespace ParticleZoo::IAEAphspFile
 {
 
@@ -21,11 +23,43 @@ namespace ParticleZoo::IAEAphspFile
     CLICommand IAEAAddXLASTCommand{ WRITER, "", "IAEA-xlast", "Include the XLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
     CLICommand IAEAAddYLASTCommand{ WRITER, "", "IAEA-ylast", "Include the YLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
     CLICommand IAEAAddZLASTCommand{ WRITER, "", "IAEA-zlast", "Include the ZLAST extra float in the IAEA phase space file", { CLI_VALUELESS } };
+    CLICommand IAEAIgnoreChecksumCommand{ READER, "", "IAEA-ignore-checksum", "Ignore checksum errors when reading an IAEA phase space file", { CLI_VALUELESS } };
 
     // Implementations for the IAEAphspFileReader class
 
+    const IAEAHeader initializeHeader(const UserOptions & options, const std::string & filename) {
+        IAEAHeader header_ = IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename));
+        std::string phspPath = header_.getDataFilePath();
+        bool ignoreChecksum = options.contains(IAEAIgnoreChecksumCommand);
+        if (!header_.checksumIsValid()) {
+            if (ignoreChecksum) {
+                // try to do some repair on these values
+                std::uint64_t checksum = header_.getChecksum();
+                std::uint64_t particleCount = header_.getNumberOfParticles();
+
+                const std::size_t   recordLength = header_.getRecordLength();
+                const std::size_t   fileSize = std::filesystem::file_size(phspPath);
+
+                // Check that the checksum matches the file size, if not update it
+                if (checksum != fileSize) {
+                    checksum = fileSize;
+                    header_.setChecksum(checksum);
+                }
+
+                // Check that the number of particles matches the file size and record length, if not update it
+                if (particleCount * recordLength != fileSize) {
+                    particleCount = fileSize / recordLength;
+                    header_.setNumberOfParticles(particleCount);
+                }
+            } else {
+                throw std::runtime_error("The checksum in the IAEA header '" + header_.getHeaderFilePath() + "' is invalid. The file may be corrupted.");
+            }
+        }
+        return header_;
+    }
+
     Reader::Reader(const std::string & filename, const UserOptions & options)
-        : PhaseSpaceFileReader("IAEA", filename, options), header_(IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename)))
+        : PhaseSpaceFileReader("IAEA", filename, options), header_(initializeHeader(options, filename))
     {
         if (!header_.xIsStored()) setConstantX(header_.getConstantX());
         if (!header_.yIsStored()) setConstantY(header_.getConstantY());
@@ -37,7 +71,7 @@ namespace ParticleZoo::IAEAphspFile
     }
 
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() {
-        return {};
+        return { IAEAIgnoreChecksumCommand };
     }
 
     Particle Reader::readBinaryParticle(ByteBuffer & buffer)
@@ -100,6 +134,13 @@ namespace ParticleZoo::IAEAphspFile
         {
             std::int32_t extraLong = buffer.read<std::int32_t>();
             IAEAHeader::EXTRA_LONG_TYPE IAEAextraLongType = header_.getExtraLongType(i);
+
+            if (!isNewHistory && IAEAextraLongType == IAEAHeader::EXTRA_LONG_TYPE::INCREMENTAL_HISTORY_NUMBER && extraLong > 0) {
+                // This indicates the start of a new history, despite the kinetic energy not being negative (can help recover a malformed file)
+                isNewHistory = true;
+                particle.setNewHistory(true);
+            }
+
             IntPropertyType extraLongType = IAEAHeader::translateExtraLongType(IAEAextraLongType);
             particle.setIntProperty(extraLongType, extraLong);
         }
