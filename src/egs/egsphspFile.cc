@@ -85,6 +85,11 @@ namespace ParticleZoo::EGSphspFile
         float w = std::sqrt(1.f - uuvv);
 
         float weight = buffer.read<float>();
+        bool wSignIsNegative = weight < 0;
+        if (wSignIsNegative) {
+            w = -w; // restore w directional component sign
+            weight = -weight; // restore weight to positive
+        }
 
         bool isNewHistory = energy < 0;
         if (isNewHistory) { energy = -energy; }
@@ -189,7 +194,11 @@ namespace ParticleZoo::EGSphspFile
         // EGS doesn't store the Z value
         float u = particle.getDirectionalCosineX();
         float v = particle.getDirectionalCosineY();
+        float w = particle.getDirectionalCosineZ();
         float weight = particle.getWeight();
+        if (w < 0) {
+            weight = -weight; // store weight as negative to indicate negative w direction
+        }
 
         // Update energy stats in internal units
         if (energy > maxKineticEnergy_) {
@@ -228,7 +237,7 @@ namespace ParticleZoo::EGSphspFile
                 energy += ELECTRON_REST_MASS_MEV; // Convert to total energy
                 break;
             default:
-                throw std::runtime_error("Particle type not supported by EGS phase-space file format.");
+                throw std::runtime_error("Particle type " + std::string(getParticleTypeName(particle.getType())) + " not supported by EGS phase-space file format.");
         }
         LATCH |= (particleChargeBits << 29);
 
