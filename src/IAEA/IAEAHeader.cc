@@ -41,8 +41,8 @@ namespace ParticleZoo::IAEAphspFile
         generateSectionTable();
     }
 
-    IAEAHeader::IAEAHeader(const IAEAHeader &other)
-    : filePath_(""),
+    IAEAHeader::IAEAHeader(const IAEAHeader &other, const std::string & newFilePath)
+    : filePath_(newFilePath),
       IAEAIndex_(other.IAEAIndex_),
       title_(other.title_),
       fileType_(other.fileType_),

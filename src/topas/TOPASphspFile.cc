@@ -46,8 +46,7 @@ namespace ParticleZoo::TOPASphspFile
         bool wIsNegative, isNewHistory;
         iss >> x >> y >> z >> u >> v >> energy >> weight >> typeCode >> wIsNegative >> isNewHistory;
 
-        float uuvv = std::min(1.f, u*u+v*v);
-        float w = std::sqrt(1.f - uuvv);
+        float w = calcThirdUnitComponent(u, v);
         if (wIsNegative) {
             w = -w; // restore w directional component sign
         }
@@ -136,8 +135,7 @@ namespace ParticleZoo::TOPASphspFile
         bool wIsNegative = buffer.read<bool>();
         bool isNewHistory = buffer.read<bool>();
 
-        float uuvv = std::min(1.f, u*u+v*v);
-        float w = std::sqrt(1.f - uuvv);
+        float w = calcThirdUnitComponent(u, v);
         if (wIsNegative) {
             w = -w; // restore w directional component sign
         }
@@ -190,8 +188,7 @@ namespace ParticleZoo::TOPASphspFile
             energy = -energy; // restore energy
         }
 
-        float uuvv = std::min(1.f, u*u+v*v);
-        float w = std::sqrt(1.f - uuvv);
+        float w = calcThirdUnitComponent(u, v);
         if (particleType < 0) {
             w = -w; // restore w directional component sign
             particleType = -particleType; // restore particle type

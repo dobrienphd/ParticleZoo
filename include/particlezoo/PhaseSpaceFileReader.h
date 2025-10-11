@@ -74,6 +74,7 @@ namespace ParticleZoo
             virtual std::uint64_t getParticlesRead(bool includeSkippedParticles);
             virtual std::size_t   getParticleRecordStartOffset() const;
             virtual std::size_t   getParticleRecordLength() const; // must be implemented for binary formatted files
+                    std::size_t   getNumberOfEntriesInFile() const; // number of time record length fits into file size minus the header size (for binary only, otherwise returns getNumberOfParticles())
 
             virtual Particle      readBinaryParticle(ByteBuffer & buffer); // not pure virtual to allow for ASCII format
             virtual Particle      readASCIIParticle(const std::string & line); // not pure virtual to allow for binary format
@@ -84,6 +85,9 @@ namespace ParticleZoo
             const ByteBuffer      getHeaderData();
             const ByteBuffer      getHeaderData(std::size_t headerSize);
             void                  setByteOrder(ByteOrder byteOrder);
+
+            float                 calcThirdUnitComponent(float & u, float & v) const;
+            double                calcThirdUnitComponent(double & u, double & v) const;
 
             const UserOptions&    getUserOptions() const;
 
@@ -103,11 +107,13 @@ namespace ParticleZoo
 
             const std::uint64_t bytesInFile_;
             std::uint64_t bytesRead_;
-            std::uint64_t particlesRead_;
-            std::uint64_t particlesSkipped_;
+            std::uint64_t particlesRead_; // counts all particle records even if they are skipped or are only meta-data particles
+            std::uint64_t particlesSkipped_; // counts all particles skipped by moveToParticle
+            std::uint64_t metaparticlesRead_; // counts all metadata-only particles read which are not counted towards the reported number of particles in the file
             std::uint64_t historiesRead_;
             std::uint64_t numberOfParticlesToRead_;
             std::size_t particleRecordLength_;
+            bool isFirstParticle_;
             ByteBuffer buffer_;
 
             FixedValues fixedValues_;
@@ -164,7 +170,7 @@ namespace ParticleZoo
     }
 
     inline std::uint64_t PhaseSpaceFileReader::getParticlesRead() { return getParticlesRead(false); }
-    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead(bool includeSkippedParticles) { return includeSkippedParticles ? particlesRead_ : particlesRead_ - particlesSkipped_; }
+    inline std::uint64_t PhaseSpaceFileReader::getParticlesRead(bool includeAllParticleRecords) { return includeAllParticleRecords ? particlesRead_ : particlesRead_ - metaparticlesRead_ - particlesSkipped_; }
 
     inline void PhaseSpaceFileReader::setCommentMarkers(const std::vector<std::string> & commentMarkers) {
         asciiCommentMarkers_ = commentMarkers;
@@ -191,4 +197,48 @@ namespace ParticleZoo
     inline Particle PhaseSpaceFileReader::readParticleManually() {
         throw std::runtime_error("readParticleManually() must be implemented for manual particle reading.");
     }
+
+    inline std::size_t PhaseSpaceFileReader::getNumberOfEntriesInFile() const {
+        // For binary files, return the number of times the record length fits into the file size minus the header size
+        // For other formats, just return getNumberOfParticles()
+        if (formatType_ != FormatType::BINARY) {
+            return getNumberOfParticles();
+        }
+        std::uint64_t headerSize = getParticleRecordStartOffset();
+        if (bytesInFile_ <= headerSize) {
+            return 0;
+        }
+        std::size_t recordLength = getParticleRecordLength();
+        return recordLength > 0 ? (bytesInFile_ - headerSize) / recordLength : 0;
+    }
+
+    inline float PhaseSpaceFileReader::calcThirdUnitComponent(float & u, float & v) const {
+        const float uuvv = std::fma(u, u, v * v);
+        if (uuvv > 1.f) [[unlikely]] {
+            // assume w is 0 and renormalize u and v
+            float normFactor = 1.f / std::sqrt(uuvv);
+            u *= normFactor;
+            v *= normFactor;
+            return 0.f; // Exactly tangential
+        }
+        if (uuvv == 1.f) [[unlikely]] {
+            return 0.f; // Exactly tangential
+        }
+        return std::sqrt(1.f - uuvv); // Standard form
+    }
+
+    inline double PhaseSpaceFileReader::calcThirdUnitComponent(double & u, double & v) const {
+        const double uuvv = std::fma(u, u, v * v);
+        if (uuvv > 1.0) [[unlikely]] {
+            // assume w is 0 and renormalize u and v
+            double normFactor = 1.0 / std::sqrt(uuvv);
+            u *= normFactor;
+            v *= normFactor;
+            return 0.0; // Exactly tangential
+        }
+        if (uuvv == 1.0) [[unlikely]] {
+            return 0.0; // Exactly tangential
+        }
+        return std::sqrt(1.0 - uuvv); // Standard form
+    }    
 } // namespace ParticleZoo

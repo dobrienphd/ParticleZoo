@@ -30,6 +30,7 @@ namespace ParticleZoo
             virtual void                writeParticle(Particle particle);
             virtual std::uint64_t       getMaximumSupportedParticles() const = 0;
             virtual std::uint64_t       getHistoriesWritten() const;
+                    std::uint64_t       getParticlesWritten() const;
 
             void                        addAdditionalHistories(std::uint64_t additionalHistories);
 
@@ -112,6 +113,7 @@ namespace ParticleZoo
             FormatType formatType_;
             std::ofstream file_;
             std::uint64_t historiesWritten_;
+            std::uint64_t particlesWritten_;
             std::size_t particleRecordLength_;
 
             ByteBuffer buffer_;
@@ -127,6 +129,7 @@ namespace ParticleZoo
 
     inline const std::string PhaseSpaceFileWriter::getPHSPFormat() const { return phspFormat_; }
     inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_; }
+    inline std::uint64_t PhaseSpaceFileWriter::getParticlesWritten() const { return particlesWritten_; }
     inline const std::string PhaseSpaceFileWriter::getFileName() const { return fileName_; }
     inline ByteOrder PhaseSpaceFileWriter::getByteOrder() const { return buffer_.getByteOrder(); }
 
@@ -154,13 +157,13 @@ namespace ParticleZoo
     inline bool PhaseSpaceFileWriter::canHaveConstantPz() const { return false; }
     inline bool PhaseSpaceFileWriter::canHaveConstantWeight() const { return false; }
 
-    inline void PhaseSpaceFileWriter::setConstantX(float X) { if (!canHaveConstantX()) return; fixedValues_.xIsConstant = true; fixedValues_.constantX = X; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantY(float Y) { if (!canHaveConstantY()) return; fixedValues_.yIsConstant = true; fixedValues_.constantY = Y; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantZ(float Z) { if (!canHaveConstantZ()) return; fixedValues_.zIsConstant = true; fixedValues_.constantZ = Z; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantPx(float Px) { if (!canHaveConstantPx()) return; fixedValues_.pxIsConstant = true; fixedValues_.constantPx = Px; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantPy(float Py) { if (!canHaveConstantPy()) return; fixedValues_.pyIsConstant = true; fixedValues_.constantPy = Py; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantPz(float Pz) { if (!canHaveConstantPz()) return; fixedValues_.pzIsConstant = true; fixedValues_.constantPz = Pz; fixedValuesHaveChanged(); }
-    inline void PhaseSpaceFileWriter::setConstantWeight(float weight) { if (!canHaveConstantWeight()) return; fixedValues_.weightIsConstant = true; fixedValues_.constantWeight = weight; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantX(float X) { fixedValues_.xIsConstant = true; fixedValues_.constantX = X; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantY(float Y) { fixedValues_.yIsConstant = true; fixedValues_.constantY = Y; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantZ(float Z) { fixedValues_.zIsConstant = true; fixedValues_.constantZ = Z; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantPx(float Px) { fixedValues_.pxIsConstant = true; fixedValues_.constantPx = Px; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantPy(float Py) { fixedValues_.pyIsConstant = true; fixedValues_.constantPy = Py; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantPz(float Pz) { fixedValues_.pzIsConstant = true; fixedValues_.constantPz = Pz; fixedValuesHaveChanged(); }
+    inline void PhaseSpaceFileWriter::setConstantWeight(float weight) { fixedValues_.weightIsConstant = true; fixedValues_.constantWeight = weight; fixedValuesHaveChanged(); }
 
     inline const FixedValues PhaseSpaceFileWriter::getFixedValues() const { return fixedValues_; }
 

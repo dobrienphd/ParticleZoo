@@ -95,7 +95,7 @@ namespace ParticleZoo::IAEAphspFile
             };
 
             IAEAHeader(const std::string &filePath, bool newFile = false);
-            IAEAHeader(const IAEAHeader & other);
+            IAEAHeader(const IAEAHeader & other, const std::string & newFilePath);
 
             void writeHeader();
 

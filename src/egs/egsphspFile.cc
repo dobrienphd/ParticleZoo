@@ -80,9 +80,7 @@ namespace ParticleZoo::EGSphspFile
         float z = particleZValue_; // EGS format does not store the particle z value
         float u = buffer.read<float>();
         float v = buffer.read<float>();
-
-        float uuvv = std::min(1.f, u*u+v*v);
-        float w = std::sqrt(1.f - uuvv);
+        float w = calcThirdUnitComponent(u, v);
 
         float weight = buffer.read<float>();
         bool wSignIsNegative = weight < 0;

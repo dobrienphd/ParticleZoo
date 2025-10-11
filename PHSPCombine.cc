@@ -204,16 +204,17 @@ int main(int argc, char* argv[]) {
                 progress.Start("Reading " + inputFile);
 
                 // Read the particles from the current file and write them into the output file
-                for ( ; reader->hasMoreParticles() && particlesSoFar < maxParticles ; particlesSoFar++) {
+                while (reader->hasMoreParticles() && particlesSoFar+particlesSoFarThisFile < maxParticles) {
                     Particle particle = reader->getNextParticle();
                     writer->writeParticle(particle);
 
                     // Update progress bar every 1% of particles read
-                    particlesSoFarThisFile++;
+                    particlesSoFarThisFile = reader->getParticlesRead();
                     if (particlesSoFarThisFile % onePercentInterval == 0) {
                         progress.Update(particlesSoFarThisFile, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
                     }
                 }
+                particlesSoFar += particlesSoFarThisFile;
 
                 // Finalize history counts, if the original file contained more histories than have been written then add the difference (this can happen if uneventful histories occurred after the final particle was recorded)
                 std::uint64_t historiesInOriginalFile = particlesToRead < particlesInFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();

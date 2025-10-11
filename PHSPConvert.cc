@@ -58,6 +58,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <filesystem>
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
@@ -125,6 +126,9 @@ int main(int argc, char* argv[]) {
         writer = FormatRegistry::CreateWriter(outputFormat, outputFile, userOptions, fixedValues);
     }
 
+    // Keep a list of errors
+    std::list<std::string> errorMessages;
+
     // Error handling for both reader and writer
     try {
         // Start the process
@@ -135,6 +139,7 @@ int main(int argc, char* argv[]) {
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         uint64_t particlesInFile = reader->getNumberOfParticles();
         uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
+        bool readPartialFile = particlesToRead < particlesInFile;
 
         // Determine progress update interval
         uint64_t onePercentInterval = particlesToRead >= 100 
@@ -152,43 +157,60 @@ int main(int argc, char* argv[]) {
             progress.Start("Converting:");
 
             // Read the particles from the input file and write them into the output file
-            for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
+            while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() <= particlesToRead)) {
                 Particle particle = reader->getNextParticle();
+
                 writer->writeParticle(particle);
 
                 // Update progress bar every 1% of particles read
+                std::uint64_t particlesSoFar = reader->getParticlesRead();
                 if (particlesSoFar % onePercentInterval == 0) {
                     progress.Update(particlesSoFar, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
                 }
             }
 
+            // Check that the number of particles written matches the expected number
+            std::uint64_t particlesWritten = writer->getParticlesWritten();
+            if (particlesWritten != particlesToRead) {
+                errorMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesToRead) + "). The output file will reflect the number of particles actually written.");
+            }
+
             // Finalize history counts, if the original file contained more histories than have been written then add the difference (this can happen if uneventful histories occurred after the final particle was recorded)
-            std::uint64_t historiesInOriginalFile = particlesToRead < particlesInFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
+            std::uint64_t historiesInOriginalFile = readPartialFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
             std::uint64_t historiesWritten = writer->getHistoriesWritten();
             if (historiesWritten < historiesInOriginalFile) {
                 writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
             } else if (historiesWritten > historiesInOriginalFile) {
-                progress.Complete("Error occurred.");
-                throw std::runtime_error("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
+                errorMessages.push_back("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
             }
 
             // Complete the progress bar
-            progress.Complete("Conversion complete. Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
+            if (errorMessages.empty()) {
+                progress.Complete("Conversion complete.");
+            } else {
+                progress.Complete("Conversion complete with " + std::to_string(errorMessages.size()) + " warnings.");
+            }
         }
 
         // Measure elapsed time and report it
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
-        std::cout << "Time taken: " << elapsed << " seconds" << std::endl;
+        std::cout << "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories with " + std::to_string(writer->getParticlesWritten()) + " particles in " + std::to_string(elapsed) + " seconds" << std::endl;
     }
     catch (const std::exception& e) {
-        std::cerr << std::endl << "Error occurred: " << e.what() << std::endl;
+        errorMessages.push_back(e.what());
         errorCode = 1;
     }
 
     // Ensure that the reader and writer are closed even if an exception occurs
     if (writer) writer->close();
     if (reader) reader->close();
+
+    for (const auto& error : errorMessages) {
+        std::cerr << "Warning: " << error << std::endl;
+    }
+
+    errorCode = errorMessages.empty() ? errorCode : 1;
 
     // Return the error code
     return errorCode;

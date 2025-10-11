@@ -73,13 +73,14 @@ namespace ParticleZoo::TOPASphspFile
         }
 
         // add +0.5 if x>=0, or –0.5 if x<0, then truncate
-        return static_cast<std::int32_t>(x + std::copysignf(0.5f, x));
+        std::int32_t result = static_cast<std::int32_t>(std::lroundf(x));
+        return result;
     }
 
     inline Particle Reader::readBinaryParticle(ByteBuffer & buffer) {
         if (formatType_ == TOPASFormat::BINARY) {
             Particle particle = readBinaryStandardParticle(buffer);
-            if (particle.getWeight() < 0 && particle.getType() == ParticleType::Unsupported) {
+            if (particle.getWeight() < 0 && particle.getType() == ParticleType::PseudoParticle) {
                 // Special particle representing a sequence of empty histories
                 emptyHistoriesCount_ += roundToInt32(-particle.getWeight());
                 // need to read the next particle with the countParticleInStatistics flag set to false to avoid double counting

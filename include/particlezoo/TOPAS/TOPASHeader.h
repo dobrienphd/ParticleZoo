@@ -252,7 +252,7 @@ namespace ParticleZoo::TOPASphspFile
     inline std::uint64_t Header::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
     inline std::uint64_t Header::getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
     inline std::uint64_t Header::getNumberOfParticles() const { return numberOfParticles_; }
-    inline TOPASFormat    Header::getTOPASFormat() const { return formatType_; }
+    inline TOPASFormat   Header::getTOPASFormat() const { return formatType_; }
 
     inline std::string Header::getTOPASFormatName() const { return getTOPASFormatName(formatType_); }
     inline std::string Header::getTOPASFormatName(TOPASFormat format) {
@@ -296,7 +296,7 @@ namespace ParticleZoo::TOPASphspFile
         }
 
         // Don't count other statistics for pseudo particles
-        if (particleType == ParticleType::PseudoParticle || particle.getWeight() <= 0) return;
+        if (particleType == ParticleType::PseudoParticle) return;
 
         if (particle.isNewHistory()) numberOfRepresentedHistories_++;
         auto & stats = particleStatsTable_[particleType];

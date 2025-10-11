@@ -310,8 +310,7 @@ namespace ParticleZoo::ROOT {
         ParticleType type = getParticleTypeFromPDGID(pdgCode_);
 
         if (!pzIsStored_) {
-            double uuvv = std::min(1.0, px_*px_+py_*py_);
-            pz_ = std::sqrt(1.0 - uuvv);
+            pz_ = calcThirdUnitComponent(px_, py_);
             if (pzIsNegative_) { pz_ = -pz_; }
         }
 

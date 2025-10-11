@@ -344,9 +344,9 @@ int main(int argc, char* argv[]) {
         std::cout << "  Output File: " << outputFile << std::endl; 
         std::cout << "  Image Width: " << imageWidth << " pixels" << std::endl;
         std::cout << "  Image Height: " << imageHeight << " pixels" << std::endl;
-        std::cout << "  Dimensions: [" << minDim1 << ", " << maxDim1 << "] cm x [" << minDim2 << ", " << maxDim2 << "] cm" << std::endl;
+        std::cout << "  Dimensions: [" << minDim1/cm << ", " << maxDim1/cm << "] cm x [" << minDim2/cm << ", " << maxDim2/cm << "] cm" << std::endl;
         if (projectionType == ProjectionType::NONE) {
-            std::cout << "  Thickness in third dimension: " << tolerance << " cm" << std::endl;
+            std::cout << "  Thickness in third dimension: " << tolerance/cm << " cm" << std::endl;
         }
         std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
         std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
@@ -379,6 +379,7 @@ int main(int argc, char* argv[]) {
         float xOffset = static_cast<float>(minDim1) * xPixelsPerUnitLength;
         float yOffset = static_cast<float>(minDim2) * yPixelsPerUnitLength;
         float pixelArea = (maxDim1 - minDim1) * (maxDim2 - minDim2) / (imageWidth * imageHeight);
+        pixelArea /= cm2; // convert to cm^2
 
         // Start the timer
         auto start_time = std::chrono::steady_clock::now();
@@ -398,8 +399,13 @@ int main(int argc, char* argv[]) {
         progress.Start("Reading particles:");
 
         // Read the particles from the input file and build the image data
-        for (uint64_t particlesSoFar = 1 ; reader->hasMoreParticles() && particlesSoFar <= particlesToRead ; particlesSoFar++) {
+        while (reader->hasMoreParticles() && reader->getParticlesRead() <= particlesToRead) {
             Particle particle = reader->getNextParticle();
+
+            if (particle.getType() == ParticleType::Unsupported) {
+                throw std::runtime_error("Encountered unsupported particle type in the input file.");
+            }
+
             if (particle.getType() == ParticleType::PseudoParticle) continue; // Skip pseudo-particles
 
             // project particle to the scoring plane based on selected projection scheme
@@ -420,10 +426,10 @@ int main(int argc, char* argv[]) {
                     break;
             }
             
-            // Process particle
-            float x = particle.getX() / cm;
-            float y = particle.getY() / cm;
-            float z = particle.getZ() / cm;
+            // Get the particle's position
+            float x = particle.getX();
+            float y = particle.getY();
+            float z = particle.getZ();
 
             // Determine pixel coordinates based on the selected plane
             int pixelX = 0, pixelY = 0;
@@ -442,23 +448,22 @@ int main(int argc, char* argv[]) {
                 validPixel = true;
             }
             
-            // Check if pixel coordinates are valid
+            // Process the particle if it falls within the image boundaries
             validPixel = validPixel && (pixelX >= 0 && pixelX < imageWidth && pixelY >= 0 && pixelY < imageHeight);               
-            if (!validPixel) {
-                continue; // Skip particles that do not fall within the specified plane and dimensions
+            if (validPixel) {
+                // Determine the weight to associate with this particle
+                float weight = particle.getWeight();
+                if (energyWeighted) {
+                    weight *= particle.getKineticEnergy() / MeV;
+                }
+
+                // Set pixel color based on the particle's weight
+                float weightPerUnitArea = weight / pixelArea; // counts per cm2 or MeV per cm2
+                float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
+                image->setGrayscaleValue(pixelX, pixelY, pixelValue);
             }
 
-            // Determine the weight to associate with this particle
-            float weight = particle.getWeight();
-            if (energyWeighted) {
-                weight *= particle.getKineticEnergy() / MeV;
-            }
-
-            // Set pixel color based on the particle's weight
-            float weightPerUnitArea = weight / pixelArea; // counts per cm2 or MeV per cm2
-            float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
-            image->setGrayscaleValue(pixelX, pixelY, pixelValue);
-
+            std::uint64_t particlesSoFar = reader->getParticlesRead();
             // Update progress bar every 1% of particles read
             if (particlesSoFar % onePercentInterval == 0) {
                 progress.Update(particlesSoFar, "Processed " + std::to_string(reader->getHistoriesRead()) + " histories.");
@@ -480,6 +485,12 @@ int main(int argc, char* argv[]) {
 
         // Complete the progress bar
         progress.Complete("Image generation complete. Processed " + std::to_string(historiesRead) + " histories.");
+
+        if (normalizeByParticles) {
+            std::cout << "Image normalized by particles (" << particlesRead << " particles read)." << std::endl;
+        } else {
+            std::cout << "Image normalized by histories (" << historiesRead << " histories read)." << std::endl;
+        }
 
         // Clean up resources
         delete image;

@@ -112,11 +112,12 @@ namespace ParticleZoo::IAEAphspFile
         if (header_.zIsStored()) z = buffer.read<float>() * distanceUnits; else z = header_.getConstantZ();
         if (header_.uIsStored()) u = buffer.read<float>(); else u = header_.getConstantU();
         if (header_.vIsStored()) v = buffer.read<float>(); else v = header_.getConstantV();
-        if (header_.wIsStored()) {
-            float uuvv = std::min(1.f, u*u+v*v);
-            w = is * std::sqrt(1.f - uuvv);
-        } else w = header_.getConstantW();
+        if (header_.wIsStored()) w = is * calcThirdUnitComponent(u, v); else w = header_.getConstantW();
         if (header_.weightIsStored()) weight = buffer.read<float>(); else weight = header_.getConstantWeight();
+
+        if (weight < 0) {
+            throw std::runtime_error("Negative particle weight read from IAEA phase space file, which is not allowed.");
+        }
 
         Particle particle(particleType, kineticEnergy, x, y, z, u, v, w, isNewHistory, weight);
 
@@ -161,8 +162,12 @@ namespace ParticleZoo::IAEAphspFile
             std::string headerFileTemplatePath = std::get<std::string>(headerFileTemplateValue);
 
             IAEAHeader header = headerFileTemplatePath.length() > 0 ? 
-                IAEAHeader(IAEAHeader(headerFileTemplatePath)) : 
+                IAEAHeader(IAEAHeader(headerFileTemplatePath), IAEAHeader::DeterminePathToHeaderFile(filename)) : 
                 IAEAHeader(IAEAHeader::DeterminePathToHeaderFile(filename), true);
+
+            if (headerFileTemplatePath.length() > 0) {
+                header.setFilePath(IAEAHeader::DeterminePathToHeaderFile(filename));
+            }
 
             if (userOptions.contains(IAEAIndexCommand)) {
                 CLIValue indexValue = userOptions.at(IAEAIndexCommand).front();

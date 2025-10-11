@@ -39,10 +39,12 @@ namespace ParticleZoo
             }()),
         bytesRead_(0),
         particlesRead_(0),
+        metaparticlesRead_(0),
         particlesSkipped_(0),
         historiesRead_(0),
         numberOfParticlesToRead_(0),
         particleRecordLength_(0),
+        isFirstParticle_(true),
         buffer_(BUFFER_SIZE),
         fixedValues_(fixedValues)
     {
@@ -66,7 +68,7 @@ namespace ParticleZoo
         if (formatType_ == FormatType::NONE) {
             throw std::runtime_error("moveToParticle is not supported for NONE format.");
         }
-        if (particleIndex >= getNumberOfParticles()) {
+        if (particleIndex >= getNumberOfEntriesInFile()) {
             throw std::out_of_range("Particle index out of range.");
         }
 
@@ -111,6 +113,7 @@ namespace ParticleZoo
 
         particlesRead_ = particleIndex;
         particlesSkipped_ = particleIndex;
+        metaparticlesRead_ = 0;
         historiesRead_ = 0;
     }
 
@@ -177,8 +180,12 @@ namespace ParticleZoo
     }
 
     bool PhaseSpaceFileReader::hasMoreParticles() {
-        if (numberOfParticlesToRead_ == 0) numberOfParticlesToRead_ = getNumberOfParticles();
-        if (particlesRead_ >= numberOfParticlesToRead_) {
+        if (numberOfParticlesToRead_ == 0) numberOfParticlesToRead_ = getNumberOfEntriesInFile();
+
+        std::uint64_t legitParticlesRead = particlesRead_ - metaparticlesRead_;
+        std::uint64_t nominalTotalParticles = getNumberOfParticles();
+
+        if (legitParticlesRead >= nominalTotalParticles || particlesRead_ >= numberOfParticlesToRead_) {
             return false; // No more particles to read
         }
         switch (formatType_) {
@@ -233,99 +240,77 @@ namespace ParticleZoo
     }
 
     Particle PhaseSpaceFileReader::getNextParticle(bool countParticleInStatistics) {
-        switch (formatType_) {
-            
-        case (FormatType::BINARY): // Binary format
-            {
-                if (!hasMoreParticles()) {
-                    throw std::runtime_error("No more particles to read.");
-                }
-                
-                if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
-                // Read the next block of data if necessary
-                if (buffer_.length() == 0 || buffer_.remainingToRead() < particleRecordLength_) {
-                    readNextBlock();
-                }
+        Particle particle = [&]() {
+            switch (formatType_) {
+                case (FormatType::BINARY): // Binary format
+                    {
+                        if (!hasMoreParticles()) {
+                            throw std::runtime_error("No more particles to read.");
+                        }
+                        
+                        if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
+                        // Read the next block of data if necessary
+                        if (buffer_.length() == 0 || buffer_.remainingToRead() < particleRecordLength_) {
+                            readNextBlock();
+                        }
 
-                // Get a view of the next particle record in the buffer
-                std::span<const ParticleZoo::byte> recordView = buffer_.readBytes(particleRecordLength_);
-                ByteBuffer particleData(recordView, buffer_.getByteOrder());
-                
-                // Read the next particle from the buffer
-                Particle particle = readBinaryParticle(particleData);
-                if (countParticleInStatistics) {
-                    particlesRead_++;
-                    if (particle.isNewHistory()) {
-                        if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
-                            int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
-                            if (deltaN > 0) {
-                                historiesRead_ += static_cast<std::uint64_t>(deltaN);
-                            } else {
-                                historiesRead_++;
-                            }
-                        } else {
-                            historiesRead_++;
+                        // Get a view of the next particle record in the buffer
+                        std::span<const ParticleZoo::byte> recordView = buffer_.readBytes(particleRecordLength_);
+                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
+                        
+                        // Read the next particle from the buffer
+                        return readBinaryParticle(particleData);
+                    }
+                    break;
+                case (FormatType::ASCII): // ASCII format
+                    {
+                        if (!hasMoreParticles()) {
+                            throw std::runtime_error("No more particles to read.");
+                        }
+                        try {
+                            bufferNextASCIILine();
+                            std::string line = std::move(asciiLineBuffer_.front());
+                            asciiLineBuffer_.pop_front();
+                            return readASCIIParticle(line);
+                        } catch (const std::runtime_error &e) {
+                            throw std::runtime_error("Error reading line from file: " + std::string(e.what()));
                         }
                     }
-                }
-                return particle;
-            }
-            break;
-        case (FormatType::ASCII): // ASCII format
-            {
-                if (!hasMoreParticles()) {
-                    throw std::runtime_error("No more particles to read.");
-                }
-                try {
-                    bufferNextASCIILine();
-                    std::string line = std::move(asciiLineBuffer_.front());
-                    asciiLineBuffer_.pop_front();
-                    Particle particle = readASCIIParticle(line);
-                    if (countParticleInStatistics) {
-                        particlesRead_++;
-                        if (particle.isNewHistory()) {
-                            if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
-                                int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
-                                if (deltaN > 0) {
-                                    historiesRead_ += static_cast<std::uint64_t>(deltaN);
-                                } else {
-                                    historiesRead_++;
-                                }
-                            } else {
-                                historiesRead_++;
-                            }
-                        }
+                    break;
+                default: // NONE format
+                    {
+                        // For NONE format, all I/O needs to be implemented manually by the subclass.
+                        return readParticleManually();
                     }
-                    return particle;
-                } catch (const std::runtime_error &e) {
-                    throw std::runtime_error("Error reading line from file: " + std::string(e.what()));
-                }
+                    break;
             }
-            break;
-        default: // NONE format
-            {
-                // For NONE format, all I/O needs to be implemented manually by the subclass.
-                Particle particle = readParticleManually();
-                if (countParticleInStatistics) {
-                    particlesRead_++;
-                    if (particle.isNewHistory()) {
-                        if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
-                            int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
-                            if (deltaN > 0) {
-                                historiesRead_ += static_cast<std::uint64_t>(deltaN);
-                            } else {
-                                historiesRead_++;
-                            }
-                        } else {
-                            historiesRead_++;
-                        }
-                    }
-                }
-                return particle;
-            }
-            break;
+        }();
 
+        if (countParticleInStatistics) {
+            if (particle.getType() == ParticleType::PseudoParticle) metaparticlesRead_++;
+            else if (isFirstParticle_) {
+                particle.setNewHistory(true); // First real particle read always starts a new history
+                isFirstParticle_ = false;
+            }
+
+            if (particle.isNewHistory()) {
+                if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
+                    int deltaN = (int) particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+                    if (deltaN > 0) {
+                        historiesRead_ += static_cast<std::uint64_t>(deltaN);
+                    } else {
+                        historiesRead_++;
+                    }
+                } else {
+                    historiesRead_++;
+                }
+            }
+        } else {
+            metaparticlesRead_++;
         }
+        particlesRead_++;
+
+        return particle;
     }
 
 }

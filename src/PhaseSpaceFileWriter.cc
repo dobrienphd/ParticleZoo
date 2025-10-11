@@ -31,6 +31,7 @@ namespace ParticleZoo
             }
         }()),
       historiesWritten_(0),
+      particlesWritten_(0),
       particleRecordLength_(0),
       buffer_(BUFFER_SIZE),
       writeParticleDepth_(0),
@@ -214,6 +215,10 @@ namespace ParticleZoo
                 break;
             }
 
+        }
+
+        if (type != ParticleType::PseudoParticle) {
+            particlesWritten_++;
         }
 
         // Update the number of histories written based on the particle's history status (even for pseudoparticles)
