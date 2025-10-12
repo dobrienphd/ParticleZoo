@@ -17,107 +17,306 @@
 
 namespace ParticleZoo {
 
-    using byte = unsigned char;
-    using signed_byte = char;
+    using byte = unsigned char;         ///< Type alias for unsigned byte (8 bits)
+    using signed_byte = char;           ///< Type alias for signed byte (8 bits)
 
+    /**
+     * @brief Enumeration of byte ordering schemes for multi-byte data types.
+     * 
+     * Defines the different ways multi-byte values can be stored in memory,
+     * for cross-platform compatibility when reading/writing binary data files.
+     */
     enum class ByteOrder {
-        LittleEndian = 1234,
-        BigEndian = 4321,
-        PDPEndian = 3412
+        LittleEndian = 1234,    ///< Least significant byte first
+        BigEndian = 4321,       ///< Most significant byte first
+        PDPEndian = 3412        ///< Mixed endian
     };
  
-    constexpr std::size_t DEFAULT_BUFFER_SIZE = 1048576;   // found to be optimal on an WD_BLACK 8TB SN850X NVMe M.2 SSD
+    constexpr std::size_t DEFAULT_BUFFER_SIZE = 1048576;   ///< Default buffer size (1MiB)
 
+    /**
+     * @brief The byte order of the host system.
+     * 
+     * Automatically determined at compile time based on the system's native byte order.
+     */
     constexpr ByteOrder HOST_BYTE_ORDER = 
     (std::endian::native == std::endian::little) ? ByteOrder::LittleEndian :
     (std::endian::native == std::endian::big)    ? ByteOrder::BigEndian :
                                                   ByteOrder::PDPEndian;
 
-    enum class FormatType { BINARY, ASCII, NONE };
+    /**
+     * @brief Enumeration of file format types.
+     */
+    enum class FormatType { 
+        BINARY,     ///< Binary format
+        ASCII,      ///< ASCII text format
+        NONE        ///< Used for when ParticleZoo will not be responsible for reading/writing (e.g. ROOT)
+    };
 
+    /**
+     * @brief Byte buffer used to improve I/O performance for reading and writing binary and text data.
+     * 
+     * ByteBuffer provides efficient buffered I/O operations with automatic byte order conversion
+     * for cross-platform compatibility. It supports both reading from and writing to the buffer,
+     * with automatic capacity management and various data type read/write operations.
+     * 
+     * The buffer maintains both a current offset (read/write position) and a length
+     * (amount of valid data), allowing for flexible positioning and partial reads/writes.
+     */
     class ByteBuffer {
         public:
-            // Create an empty ByteBuffer with a fixed capacity
+            /**
+             * @brief Create an empty ByteBuffer with a fixed capacity.
+             * 
+             * @note The capacity must be greater than zero.
+             * @param bufferSize The maximum capacity of the buffer in bytes (default: DEFAULT_BUFFER_SIZE)
+             * @param byteOrder The byte order for multi-byte data types (default: HOST_BYTE_ORDER)
+             * @throws std::runtime_error if bufferSize is zero
+             */
             ByteBuffer(std::size_t bufferSize = DEFAULT_BUFFER_SIZE, ByteOrder byteOrder = HOST_BYTE_ORDER);
 
-            // Create a ByteBuffer from a subspan of data
+            /**
+             * @brief Create a ByteBuffer from a span of existing data.
+             * 
+             * The buffer is initialized with a copy of the provided data.
+             * 
+             * @param data A span containing the initial data to copy into the buffer
+             * @param byteOrder The byte order for multi-byte data types (default: HOST_BYTE_ORDER)
+             */
             ByteBuffer(const std::span<const byte> data, ByteOrder byteOrder = HOST_BYTE_ORDER);
 
 
-            // Initialize from raw data via std::span
+            /**
+             * @brief Initialize the buffer with data from a span.
+             * 
+             * Replaces any existing data in the buffer. Resets the offset to 0.
+             * 
+             * @param data A span containing the data to copy into the buffer
+             * @return std::size_t The number of bytes copied
+             * @throws std::runtime_error if data size exceeds buffer capacity
+             */
             std::size_t setData(std::span<const byte> data);
 
-            // Initialize from an input stream
+            /**
+             * @brief Initialize the buffer with data from an input stream.
+             * 
+             * Reads up to the buffer's capacity from the stream. Replaces any existing data.
+             * Resets the offset to 0.
+             * 
+             * @param stream The input stream to read from
+             * @return std::size_t The number of bytes read from the stream
+             * @throws std::runtime_error if no data could be read from the stream
+             */
             std::size_t setData(std::istream & stream);
 
-            // Append new data from the stream into the buffer (after current data)
+            /**
+             * @brief Append data from an input stream to the existing buffer content.
+             * 
+             * Reads additional data from the stream and appends it after the current data.
+             * Does not modify the current offset.
+             * 
+             * @param stream The input stream to read from
+             * @return std::size_t The number of bytes appended from the stream
+             * @throws std::runtime_error if buffer is full or no data could be read
+             */
             std::size_t appendData(std::istream & stream);
 
-            // Append new data from another buffer into the buffer (after current data)
+            /**
+             * @brief Append data from another ByteBuffer to this buffer.
+             * 
+             * Copies data from the source buffer and appends it after the current data.
+             * 
+             * @param buffer The source ByteBuffer to copy data from
+             * @param ignoreOffset If true, copies all data from source; if false, only unread data
+             * @return std::size_t The number of bytes appended
+             * @throws std::runtime_error if the combined data exceeds buffer capacity
+             */
             std::size_t appendData(ByteBuffer & buffer, bool ignoreOffset = false);
 
-            // Reset the buffer, clearing all data
+            /**
+             * @brief Reset the buffer, resetting the offset and length to 0.
+             */
             void clear();
 
-            // Move the buffer offset to a specific position
+            /**
+             * @brief Move the read/write offset to a specific position in the buffer.
+             * 
+             * @param offset The new offset position (must be <= current data length)
+             * @throws std::runtime_error if offset exceeds the current data length
+             */
             void moveTo(std::size_t offset);
 
-            // Compact the buffer by shifting unread data to the front
+            /**
+             * @brief Compact the buffer by moving unread data to the beginning.
+             * 
+             * Shifts any unread data (from current offset to end) to the start of the buffer
+             * and updates the length and offset accordingly. Useful for reclaiming space
+             * after partial reads.
+             */
             void compact();
 
-            // Expand the buffer to its full capacity, filling the unused space with zeros
+            /**
+             * @brief Expand the buffer to its full capacity, filling unused space with zeros.
+             * 
+             * Extends the data length to the full buffer capacity by filling the remaining
+             * space with zero-ed bytes.
+             */
             void expand();
 
-            // Write the buffer data to an output stream
+            /**
+             * @brief Write the buffer data to an output stream.
+             * 
+             * @param os The output stream to write to
+             * @param buffer The ByteBuffer to write from
+             * @return std::ostream& Reference to the output stream for chaining
+             */
             friend std::ostream& operator<<(std::ostream& os, const ByteBuffer &buffer);
 
-            // Read a primitive type T (e.g., int, float)
+            /**
+             * @brief Read a primitive type T from the buffer with automatic byte order conversion.
+             * 
+             * Reads sizeof(T) bytes from the current offset and converts the byte order
+             * if necessary. Advances the offset by sizeof(T).
+             * 
+             * @tparam T The primitive type to read (must be trivially copyable)
+             * @return T The value read from the buffer
+             * @throws std::runtime_error if insufficient data is available
+             */
             template<typename T>
             T read();
 
-            // Read a null-terminated string from the buffer
+            /**
+             * @brief Read a null-terminated string from the buffer.
+             * 
+             * Reads characters until a null terminator ('\0') is found. Advances the offset
+             * past the null terminator.
+             * 
+             * @return std::string The string read from the buffer (without null terminator)
+             * @throws std::runtime_error if null terminator is not found or insufficient data
+             */
             std::string readString();
 
-            // Read a string of a specified length from the buffer
+            /**
+             * @brief Read a string of specified length from the buffer.
+             * 
+             * Reads exactly the specified number of characters. Advances the offset
+             * by the string length.
+             * 
+             * @param stringLength The number of characters to read
+             * @return std::string The string read from the buffer
+             * @throws std::runtime_error if insufficient data is available
+             */
             std::string readString(std::size_t stringLength);
             
-            // Read a line of ASCII text from the buffer
+            /**
+             * @brief Read a line of ASCII text from the buffer.
+             * 
+             * Reads characters until a newline ('\n') is found. Automatically handles
+             * Windows-style line endings by removing trailing '\r'. Advances the offset
+             * past the newline.
+             * 
+             * @return std::string The line read from the buffer (without newline characters)
+             * @throws std::runtime_error if newline is not found or no data is available
+             */
             std::string readLine();
 
-            // Read a span of bytes from the buffer
+            /**
+             * @brief Read a span of bytes from the buffer.
+             * 
+             * Returns a view of the requested bytes without copying. Advances the offset
+             * by the requested length.
+             * 
+             * @param len The number of bytes to read
+             * @return std::span<const byte> A span view of the requested bytes
+             * @throws std::runtime_error if insufficient data is available
+             */
             std::span<const byte> readBytes(std::size_t len);
 
 
-            // Write a primitive type T to the buffer
+            /**
+             * @brief Write a primitive type T to the buffer with automatic byte order conversion.
+             * 
+             * Converts the value to the buffer's byte order if necessary and writes sizeof(T)
+             * bytes. Advances the offset by sizeof(T) and updates the length if necessary.
+             * 
+             * @tparam T The primitive type to write (must be trivially copyable)
+             * @param value The value to write to the buffer
+             * @throws std::runtime_error if insufficient space is available
+             */
             template<typename T>
             void write(const T &value);
 
-            // Write a string to the buffer
-            void writeString(const std::string & str);
+            /**
+             * @brief Write a string to the buffer.
+             * 
+             * Writes the string's characters with or without (default) a null terminator.
+             * Advances the offset by the string length and updates the length if necessary.
+             * 
+             * @param str The string to write to the buffer
+             * @param includeNullTerminator If true, appends a null terminator after the string
+             * @throws std::runtime_error if insufficient space is available
+             */
+            void writeString(const std::string & str, bool includeNullTerminator = false);
 
-            // Write a span of bytes to the buffer
+            /**
+             * @brief Write a span of bytes to the buffer.
+             * 
+             * Copies the bytes from the span to the buffer. Advances the offset by the
+             * data size and updates the length if necessary.
+             * 
+             * @param data A span containing the bytes to write
+             * @throws std::runtime_error if insufficient space is available
+             */
             void writeBytes(std::span<const byte> data);
 
 
-            // Get the length of the data in the buffer
+            /**
+             * @brief Get the length of valid data in the buffer.
+             * 
+             * @return std::size_t The number of bytes of valid data
+             */
             std::size_t length() const;
 
-            // Get the remaining length of the data in the buffer for reading
+            /**
+             * @brief Get the number of bytes remaining to be read from current offset.
+             * 
+             * @return std::size_t The number of unread bytes (length - offset)
+             */
             std::size_t remainingToRead() const;
 
-            // Get the remaining length of the data in the buffer for writing
+            /**
+             * @brief Get the number of bytes available for writing.
+             * 
+             * @return std::size_t The remaining capacity (capacity - length)
+             */
             std::size_t remainingToWrite() const;
 
-            // Get the buffer capacity
+            /**
+             * @brief Get the total capacity of the buffer.
+             * 
+             * @return std::size_t The maximum number of bytes the buffer can hold
+             */
             std::size_t capacity() const;
 
-            // Get a pointer to the buffer data
+            /**
+             * @brief Get a pointer to the raw buffer data.
+             * 
+             * @return const byte* Pointer to the beginning of the buffer data
+             */
             const byte* data() const;
             
-            // Set the byte order of the data in the buffer
+            /**
+             * @brief Set the byte order for interpreting multi-byte data types.
+             * 
+             * @param byteOrder The byte order to use for subsequent read/write operations
+             */
             void setByteOrder(ByteOrder byteOrder);
 
-            // Get the byte order of the data in the buffer
+            /**
+             * @brief Get the current byte order setting.
+             * 
+             * @return ByteOrder The byte order used for multi-byte data types
+             */
             ByteOrder getByteOrder() const;
 
         private:
@@ -127,7 +326,17 @@ namespace ParticleZoo {
             std::size_t length_;        // length of data written to the buffer
             ByteOrder byteOrder_;       // byte order of the data
 
-            // Reorder bytes of a value to match the target byte order
+            /**
+             * @brief Reorder bytes of a value to match the target byte order.
+             * 
+             * Converts multi-byte values between different byte orders. Single-byte values
+             * are returned unchanged. Handles little-endian, big-endian, and PDP-endian formats.
+             * 
+             * @tparam T The type of value to reorder (must be trivially copyable)
+             * @param value The value to reorder
+             * @param targetByteOrder The target byte order
+             * @return T The value with bytes reordered for the target byte order
+             */
             template<typename T>
             static T reorderBytes(T value, ByteOrder targetByteOrder);
     };
@@ -329,13 +538,17 @@ namespace ParticleZoo {
         }
     }
 
-    inline void ByteBuffer::writeString(const std::string & str) {
+    inline void ByteBuffer::writeString(const std::string & str, bool includeNullTerminator) {
         std::size_t strSize = str.size();
-        if (offset_ + strSize > buffer_.size()) {
+        if (offset_ + strSize + (includeNullTerminator ? 1 : 0) > buffer_.size()) {
             throw std::runtime_error("String length exceeds buffer capacity.");
         }
         std::memcpy(buffer_.data() + offset_, str.data(), strSize);
         offset_ += strSize;
+        if (includeNullTerminator) {
+            buffer_[offset_] = 0;
+            offset_++;
+        }
         if (offset_ > length_) {
             length_ = offset_;
         }
