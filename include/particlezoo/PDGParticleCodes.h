@@ -5,12 +5,30 @@
 
 namespace ParticleZoo {
 
-    // PDG (Particle Data Group) codes are used to uniquely identify particles in high-energy physics.
-    // The PDG codes are standardized and used widely in particle physics to represent particles, antiparticles, and resonances.
-    // The codes are integers, with positive values typically representing particles and negative values representing antiparticles.
-    // The PDG codes are defined in the Particle Data Group's Particle Listings, which can be found at https://pdg.lbl.gov/
+    /**
+     * @brief PDG (Particle Data Group) particle identification codes.
+     * 
+     * PDG codes are standardized integers used to uniquely identify particles in high-energy physics.
+     * 
+     * Ref: S. Navas et al. (Particle Data Group), Phys. Rev. D 110, 030001 (2024) and 2025 update
+     * 
+     * @see https://pdg.lbl.gov/
+     */
 
-    // A macro to define particle codes
+    /**
+     * @def PARTICLE_LIST
+     * @brief X-macro defining the comprehensive particle catalog.
+     * 
+     * This macro uses the X-macro technique to generate multiple code constructs
+     * from a single particle definition list. Each entry contains:
+     * - Particle name (enum identifier)
+     * - PDG code (standardized integer)
+     * 
+     * The macro is used for:
+     * - ParticleType enum values
+     * - Switch cases for conversion functions
+     * - String name mappings
+     */
     #define PARTICLE_LIST \
         /* Quarks */ \
         X(DownQuark,                       1) \
@@ -809,16 +827,44 @@ namespace ParticleZoo {
         X(AntiOxygenNucleus,    -1000080160)
 
 
-    // Convert the macro list into an enum list of particle types with their PDG IDs
+    /**
+     * @enum ParticleType
+     * @brief Strongly-typed enumeration of particle types with PDG codes.
+     * 
+     * This enum class provides type-safe access to PDG particle codes while
+     * maintaining the standardized integer values. Each enumerator corresponds
+     * to a specific particle type with its official PDG identification number.
+     * 
+     * Special values internal to ParticleZoo (these codes should not be written to files):
+     * - Unsupported (99): For particle types that are not supported by ParticleZoo
+     * - PseudoParticle (98): For pseudo-particles containing simulation metadata
+     * 
+     * The enum uses std::int32_t as the underlying type to match PDG code
+     * specifications and handle the full range of positive and negative values.
+     * 
+     * @note Generated automatically from PARTICLE_LIST macro
+     */
     enum class ParticleType : std::int32_t {
     #define X(name, code) name = code,
         PARTICLE_LIST
     #undef X
-        Unsupported =  99,
-        PseudoParticle = 98
+        Unsupported =  99,     ///< Unknown or non-standard particle type
+        PseudoParticle = 98    ///< Simulation-specific pseudo-particle
     };
 
-    // Returns the ParticleType corresponding to a given PDG ID.
+    /**
+     * @brief Convert PDG identification code to ParticleType enumeration.
+     * 
+     * Performs efficient lookup from standardized PDG integer codes to the
+     * corresponding strongly-typed ParticleType enumeration value. This function
+     * provides the primary interface for particle identification in Monte Carlo
+     * simulation data processing.
+     * 
+     * @param pdg The PDG identification code (standardized integer)
+     * @return ParticleType enumeration value, or ParticleType::Unsupported for unknown codes
+     * 
+     * @note Uses compile-time generated switch statement for O(1) lookup performance
+     */
     inline ParticleType getParticleTypeFromPDGID(std::int32_t pdg) noexcept {
         switch (pdg) {
     #define X(name, code) case code: return ParticleType::name;
@@ -828,7 +874,19 @@ namespace ParticleZoo {
         }
     }
 
-    // Returns the name of the particle type as a string.
+    /**
+     * @brief Get human-readable name for a particle type.
+     * 
+     * Returns the string representation of a ParticleType enumeration value,
+     * providing descriptive names for particles in logging, debugging, and
+     * user interface contexts.
+     * 
+     * @param t The ParticleType enumeration value
+     * @return std::string_view containing the particle name (compile-time constant)
+     * 
+     * @note Marked constexpr for compile-time evaluation
+     * @note Returns string_view for efficiency
+     */
     constexpr std::string_view getParticleTypeName(ParticleType t) {
         switch (t) {
     #define X(name, code) case ParticleType::name: return #name;
@@ -838,7 +896,17 @@ namespace ParticleZoo {
         }
     }
 
-    // Returns the numeric code corresponding to the ParticleType.
+    /**
+     * @brief Convert ParticleType enumeration to PDG identification code.
+     * 
+     * Extracts the standardized PDG integer code from a ParticleType enumeration
+     * value. This provides the inverse operation to getParticleTypeFromPDGID(),
+     * enabling conversion from strongly-typed enums back to the integer codes
+     * required by some phase space formats.
+     * 
+     * @param type The ParticleType enumeration value
+     * @return std::int32_t PDG identification code
+     */
     inline std::int32_t getPDGIDFromParticleType(ParticleType type) noexcept {
         return static_cast<std::int32_t>(type);
     }
