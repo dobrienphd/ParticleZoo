@@ -16,51 +16,82 @@ namespace ParticleZoo {
 
     /* Particle Property Types */
 
-
+    /**
+     * @brief Enumeration of integer property types for particles.
+     * 
+     * Defines standardized integer properties that can be associated with particles
+     * from different Monte Carlo simulation codes.
+     */
     enum class IntPropertyType {
-        INVALID,
-        INCREMENTAL_HISTORY_NUMBER,
-        EGS_LATCH,
-        PENELOPE_ILB1,
-        PENELOPE_ILB2,
-        PENELOPE_ILB3,
-        PENELOPE_ILB4,
-        PENELOPE_ILB5,
-        CUSTOM
+        INVALID,                        ///< Invalid property type, used for error checking
+        INCREMENTAL_HISTORY_NUMBER,     ///< Sequential history number for tracking, tracks the number of new histories since the last particle was recorded
+        EGS_LATCH,                      ///< EGS-specific latch variable (see BEAMnrc User Manual, Chapter 8 for details)
+        PENELOPE_ILB1,                  ///< PENELOPE ILB array value 1, corresponds to the generation of the particle (1 for primary, 2 for secondary, etc.)
+        PENELOPE_ILB2,                  ///< PENELOPE ILB array value 2, corresponds to the particle type of the particle's parent (applies only if ILB1 > 1)
+        PENELOPE_ILB3,                  ///< PENELOPE ILB array value 3, corresponds to the interaction type that created the particle (applies only if ILB1 > 1)
+        PENELOPE_ILB4,                  ///< PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transistion that created the particle
+        PENELOPE_ILB5,                  ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
+        CUSTOM                          ///< Custom integer property type, can be used for any user-defined purpose
     };
 
+    /**
+     * @brief Enumeration of floating-point property types for particles.
+     * 
+     * Defines standardized float properties that can be associated with particles
+     * from different Monte Carlo simulation codes.
+     */
     enum class FloatPropertyType {
-        INVALID,
-        XLAST,
-        YLAST,
-        ZLAST,
-        CUSTOM
+        INVALID,    ///< Invalid property type, used for error checking
+        XLAST,      ///< EGS-specific XLAST variable, for photons it is the X position of the last interaction, for electrons/positrons it is the X position it (or it's ancestor) was created at by a photon
+        YLAST,      ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
+        ZLAST,      ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon 
+        CUSTOM      ///< Custom float property type, can be used for any user-defined purpose
     };
 
+    /**
+     * @brief Enumeration of boolean property types for particles.
+     * 
+     * Defines standardized boolean flags that can be associated with particles
+     * from different Monte Carlo simulation codes.
+     */
     enum class BoolPropertyType {
-        INVALID,
-        IS_MULTIPLE_CROSSER,
-        IS_SECONDARY_PARTICLE,
-        CUSTOM
+        INVALID,                ///< Invalid property type
+        IS_MULTIPLE_CROSSER,    ///< Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)
+        IS_SECONDARY_PARTICLE,  ///< Flag indicating that the particle is a secondary
+        CUSTOM                  ///< Custom boolean property type, can be used for any user-defined purpose
     };
 
+    /**
+     * @brief Structure defining constant (fixed) values for particle properties.
+     * 
+     * Used to optimize phase space files by storing constant values once rather
+     * than repeating them for every particle. Useful when all particles share
+     * certain properties (e.g., all particles start from the same position).
+     */
     struct FixedValues
     {
-        bool xIsConstant{0};
-        bool yIsConstant{0};
-        bool zIsConstant{0};
-        bool pxIsConstant{0};
-        bool pyIsConstant{0};
-        bool pzIsConstant{0};
-        bool weightIsConstant{0};
-        float constantX{0};
-        float constantY{0};
-        float constantZ{0};
-        float constantPx{0};
-        float constantPy{0};
-        float constantPz{0};
-        float constantWeight{1};
+        bool xIsConstant{0};        ///< True if X coordinate is constant for all particles
+        bool yIsConstant{0};        ///< True if Y coordinate is constant for all particles
+        bool zIsConstant{0};        ///< True if Z coordinate is constant for all particles
+        bool pxIsConstant{0};       ///< True if X directional cosine is constant for all particles
+        bool pyIsConstant{0};       ///< True if Y directional cosine is constant for all particles
+        bool pzIsConstant{0};       ///< True if Z directional cosine is constant for all particles
+        bool weightIsConstant{0};   ///< True if statistical weight is constant for all particles
+        float constantX{0};         ///< Constant X coordinate value (when xIsConstant is true)
+        float constantY{0};         ///< Constant Y coordinate value (when yIsConstant is true)
+        float constantZ{0};         ///< Constant Z coordinate value (when zIsConstant is true)
+        float constantPx{0};        ///< Constant X directional cosine value (when pxIsConstant is true)
+        float constantPy{0};        ///< Constant Y directional cosine value (when pyIsConstant is true)
+        float constantPz{0};        ///< Constant Z directional cosine value (when pzIsConstant is true)
+        float constantWeight{1};    ///< Constant statistical weight value (when weightIsConstant is true)
 
+        /**
+         * @brief Equality comparison operator for FixedValues.
+         * 
+         * @param other The other FixedValues object to compare with
+         * @return true if all members are equal
+         * @return false if any members differ
+         */
         bool operator==(const FixedValues& other) const {
             return xIsConstant == other.xIsConstant &&
                 yIsConstant == other.yIsConstant &&
@@ -82,7 +113,15 @@ namespace ParticleZoo {
 
     /* Particle Class Definition */
 
-
+    /**
+     * @brief Represents a particle in phase space.
+     * 
+     * The Particle class encapsulates all the information about a single particle
+     * including its position, momentum direction, kinetic energy, statistical weight,
+     * and additional properties specific to different simulation codes. It provides
+     * methods for manipulating particle properties, projecting particle trajectories,
+     * and storing format-specific metadata.
+     */
     class Particle {
 
         struct ParticleProperties {
@@ -105,64 +144,376 @@ namespace ParticleZoo {
         };
 
         public:
+            /**
+             * @brief Default constructor for Particle.
+             * 
+             * Creates a particle with default values (unsupported type, zero energy, etc.).
+             */
             Particle() = default;
+            
+            /**
+             * @brief Construct a Particle with specified properties.
+             * 
+             * Creates a particle with the given position, momentum direction, energy, and other properties.
+             * The directional cosines are automatically normalized to ensure they represent a unit vector.
+             * 
+             * @param type The particle type (electron, photon, proton, etc.)
+             * @param kineticEnergy The kinetic energy of the particle
+             * @param x The X coordinate position
+             * @param y The Y coordinate position  
+             * @param z The Z coordinate position
+             * @param directionalCosineX The X component of the momentum unit vector
+             * @param directionalCosineY The Y component of the momentum unit vector
+             * @param directionalCosineZ The Z component of the momentum unit vector
+             * @param isNewHistory Whether this particle starts a new Monte Carlo history (default: true)
+             * @param weight The statistical weight of the particle (default: 1.0)
+             */
             Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0);
 
             // Getters and setters for basic particle properties
 
+            /**
+             * @brief Set the kinetic energy of the particle.
+             * 
+             * @param energy The kinetic energy value to set
+             */
             void setKineticEnergy(float energy);
+            
+            /**
+             * @brief Set the X coordinate position of the particle.
+             * 
+             * @param x The X coordinate value to set
+             */
             void setX(float x);
+            
+            /**
+             * @brief Set the Y coordinate position of the particle.
+             * 
+             * @param y The Y coordinate value to set
+             */
             void setY(float y);
+            
+            /**
+             * @brief Set the Z coordinate position of the particle.
+             * 
+             * @param z The Z coordinate value to set
+             */
             void setZ(float z);
+            
+            /**
+             * @brief Set the X component of the directional cosine (momentum unit vector).
+             * 
+             * @param px The X component of the directional cosine to set
+             */
             void setDirectionalCosineX(float px);
+            
+            /**
+             * @brief Set the Y component of the directional cosine (momentum unit vector).
+             * 
+             * @param py The Y component of the directional cosine to set
+             */
             void setDirectionalCosineY(float py);
+            
+            /**
+             * @brief Set the Z component of the directional cosine (momentum unit vector).
+             * 
+             * @param pz The Z component of the directional cosine to set
+             */
             void setDirectionalCosineZ(float pz);
+            
+            /**
+             * @brief Set the statistical weight of the particle.
+             * 
+             * @param weight The statistical weight value to set
+             */
             void setWeight(float weight);
+            
+            /**
+             * @brief Set whether this particle starts a new Monte Carlo history.
+             * 
+             * @param isNewHistory True if this particle starts a new history, false otherwise
+             */
             void setNewHistory(bool isNewHistory);
 
+            /**
+             * @brief Get the particle type.
+             * 
+             * @return ParticleType The type of particle (electron, photon, proton, etc.)
+             */
             ParticleType getType() const;
+            
+            /**
+             * @brief Get the kinetic energy of the particle.
+             * 
+             * @return float The kinetic energy value
+             */
             float getKineticEnergy() const;
+            
+            /**
+             * @brief Get the X coordinate position of the particle.
+             * 
+             * @return float The X coordinate value
+             */
             float getX() const;
+            
+            /**
+             * @brief Get the Y coordinate position of the particle.
+             * 
+             * @return float The Y coordinate value
+             */
             float getY() const;
+            
+            /**
+             * @brief Get the Z coordinate position of the particle.
+             * 
+             * @return float The Z coordinate value
+             */
             float getZ() const;
+            
+            /**
+             * @brief Get the X component of the directional cosine (momentum unit vector).
+             * 
+             * @return float The X component of the directional cosine
+             */
             float getDirectionalCosineX() const;
+            
+            /**
+             * @brief Get the Y component of the directional cosine (momentum unit vector).
+             * 
+             * @return float The Y component of the directional cosine
+             */
             float getDirectionalCosineY() const;
+            
+            /**
+             * @brief Get the Z component of the directional cosine (momentum unit vector).
+             * 
+             * @return float The Z component of the directional cosine
+             */
             float getDirectionalCosineZ() const;
+            
+            /**
+             * @brief Get the statistical weight of the particle.
+             * 
+             * @return float The statistical weight value
+             */
             float getWeight() const;
+            
+            /**
+             * @brief Check if this particle starts a new Monte Carlo history.
+             * 
+             * @return true if this particle starts a new history
+             * @return false if this particle continues an existing history
+             */
             bool  isNewHistory() const;
+
+            /**
+             * @brief Convenience function to get the number of incremental histories regardless of whether the property is set. If the property is not set, it returns 1 if the particle is marked as a new history, otherwise 0.
+             * 
+             * @return std::uint32_t The number of incremental histories
+             */
+            std::uint32_t getIncrementalHistories() const;
 
             // Setters and getters for advanced particle properties
 
+            /**
+             * @brief Reserve memory for boolean properties
+             * 
+             * @param size The number of boolean properties to reserve space for
+             */
             void reserveBoolProperties(unsigned int size);
+            
+            /**
+             * @brief Reserve memory for float properties
+             * 
+             * @param size The number of float properties to reserve space for
+             */
             void reserveFloatProperties(unsigned int size);
+            
+            /**
+             * @brief Reserve memory for integer properties
+             * 
+             * @param size The number of integer properties to reserve space for
+             */
             void reserveIntProperties(unsigned int size);
 
+            /**
+             * @brief Get the number of boolean properties currently stored.
+             * 
+             * @return int The number of boolean properties
+             */
             int getNumberOfBoolProperties() const;
+            
+            /**
+             * @brief Get the number of float properties currently stored.
+             * 
+             * @return int The number of float properties
+             */
             int getNumberOfFloatProperties() const;
+            
+            /**
+             * @brief Get the number of integer properties currently stored.
+             * 
+             * @return int The number of integer properties
+             */
             int getNumberOfIntProperties() const;
 
+            /**
+             * @brief Check if a boolean property of the specified type exists.
+             * 
+             * @param type The boolean property type to check for
+             * @return true if the property exists
+             * @return false if the property does not exist
+             */
             bool hasBoolProperty(BoolPropertyType type) const;
+            
+            /**
+             * @brief Check if a float property of the specified type exists.
+             * 
+             * @param type The float property type to check for
+             * @return true if the property exists
+             * @return false if the property does not exist
+             */
             bool hasFloatProperty(FloatPropertyType type) const;
+            
+            /**
+             * @brief Check if an integer property of the specified type exists.
+             * 
+             * @param type The integer property type to check for
+             * @return true if the property exists
+             * @return false if the property does not exist
+             */
             bool hasIntProperty(IntPropertyType type) const;
 
+            /**
+             * @brief Get the value of an integer property.
+             * 
+             * @param type The integer property type to retrieve
+             * @return std::int32_t The value of the integer property
+             * @throws std::invalid_argument if the property type is invalid or not found
+             */
             std::int32_t getIntProperty(IntPropertyType type) const;
+            
+            /**
+             * @brief Get the value of a float property.
+             * 
+             * @param type The float property type to retrieve
+             * @return float The value of the float property
+             * @throws std::invalid_argument if the property type is invalid or not found
+             */
             float getFloatProperty(FloatPropertyType type) const;
+            
+            /**
+             * @brief Get the value of a boolean property.
+             * 
+             * @param type The boolean property type to retrieve
+             * @return bool The value of the boolean property
+             * @throws std::invalid_argument if the property type is invalid or not found
+             */
             bool getBoolProperty(BoolPropertyType type) const;
 
+            /**
+             * @brief Set the value of a boolean property.
+             * 
+             * If the property doesn't exist, it will be created. If it exists, the value will be updated.
+             * 
+             * @param type The boolean property type to set
+             * @param value The value to set for the property
+             */
             void setBoolProperty(BoolPropertyType type, bool value);
+            
+            /**
+             * @brief Set the value of a float property.
+             * 
+             * If the property doesn't exist, it will be created. If it exists, the value will be updated.
+             * 
+             * @param type The float property type to set
+             * @param value The value to set for the property
+             */
             void setFloatProperty(FloatPropertyType type, float value);
+            
+            /**
+             * @brief Set the value of an integer property.
+             * 
+             * If the property doesn't exist, it will be created. If it exists, the value will be updated.
+             * 
+             * @param type The integer property type to set
+             * @param value The value to set for the property
+             */
             void setIntProperty(IntPropertyType type, std::int32_t value);
+            
+            /**
+             * @brief Add a custom string property.
+             * 
+             * Associate a string value with this particle. Multiple string properties can be added.
+             * 
+             * @param value The string value to add as a property
+             */
             void setStringProperty(std::string value);
 
+            /**
+             * @brief Get a reference to all custom boolean properties.
+             * 
+             * @return const std::vector<bool>& Reference to the vector of custom boolean properties
+             */
             const std::vector<bool>& getCustomBoolProperties() const;
+            
+            /**
+             * @brief Get a reference to all custom float properties.
+             * 
+             * @return const std::vector<float>& Reference to the vector of custom float properties
+             */
             const std::vector<float>& getCustomFloatProperties() const;
+            
+            /**
+             * @brief Get a reference to all custom integer properties.
+             * 
+             * @return const std::vector<std::int32_t>& Reference to the vector of custom integer properties
+             */
             const std::vector<std::int32_t>& getCustomIntProperties() const;
+            
+            /**
+             * @brief Get a reference to all custom string properties.
+             * 
+             * @return const std::vector<std::string>& Reference to the vector of custom string properties
+             */
             const std::vector<std::string>& getCustomStringProperties() const;
 
             // Methods for projecting the particle's position
 
+            /**
+             * @brief Project the particle's trajectory to a specific X coordinate.
+             * 
+             * Calculates where the particle would be when it reaches the specified X value,
+             * assuming it travels in a straight line. Updates the Y and Z coordinates accordingly.
+             * 
+             * @param X The target X coordinate to project to
+             * @return true if projection was successful
+             * @return false if projection is impossible (particle has no movement in X direction)
+             */
             bool projectToXValue(float X);
+            
+            /**
+             * @brief Project the particle's trajectory to a specific Y coordinate.
+             * 
+             * Calculates where the particle would be when it reaches the specified Y value,
+             * assuming it travels in a straight line. Updates the X and Z coordinates accordingly.
+             * 
+             * @param Y The target Y coordinate to project to
+             * @return true if projection was successful
+             * @return false if projection is impossible (particle has no movement in Y direction)
+             */
             bool projectToYValue(float Y);
+            
+            /**
+             * @brief Project the particle's trajectory to a specific Z coordinate.
+             * 
+             * Calculates where the particle would be when it reaches the specified Z value,
+             * assuming it travels in a straight line. Updates the X and Y coordinates accordingly.
+             * 
+             * @param Z The target Z coordinate to project to
+             * @return true if projection was successful
+             * @return false if projection is impossible (particle has no movement in Z direction)
+             */
             bool projectToZValue(float Z);
 
         private:
@@ -216,6 +567,16 @@ namespace ParticleZoo {
     inline float Particle::getDirectionalCosineZ() const { return pz_; }
     inline float Particle::getWeight() const { return weight_; }
     inline bool  Particle::isNewHistory() const { return isNewHistory_; }
+
+    inline std::uint32_t Particle::getIncrementalHistories() const {
+        if (!isNewHistory_) return 0; // If not a new history, return 0
+        int index = getIntPropertyIndex(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
+        if (index >= 0) {
+            return static_cast<std::uint32_t>(properties_.intProperties[index]); // Return the set property value
+        } else {
+            return 1; // Default to 1 if property not set
+        }
+    }
 
     inline int Particle::getNumberOfBoolProperties() const { return properties_.boolProperties.size(); }
     inline int Particle::getNumberOfFloatProperties() const { return properties_.floatProperties.size(); }
