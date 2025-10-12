@@ -76,9 +76,15 @@ int main(int argc, char* argv[]) {
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
     const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
     const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
+    const CLICommand PROJECT_TO_Y_COMMAND = CLICommand(NONE, "", "projectToY", "Project particles along their direction to this Y position in cm", { CLI_FLOAT });
+    const CLICommand PROJECT_TO_Z_COMMAND = CLICommand(NONE, "", "projectToZ", "Project particles along their direction to this Z position in cm", { CLI_FLOAT });
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
     ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_X_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_Y_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_Z_COMMAND);
     
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
@@ -103,6 +109,13 @@ int main(int argc, char* argv[]) {
     std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
     std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
     std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
+    bool projectToX = userOptions.contains(PROJECT_TO_X_COMMAND);
+    bool projectToY = userOptions.contains(PROJECT_TO_Y_COMMAND);
+    bool projectToZ = userOptions.contains(PROJECT_TO_Z_COMMAND);
+    bool useProjection = projectToX || projectToY || projectToZ;
+    float projectToXValue = projectToX ? std::get<float>(userOptions.at(PROJECT_TO_X_COMMAND)[0]) * cm : 0.0f;
+    float projectToYValue = projectToY ? std::get<float>(userOptions.at(PROJECT_TO_Y_COMMAND)[0]) * cm : 0.0f;
+    float projectToZValue = projectToZ ? std::get<float>(userOptions.at(PROJECT_TO_Z_COMMAND)[0]) * cm : 0.0f;
     if (inputFile.empty()) throw std::runtime_error("No input file specified.");
     if (outputFile.empty()) throw std::runtime_error("No output file specified.");
     if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
@@ -159,6 +172,12 @@ int main(int argc, char* argv[]) {
             // Read the particles from the input file and write them into the output file
             while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() <= particlesToRead)) {
                 Particle particle = reader->getNextParticle();
+
+                if (useProjection) {
+                    if (projectToX) particle.projectToXValue(projectToXValue);
+                    if (projectToY) particle.projectToYValue(projectToYValue);
+                    if (projectToZ) particle.projectToZValue(projectToZValue);
+                }
 
                 writer->writeParticle(particle);
 
