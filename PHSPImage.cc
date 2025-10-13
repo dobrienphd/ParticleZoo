@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
     const CLICommand MIN_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
     const CLICommand MAX_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
     const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
-    const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { 0.25f });
+    const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { tolerance });
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
     const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence instead of particle fluence", { CLI_VALUELESS });
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
@@ -207,14 +207,22 @@ int main(int argc, char* argv[]) {
     if (userOptions.contains(PLANE_LOCATION_COMMAND)) {
         planeLocation = std::get<float>(userOptions.at(PLANE_LOCATION_COMMAND)[0]) * cm;
     }
+    if (userOptions.contains(TOLERANCE_COMMAND)) {
+        tolerance = std::get<float>(userOptions.at(TOLERANCE_COMMAND)[0]) * cm;
+        if (tolerance < 0) {
+            throw std::runtime_error("Tolerance cannot be a negative number.");
+        }
+    }
     if (userOptions.contains(PROJECTION_TYPE_COMMAND)) {
         std::string projectionType_str = std::get<std::string>(userOptions.at(PROJECTION_TYPE_COMMAND)[0]);
         if (projectionType_str == "none") {
             projectionType = ProjectionType::NONE;
         } else if (projectionType_str == "project") {
             projectionType = ProjectionType::PROJECTION;
+            tolerance = 0; // projection mode does not use a tolerance
         } else if (projectionType_str == "flatten") {
             projectionType = ProjectionType::FLATTEN;
+            tolerance = 0; // flatten mode does not use a tolerance
         } else {
             throw std::runtime_error("Invalid projection type specified. Use none, project, or flatten.");
         }
@@ -293,12 +301,6 @@ int main(int argc, char* argv[]) {
     }
     if (plane == YZ && userOptions.contains(MAX_Z_COMMAND)) {
         maxDim2 = std::get<float>(userOptions.at(MAX_Z_COMMAND)[0]) * cm;
-    }
-    if (userOptions.contains(TOLERANCE_COMMAND)) {
-        tolerance = std::get<float>(userOptions.at(TOLERANCE_COMMAND)[0]) * cm;
-        if (tolerance < 0) {
-            throw std::runtime_error("Tolerance cannot be a negative number.");
-        }
     }
     if (minDim1 >= maxDim1 || minDim2 >= maxDim2) {
         throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
@@ -434,15 +436,15 @@ int main(int argc, char* argv[]) {
             // Determine pixel coordinates based on the selected plane
             int pixelX = 0, pixelY = 0;
             bool validPixel = false;
-            if (plane == XY && std::abs(z - planeLocation) < tolerance && x >= minDim1 && x <= maxDim1 && y >= minDim2 && y <= maxDim2) {
+            if (plane == XY && std::abs(z - planeLocation) <= tolerance && x >= minDim1 && x <= maxDim1 && y >= minDim2 && y <= maxDim2) {
                 pixelX = static_cast<int>((x - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((y - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;
-            } else if (plane == XZ && std::abs(y - planeLocation) < tolerance && x >= minDim1 && x <= maxDim1 && z >= minDim2 && z <= maxDim2) {
+            } else if (plane == XZ && std::abs(y - planeLocation) <= tolerance && x >= minDim1 && x <= maxDim1 && z >= minDim2 && z <= maxDim2) {
                 pixelX = static_cast<int>((x - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((z - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;
-            } else if (plane == YZ && std::abs(x - planeLocation) < tolerance && y >= minDim1 && y <= maxDim1 && z >= minDim2 && z <= maxDim2) {
+            } else if (plane == YZ && std::abs(x - planeLocation) <= tolerance && y >= minDim1 && y <= maxDim1 && z >= minDim2 && z <= maxDim2) {
                 pixelX = static_cast<int>((y - minDim1) / (maxDim1 - minDim1) * imageWidth);
                 pixelY = static_cast<int>((z - minDim2) / (maxDim2 - minDim2) * imageHeight);
                 validPixel = true;
