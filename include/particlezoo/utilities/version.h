@@ -77,6 +77,14 @@ namespace ParticleZoo {
          */
         static constexpr const char* CAVEAT         = "";
 
+        /**
+         * @brief Generate a complete version string for display.
+         * 
+         * Creates a human-readable version string combining all version
+         * components in the standard format: "ProjectName vMAJOR.MINOR.PATCH STATUS"
+
+         * @return Complete version string including project name, version numbers, and status
+         */        
         static std::string GetVersionString() {
             if (CAVEAT[0] != '\0') {
                 return std::string(PROJECT_NAME) + " v" +
