@@ -152,6 +152,7 @@ int main(int argc, char* argv[]) {
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         uint64_t particlesInFile = reader->getNumberOfParticles();
         uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
+        uint64_t particlesRejected = 0;
         bool readPartialFile = particlesToRead < particlesInFile;
 
         // Determine progress update interval
@@ -174,12 +175,26 @@ int main(int argc, char* argv[]) {
                 Particle particle = reader->getNextParticle();
 
                 if (useProjection) {
-                    if (projectToX) particle.projectToXValue(projectToXValue);
-                    if (projectToY) particle.projectToYValue(projectToYValue);
-                    if (projectToZ) particle.projectToZValue(projectToZValue);
+                    // Project the particle if projection is enabled
+                    // If the projection fails (e.g. particle direction is parallel to the projection plane) then skip writing this particle
+                    // If we don't write the particle and it is a new history then we need to account for the history count
+                    bool projectionSuccess = particle.getType() != ParticleType::PseudoParticle; // Do not project pseudo-particles
+                    if (projectToX && projectionSuccess) projectionSuccess = particle.projectToXValue(projectToXValue);
+                    if (projectToY && projectionSuccess) projectionSuccess = particle.projectToYValue(projectToYValue);
+                    if (projectToZ && projectionSuccess) projectionSuccess = particle.projectToZValue(projectToZValue);
+                    if (projectionSuccess) {
+                        // If projection was successful, write the particle
+                        writer->writeParticle(particle);
+                    } else {
+                        if (particle.isNewHistory()) {
+                            // If projection failed and this is a new history, account for the history but do not write the particle
+                            writer->addAdditionalHistories(particle.getIncrementalHistories());
+                        }
+                        particlesRejected++;
+                    }
+                } else {
+                    writer->writeParticle(particle);
                 }
-
-                writer->writeParticle(particle);
 
                 // Update progress bar every 1% of particles read
                 std::uint64_t particlesSoFar = reader->getParticlesRead();
@@ -190,8 +205,8 @@ int main(int argc, char* argv[]) {
 
             // Check that the number of particles written matches the expected number
             std::uint64_t particlesWritten = writer->getParticlesWritten();
-            if (particlesWritten != particlesToRead) {
-                errorMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesToRead) + "). The output file will reflect the number of particles actually written.");
+            if (particlesWritten != particlesToRead - particlesRejected) {
+                errorMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesToRead - particlesRejected) + "). The output file will reflect the number of particles actually written.");
             }
 
             // Finalize history counts, if the original file contained more histories than have been written then add the difference (this can happen if uneventful histories occurred after the final particle was recorded)
@@ -215,6 +230,7 @@ int main(int argc, char* argv[]) {
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
         std::cout << "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories with " + std::to_string(writer->getParticlesWritten()) + " particles in " + std::to_string(elapsed) + " seconds" << std::endl;
+        std::cout << particlesRejected << " plane-parallel particles were rejected during projection." << std::endl;
     }
     catch (const std::exception& e) {
         errorMessages.push_back(e.what());
