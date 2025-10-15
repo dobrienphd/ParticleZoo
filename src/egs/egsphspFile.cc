@@ -15,6 +15,8 @@ namespace ParticleZoo::EGSphspFile
     CLICommand EGSParticleZValueCommand{ READER, "", "EGS-particleZ", "Specify the Z value for all particles in the EGS phase space file", { CLI_FLOAT }, { 0.0f } };
     CLICommand EGSModeCommand{ WRITER, "", "EGS-mode", "Specify the EGS phase space file mode (MODE0 or MODE2)", { CLI_STRING }, { std::string("MODE0") } };
 
+    constexpr float ELECTRON_REST_MASS_MEV = 0.5109989461f;    ///< Electron rest mass, stored explicitly in MeV for operating directly on the energy value in the file before conversion to internal units
+
     Reader::Reader(const std::string & fileName, const UserOptions & options)
     : PhaseSpaceFileReader("EGS", fileName, options), particleZValue_(0), mode_(EGSMODE::MODE0)
     {
