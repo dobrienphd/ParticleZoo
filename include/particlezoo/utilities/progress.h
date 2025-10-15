@@ -9,8 +9,31 @@
 namespace ParticleZoo
 {
 
+    /**
+     * @brief Template class for displaying console progress bars with customizable numeric types.
+     * 
+     * The Progress class provides an efficient console progress bar that works with
+     * various numeric types (integers and floating-point numbers). It displays progress as both
+     * a visual bar and percentage, with support for custom status messages.
+     * 
+     * Designed to provide a consistent interface across bundled ParticleZoo tools.
+     * 
+     * Usage pattern:
+     * 1. Create Progress instance with total value
+     * 2. Call Start() to begin progress tracking
+     * 3. Call Update() repeatedly as work progresses
+     * 4. Call Complete() when finished
+     * 
+     * @tparam T The numeric type for progress values (must be arithmetic, not bool/char)
+     */
     template<typename T>
     class Progress {
+        /**
+         * @brief Compile-time type validation for template parameter.
+         * 
+         * Ensures T is an arithmetic type but excludes bool and char variants
+         * which are not suitable for progress tracking.
+         */
         static_assert(
             std::is_arithmetic<T>::value &&
             !std::is_same<typename std::remove_cv<T>::type, bool>::value &&
@@ -21,30 +44,103 @@ namespace ParticleZoo
         );
 
         public:
+            /**
+             * @brief Construct a new Progress object with specified total progress value.
+             * 
+             * @param totalProgress The maximum progress value (must be > 0 and finite for floating-point)
+             * @throws std::invalid_argument if totalProgress <= 0 or is not finite (for floating-point types)
+             */
             explicit Progress(T totalProgress);
 
-            // Start a new progress operation
+            /**
+             * @brief Start a new progress tracking operation.
+             * 
+             * Initializes the progress bar display with a header message.
+             * The progress bar will show 0% completion and begin accepting updates.
+             * Calling Start() is required before any Update() calls.
+             * 
+             * @param header The header message to display before the progress bar
+             * @throws std::runtime_error if progress tracking is already active
+             */
             void Start(const std::string& header);
 
-            // Update the progress with a new message
+            /**
+             * @brief Update the current progress value without changing the message.
+             * 
+             * Updates the progress bar to reflect the new progress value. The status message
+             * remains unchanged from the previous update.
+             * 
+             * @param currentProgress The new progress value (will be clamped to [0, totalProgress])
+             * @throws std::runtime_error if progress tracking is not active
+             * @throws std::invalid_argument if currentProgress is not finite (for floating-point types)
+             */
             void Update(T currentProgress);
+            
+            /**
+             * @brief Update the status message without changing the progress value.
+             * 
+             * Updates the status message displayed after the progress bar. The progress
+             * value remains unchanged from the previous update.
+             * 
+             * @param message The new status message to display
+             * @throws std::runtime_error if progress tracking is not active
+             */
             void Update(const std::string& message);
+            
+            /**
+             * @brief Update both progress value and status message.
+             * 
+             * Updates both the progress bar and status message. Provides control over
+             * whether the update should be forced even if the visual progress hasn't changed.
+             * Updates are forced by default but can be disabled for performance in tight loops.
+             * 
+             * @param currentProgress The new progress value (will be clamped to [0, totalProgress])
+             * @param message The new status message to display
+             * @param forceUpdate If true, updates display even if progress bar blocks haven't changed (default: true)
+             * @throws std::runtime_error if progress tracking is not active
+             * @throws std::invalid_argument if currentProgress is not finite (for floating-point types)
+             */
             void Update(T currentProgress, const std::string& message, bool forceUpdate = true);
 
-            // Complete the progress operation
+            /**
+             * @brief Complete the progress operation with the current message.
+             * 
+             * Sets progress to 100%, displays the final progress bar, and ends the progress tracking.
+             * Moves the cursor to a new line after completion.
+             */
             void Complete();
+            
+            /**
+             * @brief Complete the progress operation with a custom final message.
+             * 
+             * Sets progress to 100%, displays the final progress bar with the specified message,
+             * and ends the progress tracking. Moves the cursor to a new line after completion.
+             * 
+             * @param finalMessage The final status message to display at completion
+             */
             void Complete(const std::string& finalMessage);
 
         private:
-            bool is_active_;               // Indicates if progress is active
-            std::string start_message_;    // Initial message when progress starts
-            std::string current_message_;  // Current progress message
-            int last_block_count_;         // Last block count for progress bar
-            std::size_t last_render_len_;  // Last rendered length of the progress bar
+            bool is_active_;               ///< Indicates if progress tracking is currently active
+            std::string start_message_;    ///< Initial header message displayed when progress starts
+            std::string current_message_;  ///< Current status message displayed after the progress bar
+            int last_block_count_;         ///< Last number of progress blocks rendered (for optimization)
+            std::size_t last_render_len_;  ///< Last total length of rendered progress line (for cleanup)
 
-            T current_progress_; // Current progress value
-            T total_progress_;   // Total progress value
+            T current_progress_;           ///< Current progress value
+            T total_progress_;             ///< Maximum progress value (target for 100%)
 
+            /**
+             * @brief Update the progress bar.
+             * 
+             * Renders the progress bar to the console with the specified percentage and message.
+             * Handles padding and cleanup of previous longer lines to prevent display artifacts.
+             * 
+             * @param percentageProgress The progress percentage (0-100)
+             * @param progressBarBlocks The number of filled blocks in the 20-character progress bar
+             * @param message The status message to display after the progress bar
+             * @throws std::out_of_range if percentageProgress is not between 0 and 100
+             */
             void UpdateProgressBar(int percentageProgress, int progressBarBlocks, const std::string& message);
     };
 
