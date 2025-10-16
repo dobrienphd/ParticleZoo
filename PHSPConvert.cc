@@ -230,7 +230,9 @@ int main(int argc, char* argv[]) {
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
         std::cout << "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories with " + std::to_string(writer->getParticlesWritten()) + " particles in " + std::to_string(elapsed) + " seconds" << std::endl;
-        std::cout << particlesRejected << " plane-parallel particles were rejected during projection." << std::endl;
+        if (useProjection && particlesRejected > 0) {
+            std::cout << "Note: " << particlesRejected << " plane-parallel particles were rejected during projection." << std::endl;
+        }
     }
     catch (const std::exception& e) {
         errorMessages.push_back(e.what());
