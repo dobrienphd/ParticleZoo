@@ -13,183 +13,707 @@
 
 namespace ParticleZoo::IAEAphspFile
 {
+    /**
+     * @brief Header manager for IAEA phase space files
+     * 
+     * This class handles reading, writing, and manipulating the header information
+     * for IAEA format phase space files. It manages file metadata, particle statistics,
+     * data layout specifications, and validation checksums.
+     */
     class IAEAHeader
     {
+        /**
+         * @brief Statistics tracking for individual particle types
+         * 
+         * Records count, weight, and energy statistics for particles
+         * of a specific type for inclusion in the header.
+         */
         struct ParticleStats
         {
-            std::uint64_t count_;
-            double weightSum_;
-            float minWeight_;
-            float maxWeight_;
-            double energySum_;
-            float minEnergy_;
-            float maxEnergy_;
+            std::uint64_t count_;      ///< Number of particles of this type
+            double weightSum_;         ///< Sum of all particle weights
+            float minWeight_;          ///< Minimum weight encountered
+            float maxWeight_;          ///< Maximum weight encountered
+            double energySum_;         ///< Sum of all particle energies
+            float minEnergy_;          ///< Minimum energy encountered
+            float maxEnergy_;          ///< Maximum energy encountered
             ParticleStats();
         };
 
+        /**
+         * @brief Type definition for header sections including their title and content
+         */
         using SectionTable = std::unordered_map<std::string, std::string>;
+
+        /**
+         * @brief Type definition for mapping particle types to their counts
+         */
         using ParticleCountTable = std::unordered_map<ParticleType, std::uint64_t>;
+
+        /**
+         * @brief Type definition for mapping particle types to their statistics
+         */
         using ParticleStatsTable = std::unordered_map<ParticleType, ParticleStats>;
 
         public:
 
+            /**
+             * @brief File type classification for IAEA phase space files
+             */
             enum class FileType {
-                PHSP_FILE = 0,
-                PHSP_GENERATOR = 1
+                PHSP_FILE = 0,        ///< Standard phase space file
+                PHSP_GENERATOR = 1    ///< Phase space generator file (as far as I know this is not used anywhere, but it exists in the original implementation)
             };
 
+            /**
+             * @brief Header section identifiers for IAEA format
+             * 
+             * Defines all standard sections that can appear in an IAEA header file,
+             * used for parsing and generating header content. Includes a CUSTOM_SECTION
+             * for user-defined entries.
+             */
             enum class SECTION {
-                IAEA_INDEX,
-                TITLE,
-                FILE_TYPE,
-                CHECKSUM,
-                RECORD_CONTENTS,
-                RECORD_CONSTANT,
-                RECORD_LENGTH,
-                BYTE_ORDER,
-                ORIGINAL_HISTORIES,
-                PARTICLES,
-                PHOTONS,
-                ELECTRONS,
-                POSITRONS,
-                NEUTRONS,
-                PROTONS,
-                TRANSPORT_PARAMETERS,
-                MACHINE_TYPE,
-                MONTE_CARLO_CODE_VERSION,
-                GLOBAL_PHOTON_ENERGY_CUTOFF,
-                GLOBAL_PARTICLE_ENERGY_CUTOFF,
-                COORDINATE_SYSTEM_DESCRIPTION,
-                BEAM_NAME,
-                FIELD_SIZE,
-                NOMINAL_SSD,
-                MC_INPUT_FILENAME,
-                VARIANCE_REDUCTION_TECHNIQUES,
-                INITIAL_SOURCE_DESCRIPTION,
-                PUBLISHED_REFERENCE,
-                AUTHORS,
-                INSTITUTION,
-                LINK_VALIDATION,
-                ADDITIONAL_NOTES,
-                STATISTICAL_INFORMATION_PARTICLES,
-                STATISTICAL_INFORMATION_GEOMETRY,
-                CUSTOM_SECTION
+                IAEA_INDEX,                           ///< IAEA index code
+                TITLE,                                ///< File title/description
+                FILE_TYPE,                            ///< Either PHSP_FILE or PHSP_GENERATOR
+                CHECKSUM,                             ///< Data integrity checksum
+                RECORD_CONTENTS,                      ///< Description of record structure
+                RECORD_CONSTANT,                      ///< Constant values in records
+                RECORD_LENGTH,                        ///< Length of each particle record
+                BYTE_ORDER,                           ///< Byte ordering specification (endianness)
+                ORIGINAL_HISTORIES,                   ///< Number of original simulation histories
+                PARTICLES,                            ///< Total particle count
+                PHOTONS,                              ///< Photon count and statistics
+                ELECTRONS,                            ///< Electron count and statistics
+                POSITRONS,                            ///< Positron count and statistics
+                NEUTRONS,                             ///< Neutron count and statistics
+                PROTONS,                              ///< Proton count and statistics
+                TRANSPORT_PARAMETERS,                 ///< Monte Carlo transport settings
+                MACHINE_TYPE,                         ///< Linear accelerator type
+                MONTE_CARLO_CODE_VERSION,             ///< Monte Carlo code version information
+                GLOBAL_PHOTON_ENERGY_CUTOFF,          ///< Global photon cutoff energy
+                GLOBAL_PARTICLE_ENERGY_CUTOFF,        ///< Global particle cutoff energy
+                COORDINATE_SYSTEM_DESCRIPTION,        ///< Coordinate system definition
+                BEAM_NAME,                            ///< Treatment beam name
+                FIELD_SIZE,                           ///< Radiation field dimensions
+                NOMINAL_SSD,                          ///< Source-to-surface distance
+                MC_INPUT_FILENAME,                    ///< Monte Carlo input file name
+                VARIANCE_REDUCTION_TECHNIQUES,        ///< Variance reduction methods used
+                INITIAL_SOURCE_DESCRIPTION,           ///< Primary source description
+                PUBLISHED_REFERENCE,                  ///< Publication reference
+                AUTHORS,                              ///< File authors
+                INSTITUTION,                          ///< Institution name
+                LINK_VALIDATION,                      ///< Validation link information
+                ADDITIONAL_NOTES,                     ///< Additional notes
+                STATISTICAL_INFORMATION_PARTICLES,    ///< Particle statistics summary
+                STATISTICAL_INFORMATION_GEOMETRY,     ///< Geometric statistics summary
+                CUSTOM_SECTION                        ///< User-defined section
             };
 
+            /**
+             * @brief Extra integer data types for IAEA format
+             * 
+             * Defines the types of additional integer data that can be stored
+             * with each particle record beyond the standard IAEA format.
+             * Refered to as "long" in the original IAEA documentation, however it
+             * is always a 32-bit integer on both 32-bit and 64-bit systems.
+             */
             enum class EXTRA_LONG_TYPE {
-                USER_DEFINED_GENERIC_TYPE = 0,
-                INCREMENTAL_HISTORY_NUMBER = 1,
-                EGS_LATCH = 2,
-                PENELOPE_ILB5 = 3,
-                PENELOPE_ILB4 = 4,
-                PENELOPE_ILB3 = 5,
-                PENELOPE_ILB2 = 6,
-                PENELOPE_ILB1 = 7
+                USER_DEFINED_GENERIC_TYPE = 0,       ///< Generic user-defined integer
+                INCREMENTAL_HISTORY_NUMBER = 1,      ///< Sequential history number for tracking, tracks the number of new histories since the last particle was recorded
+                EGS_LATCH = 2,                       ///< EGS-specific latch variable (see BEAMnrc User Manual for details)
+                PENELOPE_ILB5 = 3,                   ///< PENELOPE ILB array value 1, corresponds to the generation of the particle (1 for primary, 2 for secondary, etc.)
+                PENELOPE_ILB4 = 4,                   ///< PENELOPE ILB array value 2, corresponds to the particle type of the particle's parent (applies only if ILB1 > 1)
+                PENELOPE_ILB3 = 5,                   ///< PENELOPE ILB array value 3, corresponds to the interaction type that created the particle (applies only if ILB1 > 1)
+                PENELOPE_ILB2 = 6,                   ///< PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transistion that created the particle
+                PENELOPE_ILB1 = 7                    ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
             };
 
+            /**
+             * @brief Extra float data types for IAEA format
+             * 
+             * Defines the types of additional floating-point data that can be stored
+             * with each particle record beyond the standard IAEA format.
+             */
             enum class EXTRA_FLOAT_TYPE {
-                USER_DEFINED_GENERIC_TYPE = 0,
-                XLAST = 1,
-                YLAST = 2,
-                ZLAST = 3
+                USER_DEFINED_GENERIC_TYPE = 0,       ///< Generic user-defined float
+                XLAST = 1,                           ///< Last X position
+                YLAST = 2,                           ///< Last Y position
+                ZLAST = 3                            ///< Last Z position
             };
 
-            IAEAHeader(const std::string &filePath, bool newFile = false);
-            IAEAHeader(const IAEAHeader & other, const std::string & newFilePath);
+            // Constructors and destructor
 
+            /**
+             * @brief Construct header from existing IAEA header file
+             * 
+             * @param filePath Path to the IAEA header file (.IAEAheader)
+             * @param newFile If true, creates a new header; if false, reads existing file
+             * @throws std::runtime_error if file cannot be read or is invalid
+             */
+            IAEAHeader(const std::string &filePath, bool newFile = false);
+
+            /**
+             * @brief Copy constructor with new file path
+             * 
+             * Creates a new header based on an existing one but with a different file path.
+             * Resets particle counts and statistics to zero.
+             * 
+             * @param other Source header to copy from
+             * @param newFilePath Path for the new header file
+             */
+            IAEAHeader(const IAEAHeader &other, const std::string & newFilePath);
+
+            // Header file operations
+
+            /**
+             * @brief Write header information to file
+             * 
+             * Writes the complete header information to the associated .IAEAheader file,
+             * including all sections, particle statistics, and metadata.
+             * 
+             * @throws std::runtime_error if file cannot be written
+             */
             void writeHeader();
 
             // Getters for IAEAHeader attributes
+
+            /**
+             * @brief Get the path to the header file
+             * @return Path to the .IAEAheader file
+             */
             std::string         getHeaderFilePath() const;
+
+            /**
+             * @brief Get the path to the associated data file
+             * @return Path to the .IAEAphsp data file
+             */
             std::string         getDataFilePath() const;
-            std::string         getIAEAIndex() const; // sometimes represented with leading zeros, use string to preserve format
+
+            /**
+             * @brief Get the IAEA index string
+             * @return IAEA index (preserved with leading zeros if present)
+             */
+            std::string         getIAEAIndex() const;
+
+            /**
+             * @brief Get the phase space file title
+             * @return Title string describing the phase space file
+             */
             const std::string & getTitle() const;
+
+            /**
+             * @brief Get the file type classification
+             * @return FileType indicating PHSP_FILE or PHSP_GENERATOR
+             */
             FileType            getFileType() const;
+
+            /**
+             * @brief Get the data integrity checksum
+             * @return Checksum value for data validation
+             */
             std::uint64_t       getChecksum() const;
+
+            /**
+             * @brief Check if X coordinates are stored in records
+             * @return true if X values are stored, false if constant
+             */
             bool                xIsStored() const;
+
+            /**
+             * @brief Check if Y coordinates are stored in records
+             * @return true if Y values are stored, false if constant
+             */
             bool                yIsStored() const;
+
+            /**
+             * @brief Check if Z coordinates are stored in records
+             * @return true if Z values are stored, false if constant
+             */
             bool                zIsStored() const;
+
+            /**
+             * @brief Check if U direction cosines are stored in records
+             * @return true if U values are stored, false if constant
+             */
             bool                uIsStored() const;
+
+            /**
+             * @brief Check if V direction cosines are stored in records
+             * @return true if V values are stored, false if constant
+             */
             bool                vIsStored() const;
+
+            /**
+             * @brief Check if W direction cosines are stored in records
+             * @note W being 'stored' means that it is not a constant value recorded in the header.
+             * The 'stored' value is only implicitly stored and is actually calculated as needed from U and V.
+             * @return true if W values are stored, false if constant
+             */
             bool                wIsStored() const;
+
+            /**
+             * @brief Check if particle weights are stored in records
+             * @return true if weights are stored, false if constant
+             */
             bool                weightIsStored() const;
+
+            /**
+             * @brief Get the number of extra float values per record
+             * @return Count of additional floating-point values
+             */
             unsigned int        getNumberOfExtraFloats() const;
+
+            /**
+             * @brief Get the number of extra integer values per record
+             * @return Count of additional integer values
+             */
             unsigned int        getNumberOfExtraLongs() const;
+
+            /**
+             * @brief Get the constant X coordinate value (when not stored per particle)
+             * @return X coordinate when not stored per particle
+             */
             float               getConstantX() const;
+
+            /**
+             * @brief Get the constant Y coordinate value (when not stored per particle)
+             * @return Y coordinate when not stored per particle
+             */
             float               getConstantY() const;
+
+            /**
+             * @brief Get the constant Z coordinate value (when not stored per particle)
+             * @return Z coordinate when not stored per particle
+             */
             float               getConstantZ() const;
+
+            /**
+             * @brief Get the constant U direction cosine value (when not stored per particle)
+             * @return U direction cosine when not stored per particle
+             */
             float               getConstantU() const;
+
+            /**
+             * @brief Get the constant V direction cosine value (when not stored per particle)
+             * @return V direction cosine when not stored per particle
+             */
             float               getConstantV() const;
+
+            /**
+             * @brief Get the constant W direction cosine value (when not implicitly stored per particle)
+             * @return W direction cosine when not stored per particle
+             */
             float               getConstantW() const;
+
+            /**
+             * @brief Get the constant particle weight value (when not stored per particle)
+             * @return Weight when not stored per particle
+             */
             float               getConstantWeight() const;
+
+            /**
+             * @brief Get the type of the extra float value at the specified index
+             * @param index Index of the extra float (0-based)
+             * @return EXTRA_FLOAT_TYPE describing the data type
+             * @throws std::out_of_range if index is invalid
+             */
             EXTRA_FLOAT_TYPE    getExtraFloatType(unsigned int index) const;
+
+            /**
+             * @brief Get the type of the extra integer value at the specified index
+             * @param index Index of the extra integer (0-based)
+             * @return EXTRA_LONG_TYPE describing the data type
+             * @throws std::out_of_range if index is invalid
+             */
             EXTRA_LONG_TYPE     getExtraLongType(unsigned int index) const;
+
+            /**
+             * @brief Get the length of each particle record in bytes
+             * @return Record length in bytes
+             */
             std::size_t         getRecordLength() const;
+
+            /**
+             * @brief Get the byte order for binary data (endianness)
+             * @return ByteOrder specification for data interpretation
+             */
             ByteOrder           getByteOrder() const;
+
+            /**
+             * @brief Get the number of original simulation histories
+             * @return The number of primary histories used to generate the phase space
+             */
             std::uint64_t       getOriginalHistories() const;
+
+            /**
+             * @brief Get the total number of particles in the phase space
+             * @return Total particle count across all types
+             */
             std::uint64_t       getNumberOfParticles() const;
+
+            /**
+             * @brief Get the number of particles of a specific type
+             * @param particleType Type of particle to count
+             * @return Number of particles of the specified type
+             */
             std::uint64_t       getNumberOfParticles(ParticleType particleType) const;
+
+            /**
+             * @brief Get a header section value by name
+             * @param sectionName Name of the section to retrieve
+             * @return Section content as string, "UNKNOWN" if not found
+             */
             const std::string   getSection(const std::string &sectionName) const;
+
+            /**
+             * @brief Get a header section value by enum
+             * @param section Section identifier to retrieve
+             * @return Section content as string, empty if not found
+             */
             const std::string   getSection(SECTION section) const;
 
             // Getters for particle statistics
+
+            /**
+             * @brief Get the minimum X coordinate across all particles
+             * @return Minimum X value in the phase space
+             */
             float               getMinX() const;
+
+            /**
+             * @brief Get the maximum X coordinate across all particles
+             * @return Maximum X value in the phase space
+             */
             float               getMaxX() const;
+
+            /**
+             * @brief Get the minimum Y coordinate across all particles
+             * @return Minimum Y value in the phase space
+             */
             float               getMinY() const;
+
+            /**
+             * @brief Get the maximum Y coordinate across all particles
+             * @return Maximum Y value in the phase space
+             */
             float               getMaxY() const;
+
+            /**
+             * @brief Get the minimum Z coordinate across all particles
+             * @return Minimum Z value in the phase space
+             */
             float               getMinZ() const;
+
+            /**
+             * @brief Get the maximum Z coordinate across all particles
+             * @return Maximum Z value in the phase space
+             */
             float               getMaxZ() const;
+
+            /**
+             * @brief Get the minimum weight for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Minimum weight value for the particle type
+             */
             float               getMinWeight(ParticleType particleType) const;
+
+            /**
+             * @brief Get the maximum weight for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Maximum weight value for the particle type
+             */
             float               getMaxWeight(ParticleType particleType) const;
+
+            /**
+             * @brief Get the minimum energy for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Minimum kinetic energy for the particle type
+             */
             float               getMinEnergy(ParticleType particleType) const;
+
+            /**
+             * @brief Get the maximum energy for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Maximum kinetic energy for the particle type
+             */
             float               getMaxEnergy(ParticleType particleType) const;
+
+            /**
+             * @brief Get the mean weight for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Average weight value for the particle type
+             */
             float               getMeanWeight(ParticleType particleType) const;
+
+            /**
+             * @brief Get the mean energy for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Average kinetic energy for the particle type
+             */
             float               getMeanEnergy(ParticleType particleType) const;
+
+            /**
+             * @brief Get the total weight for particles of a specific type
+             * @param particleType Type of particle to query
+             * @return Sum of all weights for the particle type
+             */
             float               getTotalWeight(ParticleType particleType) const;
 
             // Setters for IAEAHeader attributes
+
+            /**
+             * @brief Set the file path for the header
+             * @param filePath New path to the .IAEAheader file
+             */
             void                setFilePath(const std::string &filePath);
+
+            /**
+             * @brief Set the IAEA index string
+             * @param index New IAEA index identifier
+             */
             void                setIAEAIndex(const std::string &index);
+
+            /**
+             * @brief Set the phase space file title
+             * @param title New title for the file
+             */
             void                setTitle(const std::string &title);
+
+            /**
+             * @brief Set the file type classification
+             * @param fileType Type specification (PHSP_FILE or PHSP_GENERATOR)
+             */
             void                setFileType(FileType fileType);
+
+            /**
+             * @brief Set the data integrity checksum
+             * @param checksum New checksum value
+             */
             void                setChecksum(std::uint64_t checksum);
+
+            /**
+             * @brief Set the constant X coordinate value
+             * @param x X coordinate for all particles
+             */
             void                setConstantX(float x);
+
+            /**
+             * @brief Set the constant Y coordinate value
+             * @param y Y coordinate for all particles
+             */
             void                setConstantY(float y);
+
+            /**
+             * @brief Set the constant Z coordinate value
+             * @param z Z coordinate for all particles
+             */
             void                setConstantZ(float z);
+
+            /**
+             * @brief Set the constant U direction cosine value
+             * @param u U direction cosine for all particles
+             */
             void                setConstantU(float u);
+
+            /**
+             * @brief Set the constant V direction cosine value
+             * @param v V direction cosine for all particles
+             */
             void                setConstantV(float v);
+
+            /**
+             * @brief Set the constant W direction cosine value
+             * @param w W direction cosine for all particles
+             */
             void                setConstantW(float w);
+
+            /**
+             * @brief Set the constant particle weight value
+             * @param weight Weight for all particles
+             */
             void                setConstantWeight(float weight);
+
+            /**
+             * @brief Add an extra float data type to the record format
+             * @param type Type of additional floating-point data to include
+             */
             void                addExtraFloat(EXTRA_FLOAT_TYPE type);
+
+            /**
+             * @brief Add an extra integer data type to the record format
+             * @param type Type of additional integer data to include
+             */
             void                addExtraLong(EXTRA_LONG_TYPE type);
+
+            /**
+             * @brief Check if a specific extra float type is included
+             * @param type Extra float type to check for
+             * @return true if the type is included in the record format
+             */
             bool                hasExtraFloat(EXTRA_FLOAT_TYPE type) const;
+
+            /**
+             * @brief Check if a specific extra integer type is included
+             * @param type Extra integer type to check for
+             * @return true if the type is included in the record format
+             */
             bool                hasExtraLong(EXTRA_LONG_TYPE type) const;
+
+            /**
+             * @brief Set the particle record length in bytes
+             * @param length New record length for each particle
+             */
             void                setRecordLength(std::size_t length);
+
+            /**
+             * @brief Set the number of original simulation histories
+             * @param originalHistories Count of primary histories
+             */
             void                setOriginalHistories(std::uint64_t originalHistories);
+
+            /**
+             * @brief Set the total number of particles
+             * @param numberOfParticles Total particle count across all types
+             */
             void                setNumberOfParticles(std::uint64_t numberOfParticles);
+
+            /**
+             * @brief Set the number of particles for a specific type
+             * @param particleType Type of particle to set count for
+             * @param numberOfParticles Number of particles of this type
+             */
             void                setNumberOfParticles(ParticleType particleType, std::uint64_t numberOfParticles);
+
+            /**
+             * @brief Update particle statistics with a new particle
+             * @param particle Particle to include in statistics calculations
+             */
             void                countParticleStats(const Particle & particle);
+
+            /**
+             * @brief Set a header section value by name
+             * @param sectionName Name of the section to set
+             * @param sectionValue Content to store in the section
+             */
             void                setSection(const std::string &sectionName, const std::string &sectionValue);
+
+            /**
+             * @brief Set a header section value using the explicit enum type
+             * @param section Section identifier to set
+             * @param sectionValue Content to store in the section
+             */
             void                setSection(SECTION section, const std::string &sectionValue);
 
             // Setters for particle statistics
+
+            /**
+             * @brief Set the minimum X coordinate boundary
+             * @param minX Minimum X value in the phase space
+             */
             void                setMinX(float minX);
+
+            /**
+             * @brief Set the maximum X coordinate boundary
+             * @param maxX Maximum X value in the phase space
+             */
             void                setMaxX(float maxX);
+
+            /**
+             * @brief Set the minimum Y coordinate boundary
+             * @param minY Minimum Y value in the phase space
+             */
             void                setMinY(float minY);
+
+            /**
+             * @brief Set the maximum Y coordinate boundary
+             * @param maxY Maximum Y value in the phase space
+             */
             void                setMaxY(float maxY);
+
+            /**
+             * @brief Set the minimum Z coordinate boundary
+             * @param minZ Minimum Z value in the phase space
+             */
             void                setMinZ(float minZ);
+
+            /**
+             * @brief Set the maximum Z coordinate boundary
+             * @param maxZ Maximum Z value in the phase space
+             */
             void                setMaxZ(float maxZ);
+
+            /**
+             * @brief Set the minimum weight for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param minWeight Minimum weight value for this particle type
+             */
             void                setMinWeight(ParticleType particleType, float minWeight);
+
+            /**
+             * @brief Set the maximum weight for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param maxWeight Maximum weight value for this particle type
+             */
             void                setMaxWeight(ParticleType particleType, float maxWeight);
+
+            /**
+             * @brief Set the minimum energy for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param minEnergy Minimum kinetic energy for this particle type
+             */
             void                setMinEnergy(ParticleType particleType, float minEnergy);
+
+            /**
+             * @brief Set the maximum energy for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param maxEnergy Maximum kinetic energy for this particle type
+             */
             void                setMaxEnergy(ParticleType particleType, float maxEnergy);
+
+            /**
+             * @brief Set the mean energy for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param meanEnergy Average kinetic energy for this particle type
+             */
             void                setMeanEnergy(ParticleType particleType, float meanEnergy);
+
+            /**
+             * @brief Set the total weight for particles of a specific type
+             * @param particleType Type of particle to set statistics for
+             * @param totalWeight Sum of all weights for this particle type
+             */
             void                setTotalWeight(ParticleType particleType, float totalWeight);
 
+            // Validation and utility methods
+
+            /**
+             * @brief Validate the data integrity checksum
+             * This check is strict. Not only does it verify that the checksum matches the file size,
+             * but it also checks that it equals the record length multiplied by the number of particles.
+             * @return true if checksum matches expected value based on file size and record length
+             */
             bool                checksumIsValid() const;
 
+            /**
+             * @brief Determine the header file path from a data file name
+             * @param filename Path to the data file (.IAEAphsp)
+             * @return Path to the corresponding header file (.IAEAheader)
+             */
             const static std::string DeterminePathToHeaderFile(const std::string &filename);
+
+            /**
+             * @brief Convert IAEA extra float type to ParticleZoo property type
+             * @param type IAEA-specific extra float type
+             * @return Corresponding ParticleZoo FloatPropertyType
+             */
             constexpr static FloatPropertyType translateExtraFloatType(IAEAHeader::EXTRA_FLOAT_TYPE type);
+
+            /**
+             * @brief Convert IAEA extra 'long' type to ParticleZoo integer property type
+             * @param type IAEA-specific extra 'long' type
+             * @return Corresponding ParticleZoo IntPropertyType
+             */
             constexpr static IntPropertyType translateExtraLongType(IAEAHeader::EXTRA_LONG_TYPE type);
 
         private:
@@ -412,7 +936,12 @@ namespace ParticleZoo::IAEAphspFile
         minY_ = std::min(minY_, y);
         maxY_ = std::max(maxY_, y);
         minZ_ = std::min(minZ_, z);
+        float previousMaxZ = maxZ_;
         maxZ_ = std::max(maxZ_, z);
+
+        if (maxZ_ != previousMaxZ) {
+            previousMaxZ += 100;
+        }
 
         checksum_ = numberOfParticles_ * recordLength_;
     }
