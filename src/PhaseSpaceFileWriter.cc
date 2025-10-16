@@ -132,7 +132,11 @@ namespace ParticleZoo
         file_.seekp(currentPos);
     }
 
-    void PhaseSpaceFileWriter::writeParticle(Particle particle) {        
+    void PhaseSpaceFileWriter::writeParticle(Particle particle) {
+        if (getParticlesWritten() >= getMaximumSupportedParticles()) {
+            throw std::runtime_error("Maximum number of particles reached for this writer (" + std::to_string(getMaximumSupportedParticles()) + ").");
+        }
+
         ParticleType type = particle.getType();
 
         if (type == ParticleType::Unsupported) {
