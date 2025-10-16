@@ -1,0 +1,91 @@
+% Custom Doxygen stylesheet for ParticleZoo documentation
+
+% Page layout: ensure footer/header space is reserved and content never overlaps
+\usepackage[
+    includehead,
+    includefoot,
+    heightrounded,
+    top=25mm,
+    bottom=25mm,
+    left=25mm,
+    right=25mm,
+    footskip=18mm
+]{geometry}
+
+\setlength{\headheight}{15pt}
+\raggedbottom
+
+% Tables
+\usepackage{longtable}
+\usepackage{array}
+
+% Better table borders (thicker \hline)
+\makeatletter
+\def\hlinewd#1{\noalign{\hrule height #1}}
+\renewcommand{\hline}{\hlinewd{1.0pt}}
+\makeatother
+
+% Table row spacing
+\renewcommand{\arraystretch}{1.0}
+
+% Strong penalties
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+% Prepend a clearpage to each \doxysection
+\usepackage{etoolbox}
+\AtBeginDocument{%
+    \pretocmd{\chapter}{\clearpage}{}{}%
+    \pretocmd{\doxysection}{\clearpage}{}{}%
+}
+
+\RequirePackage{fancyhdr}
+\usepackage{xstring}
+
+\AtBeginDocument{%
+  % Neutralize Doxygen’s injected strings first
+  \makeatletter
+  \def\f@nch@of{}% odd-footer left
+  \def\f@nch@ef{}% even-footer left
+  \def\f@nch@ocf{}% odd-footer center
+  \def\f@nch@ecf{}% even-footer center
+  \def\f@nch@orf{}% odd-footer right
+  \def\f@nch@erf{}% even-footer right
+  \makeatother
+
+  % Turn internal links to Markdown pages into plain text
+  \ifdefined\hyperlink
+    \let\OrigHyperlink\hyperlink
+    \renewcommand{\hyperlink}[2]{%
+      \IfBeginWith{#1}{md_}{#2}{%
+        \IfBeginWith{#1}{md__}{#2}{\OrigHyperlink{#1}{#2}}%
+      }%
+    }%
+  \fi
+  \expandafter\ifx\csname doxyref\endcsname\relax\else
+    \let\OrigDoxyRef\doxyref
+    \renewcommand{\doxyref}[3]{%
+      \IfBeginWith{#3}{md_}{#1}{%
+        \IfBeginWith{#3}{md__}{#1}{\OrigDoxyRef{#1}{#2}{#3}}%
+      }%
+    }%
+  \fi
+  
+  % Clear any existing footer content
+  \fancyfoot[LO,RE]{}%
+  \fancyfoot[C]{}%
+
+  % Set text at the outside edge (LE = even-left, RO = odd-right)
+  % Version number will be replaced by gendocs.sh
+  \fancyfoot[RE,LO]{\bfseries ParticleZoo Reference Manual v1.0.0}%
+  \fancyfoot[LE,RO]{\bfseries \thepage}%
+
+  % Also for 'plain' pages (chapter openings)
+  % Version number will be replaced by gendocs.sh
+  \fancypagestyle{plain}{%
+    \fancyhf{}%
+    \fancyfoot[RE,LO]{\bfseries ParticleZoo Reference Manual v1.0.0}%
+    \fancyfoot[LE,RO]{\bfseries \thepage}%
+  }%
+}

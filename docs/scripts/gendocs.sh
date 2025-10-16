@@ -1,0 +1,62 @@
+#!/bin/bash
+# Script to generate the doxygen documentation and copy the README and LICENSE files to the docs folder
+# Run from the docs/scripts folder
+# Usage: ./gendocs.sh
+
+# Navigate to the root of the project
+cd ../../
+
+# Before continuing, confirm we are in the root of the project by checking for Doxyfile and for include/particlezoo
+if [ ! -d "include/particlezoo" ] || [ ! -f "Doxyfile" ]; then
+  echo "Error: This script must be run from the docs/scripts folder within the ParticleZoo project."
+  exit 1
+fi
+
+# Copy README and LICENSE to docs folder
+cp README.md docs/
+cp LICENSE docs/License
+
+# Remove the license badge and license section from README.md in docs
+sed -i '/\[\!\[License: MIT\]/d' docs/README.md
+sed -i '/^## License$/,$d' docs/README.md
+
+# Extract version number from version.h
+VERSION=$(awk '
+/MAJOR_VERSION.*=/ {major=$NF; gsub(/[^0-9]/,"",major)} 
+/MINOR_VERSION.*=/ {minor=$NF; gsub(/[^0-9]/,"",minor)} 
+/PATCH_VERSION.*=/ {patch=$NF; gsub(/[^0-9]/,"",patch)} 
+/CAVEAT.*=/ {
+    # Extract everything between quotes
+    if (match($0, /"([^"]*)"/, arr)) {
+        caveat = arr[1]
+    }
+} 
+END {
+    version = "v" major "." minor "." patch
+    if (caveat != "" && caveat != " ") version = version " " caveat
+    print version
+}' include/particlezoo/utilities/version.h)
+
+# Trim any additional whitespace from VERSION
+VERSION=$(echo "$VERSION" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# Update PROJECT_NUMBER in Doxyfile with the current version
+sed -i "s/^PROJECT_NUMBER.*=.*/PROJECT_NUMBER         = $VERSION/" Doxyfile
+
+# Update fancyfoot text in custom_doxygen.sty with the current version
+sed -i "s/ParticleZoo Reference Manual v[0-9.]*[^}]*/ParticleZoo Reference Manual $VERSION/g" docs/scripts/custom_doxygen.sty
+
+# Clean up old docs
+rm docs/*.pdf
+rm -rf docs/latex
+rm -rf docs/html
+
+# Generate the docs
+doxygen Doxyfile && make -C docs/latex clean all && cp docs/latex/refman.pdf "docs/ParticleZoo Reference Manual $VERSION.pdf"
+
+# Clean up intermediate files
+rm docs/README.md docs/License
+rm -rf docs/latex
+
+# Return to the scripts directory
+cd docs/scripts
