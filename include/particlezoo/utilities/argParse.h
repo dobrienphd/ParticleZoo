@@ -126,7 +126,7 @@ namespace ParticleZoo {
          * @return true if commands are equal, false otherwise
          */
         bool operator==(CLICommand const& o) const noexcept {
-            return shortName == o.shortName || longName == o.longName;
+            return shortName == o.shortName && longName == o.longName;
         }
     };
 
