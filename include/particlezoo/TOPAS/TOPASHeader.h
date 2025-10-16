@@ -6,76 +6,134 @@
 
 namespace ParticleZoo::TOPASphspFile
 {
+    /**
+     * @brief TOPAS phase space file format types
+     * 
+     * Defines the three supported TOPAS formats:
+     * - ASCII: Human-readable text format with configurable columns
+     * - BINARY: Efficient binary format with configurable particle details
+     * - LIMITED: Binary format limited to certain particle details
+     */
     enum class TOPASFormat { ASCII, BINARY, LIMITED };
 
+    /**
+     * @brief Header for TOPAS phase space files
+     * 
+     * This class handles reading, writing, and managing header information
+     * for TOPAS format phase space files. It manages file metadata, particle
+     * statistics, column definitions, and format-specific configurations.
+     * TOPAS files use separate .header and .phsp files.
+     */
     class Header
     {
-        constexpr static int LIMITED_RECORD_LENGTH = 29; // Fixed length for limited format
+        /// @brief Fixed record length for LIMITED format in bytes
+        constexpr static int LIMITED_RECORD_LENGTH = 29;
 
         public:
             
+            /**
+             * @brief Data types supported in TOPAS columns
+             * 
+             * Defines the fundamental data types that can be stored
+             * in TOPAS phase space file columns.
+             */
             enum class DataType {
-                STRING,
-                BOOLEAN,
-                INT8,
-                INT32,
-                FLOAT32,
-                FLOAT64
+                STRING,    ///< Variable-length string data
+                BOOLEAN,   ///< Boolean true/false values
+                INT8,      ///< 8-bit signed integer
+                INT32,     ///< 32-bit signed integer
+                FLOAT32,   ///< 32-bit floating-point
+                FLOAT64    ///< 64-bit floating-point
             };
 
+            /**
+             * @brief Column types supported in TOPAS phase space files
+             * 
+             * Defines all possible column types that can appear in TOPAS files,
+             * from basic particle properties to extended tracking information.
+             */
             enum class ColumnType {
-                POSITION_X,
-                POSITION_Y,
-                POSITION_Z,
-                DIRECTION_COSINE_X,
-                DIRECTION_COSINE_Y,
-                ENERGY,
-                WEIGHT,
-                PARTICLE_TYPE,
-                DIRECTION_COSINE_Z_SIGN,
-                NEW_HISTORY_FLAG,
-                TOPAS_TIME,
-                TIME_OF_FLIGHT,
-                RUN_ID,
-                EVENT_ID,
-                TRACK_ID,
-                PARENT_ID,
-                CHARGE,
-                CREATOR_PROCESS,
-                INITIAL_KINETIC_ENERGY,
-                VERTEX_POSITION_X,
-                VERTEX_POSITION_Y,
-                VERTEX_POSITION_Z,
-                INITIAL_DIRECTION_COSINE_X,
-                INITIAL_DIRECTION_COSINE_Y,
-                INITIAL_DIRECTION_COSINE_Z,
-                SEED_PART_1,
-                SEED_PART_2,
-                SEED_PART_3,
-                SEED_PART_4
+                POSITION_X,                       ///< X coordinate position
+                POSITION_Y,                       ///< Y coordinate position
+                POSITION_Z,                       ///< Z coordinate position
+                DIRECTION_COSINE_X,               ///< X direction cosine
+                DIRECTION_COSINE_Y,               ///< Y direction cosine
+                ENERGY,                           ///< Kinetic energy
+                WEIGHT,                           ///< Particle statistical weight
+                PARTICLE_TYPE,                    ///< PDG particle type code
+                DIRECTION_COSINE_Z_SIGN,          ///< Sign of Z direction cosine
+                NEW_HISTORY_FLAG,                 ///< First particle from history flag
+                TOPAS_TIME,                       ///< TOPAS simulation time
+                TIME_OF_FLIGHT,                   ///< Particle time of flight
+                RUN_ID,                           ///< Simulation run identifier
+                EVENT_ID,                         ///< Event identifier within run
+                TRACK_ID,                         ///< Track identifier within event
+                PARENT_ID,                        ///< Parent track identifier
+                CHARGE,                           ///< Particle charge
+                CREATOR_PROCESS,                  ///< Physics process that created particle
+                INITIAL_KINETIC_ENERGY,           ///< Initial kinetic energy at creation
+                VERTEX_POSITION_X,                ///< X coordinate of creation vertex
+                VERTEX_POSITION_Y,                ///< Y coordinate of creation vertex
+                VERTEX_POSITION_Z,                ///< Z coordinate of creation vertex
+                INITIAL_DIRECTION_COSINE_X,       ///< Initial X direction cosine
+                INITIAL_DIRECTION_COSINE_Y,       ///< Initial Y direction cosine
+                INITIAL_DIRECTION_COSINE_Z,       ///< Initial Z direction cosine
+                SEED_PART_1,                      ///< Random seed component 1
+                SEED_PART_2,                      ///< Random seed component 2
+                SEED_PART_3,                      ///< Random seed component 3
+                SEED_PART_4                       ///< Random seed component 4
             };
 
+            /**
+             * @brief Column definition for TOPAS phase space files
+             * 
+             * Describes a single column in the phase space file including
+             * its type, data format, and display name.
+             */
             struct DataColumn
             {
-                ColumnType columnType_;
-                DataType valueType_;
-                std::string name_;
+                ColumnType  columnType_;  ///< Semantic type of the column
+                DataType    valueType_;   ///< Data storage type
+                std::string name_;        ///< Human-readable column name
 
+                /**
+                 * @brief Construct column from name string
+                 * @param name Column name (determines type automatically)
+                 */
                 DataColumn(std::string_view name)
                     : columnType_(getColumnType(name)), valueType_(getDataType(columnType_)), name_(name) {}
 
+                /**
+                 * @brief Construct column from type (uses default name)
+                 * @param columnType Column type
+                 */
                 DataColumn(ColumnType columnType)
                     : columnType_(columnType), valueType_(getDataType(columnType)), name_(getColumnName(columnType)) {}
 
+                /**
+                 * @brief Construct column with specific data type
+                 * @param columnType Column type
+                 * @param valueType Data storage type (overrides default)
+                 */
                 DataColumn(ColumnType columnType, DataType valueType)
                     : columnType_(columnType), valueType_(valueType), name_(getColumnName(columnType)) {}
 
+                /**
+                 * @brief Construct column with all parameters specified
+                 * @param columnType Column type
+                 * @param valueType Data storage type
+                 * @param name Custom column name
+                 */
                 DataColumn(ColumnType columnType, DataType valueType, std::string_view name)
                     : columnType_(columnType), valueType_(valueType), name_(name) {}
 
+                /**
+                 * @brief Get the storage size of this column's data type
+                 * @return Size in bytes (0 for variable-length strings)
+                 */
                 inline std::size_t sizeOf() const {
                     switch (valueType_) {
-                        case DataType::STRING:   return 0;
+                        case DataType::STRING:   return 0; // Variable length
                         case DataType::BOOLEAN:  return sizeof(bool);
                         case DataType::INT8:    return sizeof(std::int8_t);
                         case DataType::INT32:    return sizeof(std::int32_t);
@@ -85,8 +143,15 @@ namespace ParticleZoo::TOPASphspFile
                     }
                 }
                 
+                /**
+                 * @brief Get the default data type for a column type
+                 * @param columnType Column type to query
+                 * @return Default DataType for storage
+                 * @throws std::runtime_error if column type is unknown
+                 */
                 static constexpr DataType getDataType(ColumnType columnType) {
                     switch (columnType) {
+                        // Floating-point columns
                         case ColumnType::POSITION_X:
                         case ColumnType::POSITION_Y:
                         case ColumnType::POSITION_Z:
@@ -105,11 +170,14 @@ namespace ParticleZoo::TOPASphspFile
                         case ColumnType::INITIAL_DIRECTION_COSINE_Y:
                         case ColumnType::INITIAL_DIRECTION_COSINE_Z:
                             return DataType::FLOAT32;
+                        // Boolean columns
                         case ColumnType::DIRECTION_COSINE_Z_SIGN:
                         case ColumnType::NEW_HISTORY_FLAG:
                             return DataType::BOOLEAN;
+                        // String columns
                         case ColumnType::CREATOR_PROCESS:
                             return DataType::STRING;
+                        // Integer columns
                         case ColumnType::PARTICLE_TYPE:
                         case ColumnType::RUN_ID:
                         case ColumnType::EVENT_ID:
@@ -124,6 +192,12 @@ namespace ParticleZoo::TOPASphspFile
                     throw std::runtime_error("Unknown column type.");
                 }
 
+                /**
+                 * @brief Get the string represented name for a column type
+                 * @param columnType Column type to query
+                 * @return Human-readable column name with units
+                 * @throws std::runtime_error if column type is unknown
+                 */
                 static constexpr std::string_view getColumnName(ColumnType columnType) {
                     switch (columnType) {
                         case ColumnType::POSITION_X: return "Position X [cm]";
@@ -159,6 +233,12 @@ namespace ParticleZoo::TOPASphspFile
                     throw std::runtime_error("Unknown column type.");
                 }
 
+                /**
+                 * @brief Parse column type from name
+                 * @param name Column name to parse
+                 * @return Corresponding ColumnType
+                 * @throws std::runtime_error if name is not recognized
+                 */
                 static constexpr ColumnType getColumnType(std::string_view name) {
                     if (name == "Position X [cm]") return ColumnType::POSITION_X;
                     if (name == "Position Y [cm]") return ColumnType::POSITION_Y;
@@ -193,44 +273,148 @@ namespace ParticleZoo::TOPASphspFile
                 }
             };
 
+            /**
+             * @brief Statistics tracking for individual particle types for TOPAS phase space files
+             */
             struct ParticleStats
             {
-                std::uint64_t count_{};
-                double minKineticEnergy_ = std::numeric_limits<double>::max();
-                double maxKineticEnergy_ = 0;
+                std::uint64_t count_{};                                           ///< Number of particles of this type
+                double minKineticEnergy_ = std::numeric_limits<double>::max();    ///< Minimum kinetic energy encountered
+                double maxKineticEnergy_ = 0;                                     ///< Maximum kinetic energy encountered
             };
 
-            typedef std::unordered_map<ParticleType, ParticleStats> ParticleStatsTable;
+            /// @brief Type alias for particle statistics table
+            using ParticleStatsTable = std::unordered_map<ParticleType, ParticleStats>;
 
-            Header(const std::string & fileName); // reading from existing file
-            Header(const std::string & fileName, TOPASFormat formatType); // writing to new file
+            // Constructors
 
+            /**
+             * @brief Construct header by reading from existing TOPAS file
+             * 
+             * @param fileName Path to TOPAS phase space file (.phsp or .header)
+             * @throws std::runtime_error if file cannot be read or is invalid
+             */
+            Header(const std::string & fileName);
+
+            /**
+             * @brief Construct header for writing new TOPAS file
+             * 
+             * @param fileName Path for new TOPAS phase space file
+             * @param formatType Format to write (ASCII, BINARY, or LIMITED)
+             */
+            Header(const std::string & fileName, TOPASFormat formatType);
+
+            // Getters
+
+            /**
+             * @brief Get the TOPAS format type
+             * @return TOPASFormat enum value
+             */
             TOPASFormat    getTOPASFormat() const;
+
+            /**
+             * @brief Get the human-readable format name
+             * @return Format name as string (e.g., "TOPAS BINARY")
+             */
             std::string    getTOPASFormatName() const;
+
+            /**
+             * @brief Get the length of each particle record in bytes
+             * @return Record length based on format and column configuration
+             */
             std::size_t    getRecordLength() const;
+
+            /**
+             * @brief Get the number of original simulation histories
+             * @return Count of primary histories used in the simulation
+             */
             std::uint64_t  getNumberOfOriginalHistories() const;
+
+            /**
+             * @brief Get the number of histories explicitly represented by particles in the phase space
+             * @return Count of histories that produced particles that reached the phase space
+             */
             std::uint64_t  getNumberOfRepresentedHistories() const;
+
+            /**
+             * @brief Get the total number of particles in the phase space
+             * @return Total particle count across all types
+             */
             std::uint64_t  getNumberOfParticles() const;
+
+            /**
+             * @brief Get the number of particles of a specific type
+             * @param type Particle type to query
+             * @return Number of particles of the specified type
+             */
             std::uint64_t  getNumberOfParticlesOfType(ParticleType type) const;
+
+            /**
+             * @brief Get the minimum kinetic energy for particles of a specific type
+             * @param type Particle type to query
+             * @return Minimum kinetic energy for the particle type
+             */
             double getMinKineticEnergyOfType(ParticleType type) const;
+
+            /**
+             * @brief Get the maximum kinetic energy for particles of a specific type
+             * @param type Particle type to query
+             * @return Maximum kinetic energy for the particle type
+             */
             double getMaxKineticEnergyOfType(ParticleType type) const;
+
+            /**
+             * @brief Get the column definitions for this phase space
+             * @return Vector of DataColumn objects describing the file structure
+             */
             const std::vector<DataColumn> & getColumnTypes() const;
 
+            // Setters and modification methods
+
+            /**
+             * @brief Update particle statistics with a new particle
+             * @param particle Particle to include in statistics calculations
+             */
             void countParticleStats(const Particle & particle);
+
+            /**
+             * @brief Add a new column type to the phase space format
+             * @param columnType Type of column to add
+             */
             void addColumnType(ColumnType columnType);
+
+            /**
+             * @brief Set the number of original simulation histories
+             * @param originalHistories Count of primary histories
+             */
             void setNumberOfOriginalHistories(std::uint64_t originalHistories);
 
+            /**
+             * @brief Write the complete header file
+             * 
+             * Writes the header information to the .header file with
+             * format-specific structure and particle statistics.
+             * 
+             * @throws std::runtime_error if file cannot be written
+             */
             void writeHeader();
 
+            /**
+             * @brief Get format name from enum value
+             * @param format TOPAS format type
+             * @return Human-readable format name
+             */
             static std::string getTOPASFormatName(TOPASFormat format);
 
         private:
+            // Format-specific header writing methods
             void writeHeader_ASCII(std::ofstream & file) const;
             void writeHeader_Binary(std::ofstream & file) const;
             void writeHeader_Limited(std::ofstream & file) const;
 
             void writeSuffix(std::ofstream & file) const;
 
+            // Header reading methods
             void readHeader();
             void readHeader_Limited(std::ifstream & headerFile);
             void readHeader_Standard(std::ifstream & headerFile);
@@ -239,15 +423,18 @@ namespace ParticleZoo::TOPASphspFile
 
             void setFileNames(const std::string & fileName);
 
-            TOPASFormat             formatType_;
-            std::string             headerFileName_;
-            std::string             phspFileName_;
-            std::uint64_t           numberOfOriginalHistories_;
-            std::uint64_t           numberOfRepresentedHistories_;
-            std::uint64_t           numberOfParticles_;
-            ParticleStatsTable      particleStatsTable_;
-            std::vector<DataColumn> columnTypes_;
+            // Member variables
+            TOPASFormat             formatType_;                   ///< Format type of this phase space file
+            std::string             headerFileName_;               ///< Path to the .header file
+            std::string             phspFileName_;                 ///< Path to the .phsp data file
+            std::uint64_t           numberOfOriginalHistories_;    ///< Number of original simulation histories
+            std::uint64_t           numberOfRepresentedHistories_; ///< Number of histories that reached phase space
+            std::uint64_t           numberOfParticles_;            ///< Total number of particles
+            ParticleStatsTable      particleStatsTable_;           ///< Statistics by particle type
+            std::vector<DataColumn> columnTypes_;                  ///< Column definitions for the file format
     };
+
+    // Inline implementations
 
     inline std::uint64_t Header::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
     inline std::uint64_t Header::getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
