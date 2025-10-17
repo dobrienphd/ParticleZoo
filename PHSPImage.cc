@@ -401,7 +401,7 @@ int main(int argc, char* argv[]) {
         progress.Start("Reading particles:");
 
         // Read the particles from the input file and build the image data
-        while (reader->hasMoreParticles() && reader->getParticlesRead() <= particlesToRead) {
+        while (reader->hasMoreParticles() && reader->getParticlesRead() < particlesToRead) {
             Particle particle = reader->getNextParticle();
 
             if (particle.getType() == ParticleType::Unsupported) {

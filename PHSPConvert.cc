@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
             progress.Start("Converting:");
 
             // Read the particles from the input file and write them into the output file
-            while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() <= particlesToRead)) {
+            while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() < particlesToRead)) {
                 Particle particle = reader->getNextParticle();
 
                 if (useProjection) {
