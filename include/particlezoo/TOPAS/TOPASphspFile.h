@@ -12,6 +12,7 @@ namespace ParticleZoo::TOPASphspFile
 
     /// @brief Command-line option for specifying TOPAS format type
     extern CLICommand TOPASFormatCommand;
+    extern CLICommand TOPASWritePseudoParticleAtEndOnlyCommand;
 
     /**
      * @brief Reader for TOPAS phase space files

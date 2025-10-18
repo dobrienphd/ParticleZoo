@@ -8,6 +8,7 @@
 namespace ParticleZoo::TOPASphspFile
 {
     CLICommand TOPASFormatCommand { WRITER, "", "TOPAS-format", "Specify the TOPAS phase space file format to write (ASCII, BINARY or LIMITED)", { CLI_STRING }, { "BINARY" } };
+    CLICommand TOPASWritePseudoParticleAtEndOnlyCommand { WRITER, "", "TOPAS-single-pseudo", "If set, write a single pseudo-particle at the end of the file to account for all empty histories instead of writing them continously throughout the file", { CLI_VALUELESS }, {} };
 
     // read the header, decide ASCII vs BINARY, then hand back the header and it's format type
     inline std::pair<FormatType,Header> readHeader(const std::string &filename)
@@ -237,9 +238,13 @@ namespace ParticleZoo::TOPASphspFile
 
     Writer::Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType)
         : PhaseSpaceFileWriter(Header::getTOPASFormatName(formatType), filename, options, getFormatTypeFromTOPASFormat(formatType)), formatType_(formatType), header_(filename, formatType)
-    {}
+    {
+        if (options.contains(TOPASWritePseudoParticleAtEndOnlyCommand)) {
+            writePseudoParticleAtEndOnly_ = true;
+        }
+    }
 
-    std::vector<CLICommand> Writer::getFormatSpecificCLICommands() { return { TOPASFormatCommand }; }
+    std::vector<CLICommand> Writer::getFormatSpecificCLICommands() { return { TOPASFormatCommand, TOPASWritePseudoParticleAtEndOnlyCommand }; }
 
     void Writer::writeHeaderData(ByteBuffer & buffer)
     {
