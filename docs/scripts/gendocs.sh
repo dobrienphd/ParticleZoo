@@ -6,6 +6,9 @@
 # Run from the docs/scripts folder
 # Usage: ./gendocs.sh
 
+# Exit on any error
+set -e
+
 # Navigate to the root of the project
 cd ../../
 
@@ -49,8 +52,8 @@ sed -i "s/^PROJECT_NUMBER.*=.*/PROJECT_NUMBER         = $VERSION/" Doxyfile
 # Update fancyfoot text in custom_doxygen.sty with the current version
 sed -i "s/ParticleZoo Reference Manual v[0-9.]*[^}]*/ParticleZoo Reference Manual $VERSION/g" docs/scripts/custom_doxygen.sty
 
-# Clean up old docs
-rm docs/*.pdf
+# Clean up old docs (no errors if they don't exist)
+rm -f docs/*.pdf
 rm -rf docs/latex
 rm -rf docs/html
 
@@ -58,8 +61,11 @@ rm -rf docs/html
 doxygen Doxyfile && make -C docs/latex clean all && cp docs/latex/refman.pdf "docs/ParticleZoo Reference Manual $VERSION.pdf"
 
 # Clean up intermediate files
-rm docs/README.md docs/License
+rm -f docs/README.md docs/License
 rm -rf docs/latex
 
 # Return to the scripts directory
 cd docs/scripts
+
+echo "----------------------------------------"
+echo "Documentation generated successfully: docs/ParticleZoo Reference Manual $VERSION.pdf"
