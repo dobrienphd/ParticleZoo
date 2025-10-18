@@ -761,7 +761,8 @@ namespace ParticleZoo {
     }
 
     inline bool Particle::projectToXValue(float X) {
-        if (px_ == 0.f) return false; // Cannot project if no movement in x
+        if (x_ == X) return true; // Already at the desired X
+        if (std::fabs(px_) < 1e-6f) return false; // Cannot project if no movement in x
         float t = (X - x_) / px_;
         x_ = X;
         y_ += py_ * t;
@@ -770,7 +771,8 @@ namespace ParticleZoo {
     }
 
     inline bool Particle::projectToYValue(float Y) {
-        if (py_ == 0.f) return false; // Cannot project if no movement in y
+        if (y_ == Y) return true; // Already at the desired Y
+        if (std::fabs(py_) < 1e-6f) return false; // Cannot project if no movement in y
         float t = (Y - y_) / py_;
         y_ = Y;
         x_ += px_ * t;
@@ -779,7 +781,8 @@ namespace ParticleZoo {
     }
 
     inline bool Particle::projectToZValue(float Z) {
-        if (pz_ == 0.f) return false; // Cannot project if no movement in z
+        if (z_ == Z) return true; // Already at the desired Z
+        if (std::fabs(pz_) < 1e-6f) return false; // Cannot project if no movement in z
         float t = (Z - z_) / pz_;
         z_ = Z;
         x_ += px_ * t;
