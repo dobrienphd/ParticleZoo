@@ -15,7 +15,7 @@ ParticleZoo serves as a universal translator and processor for particle phase sp
 - **Extensible Architecture**: Plugin-style registry system for adding new formats
 - **Unit Consistency**: Built-in unit system ensures proper dimensional handling
 - **Memory Efficient**: Streaming interfaces for processing large files
-- **Cross-Platform**: Linux and macOS support with standard build tools
+- **Cross-Platform**: Windows, linux and macOS support with standard build tools
 
 ## Supported Formats
 
@@ -25,7 +25,7 @@ The library includes built-in support for major Monte Carlo simulation formats:
 - **IAEA**: `.IAEAphsp` International Atomic Energy Agency format with header files
 - **TOPAS**: `.phsp` files in Binary, ASCII, and Limited variants
 - **penEasy**: `.dat` ASCII format from the PENELOPE simulation code
-- **ROOT** (optional): `.root` files with TOPAS/OpenGATE templates or custom branch mappings
+- **ROOT** (optional): `.root` files generated with the CERN ROOT framework. Includes build-in templates for TOPAS and OpenGATE generated files. Also supports custom branch mappings
 
 Additional formats can be added through the extensible registry system without modifying core library code.
 
@@ -117,8 +117,8 @@ The build system creates the following artifacts:
         - Linux/macOS: `libparticlezoo.a`
         - Windows:   `libparticlezoo.lib`
     - Executables:
-        - Linux/macOS: `PHSPConvert`, `PHSPCombine`, `PHSPImage`
-        - Windows:   `PHSPConvert.exe`, `PHSPCombine.exe`, `PHSPImage.exe`
+        - Linux/macOS: `PHSPConvert`, `PHSPCombine`, `PHSPImage`, `PHSPSplit`
+        - Windows:   `PHSPConvert.exe`, `PHSPCombine.exe`, `PHSPImage.exe`, `PHSPSplit.exe`
     - Dynamic library (Windows only): `build/msvc/release/bin/particlezoo.dll`
 
 **Debug build**
@@ -199,6 +199,7 @@ Many format readers and writers accept configuration options:
 
 ```cpp
 // Create options map for custom behavior
+// Requires: #include <particlezoo/ROOT/ROOTphsp.h>
 UserOptions options;
 // Example: select predefined ROOT template when reading ROOT files
 options[ParticleZoo::ROOT::ROOTFormatCommand] = { std::string("TOPAS") };
@@ -244,12 +245,6 @@ float dx = p.getDirectionalCosineX();
 float dy = p.getDirectionalCosineY();
 float dz = p.getDirectionalCosineZ();
 
-// Particle type
-int pdg_code = p.getPDGCode();     // PDG particle code
-std::string name = p.getParticleName();  // Human-readable name
-
-// History information
-uint64_t history = p.getIncrementalHistoryNumber();
 ```
 
 ### Format-Specific Features
@@ -300,6 +295,9 @@ PHSPConvert --inputFormat EGS --outputFormat IAEA input.file output.file
 
 # Limit particle count
 PHSPConvert --maxParticles 1000000 input.IAEAphsp output.phsp
+
+# Optional: project particles to a plane during conversion
+PHSPConvert --projectToZ 100.0 input.phsp output.IAEAphsp
 ```
 
 ### PHSPCombine - File Merging
@@ -330,13 +328,13 @@ PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 
 # Custom plane and energy weighting, particles are not relocated, only particles located at
 # Y = 5 cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
-# with the --widthY parameter)
+# with the --tolerance parameter)
 PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
 ```
 
 ### PHSPSplit - File Splitting
 
-Split a single phase space file into multiple equally sized files.
+Splits a single phase space file into multiple (roughly) equally sized output files. History boundaries are respected, so individual files may differ slightly in size.
 
 ```bash
 # Split a file into multiple parts
@@ -359,9 +357,9 @@ To add support for a new phase space format:
 Example registration:
 
 ```cpp
+SupportedFormat myFmt{"MyFormat", "My custom phase space format", ".myext"};
 FormatRegistry::RegisterFormat(
-    "MyFormat",                    // Format name
-    {".myext"},                    // File extensions
+    myFmt,
     [](const std::string& file, const UserOptions& opts) -> std::unique_ptr<PhaseSpaceFileReader> {
         return std::make_unique<MyFormatReader>(file, opts);
     },
@@ -377,13 +375,13 @@ The `Particle` class supports custom properties through the property system:
 
 ```cpp
 // Add custom integer property
-particle.setIntProperty(IntPropertyType::CUSTOM, "my_custom_int", 42);
+particle.setIntProperty(IntPropertyType::CUSTOM, 42);
 
 // Add custom float property  
-particle.setFloatProperty(FloatPropertyType::CUSTOM, "my_custom_float", 3.14f);
+particle.setFloatProperty(FloatPropertyType::CUSTOM, 3.14f);
 
 // Add custom boolean property
-particle.setBoolProperty(BoolPropertyType::CUSTOM, "my_custom_bool", true);
+particle.setBoolProperty(BoolPropertyType::CUSTOM, true);
 ```
 
 ## ROOT Format Support (Optional)

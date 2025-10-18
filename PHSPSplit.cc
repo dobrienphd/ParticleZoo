@@ -30,7 +30,8 @@ int main(int argc, char* argv[]) {
     // Define usage message and parse command line arguments
     std::string usageMessage = "Usage: PHSPSplit [OPTIONS] <inputfile>\n"
                             "\n"
-                            "Split a single phase space file into multiple equally sized phase space files\n"
+                            "Split a single phase space file into multiple (roughly) equally sized phase space files\n"
+                            "History boundaries will be respected so that no history is split across files, this can result in files of marginally different sizes.\n"
                             "\n"
                             "Required Arguments:\n"
                             "  --splitNumber             Number of files to split this phase space file into\n"
