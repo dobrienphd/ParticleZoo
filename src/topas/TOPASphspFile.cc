@@ -244,6 +244,7 @@ namespace ParticleZoo::TOPASphspFile
     void Writer::writeHeaderData(ByteBuffer & buffer)
     {
         (void)buffer; // unused in this implementation
+        writePseudoParticleForEmptyHistories();
 
         std::uint64_t historiesRecorded = getHistoriesWritten();
         std::uint64_t historiesInHeader = header_.getNumberOfOriginalHistories();
@@ -326,6 +327,18 @@ namespace ParticleZoo::TOPASphspFile
         return oss.str();
     }
 
+    void Writer::writePseudoParticleForEmptyHistories()
+    {
+        if (emptyHistoriesCount_ <= 0) return;
+        float pseudoWeight = -static_cast<float>(emptyHistoriesCount_);
+        Particle emptyHistoryPseudoParticle(
+            ParticleType::PseudoParticle, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, pseudoWeight
+        );
+        emptyHistoryPseudoParticle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, static_cast<std::int32_t>(emptyHistoriesCount_));
+        writeParticle(emptyHistoryPseudoParticle);
+        emptyHistoriesCount_ = 0;
+    }
+
     void Writer::writeBinaryStandardParticle(ByteBuffer & buffer, Particle & particle)
     {
         if (particle.getType() == ParticleType::PseudoParticle) {
@@ -343,6 +356,17 @@ namespace ParticleZoo::TOPASphspFile
             buffer.write<bool>(false);
             buffer.write<bool>(true);
         } else {
+            if (lastHistoryWasDeferred_) {
+                if (!particle.isNewHistory()) {
+                    if (emptyHistoriesCount_ > 0) emptyHistoriesCount_--; // the current particle continues the previous history, so reduce the count of empty histories to write
+                    particle.setNewHistory(true);
+                }
+                lastHistoryWasDeferred_ = false;
+            }
+
+            if (!writePseudoParticleAtEndOnly_ && emptyHistoriesCount_ > 0) {
+                writePseudoParticleForEmptyHistories();
+            }
             buffer.write(particle.getX() / cm);
             buffer.write(particle.getY() / cm);
             buffer.write(particle.getZ() / cm);

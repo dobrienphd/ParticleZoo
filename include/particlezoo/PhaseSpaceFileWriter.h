@@ -485,6 +485,18 @@ namespace ParticleZoo
             virtual bool                accountForAdditionalHistories(std::uint64_t additionalHistories);
 
             /**
+             * @brief Get the number of pending histories to account for.
+             * 
+             * Used internally to track histories that have not yet been written
+             * to the file (e.g., empty histories).
+             * 
+             * Override in derived classes if special handling is needed.
+             * 
+             * @return std::uint64_t The number of pending histories
+             */
+            virtual std::uint64_t       getPendingHistories() const;
+
+            /**
              * @brief Check if this format can write pseudo-particles explicitly.
              * 
              * Derived classes can override this to indicate if they support writing
@@ -539,10 +551,11 @@ namespace ParticleZoo
 
 
     inline const std::string PhaseSpaceFileWriter::getPHSPFormat() const { return phspFormat_; }
-    inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_ + historiesToAccountFor_; }
+    inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_ + getPendingHistories(); }
     inline std::uint64_t PhaseSpaceFileWriter::getParticlesWritten() const { return particlesWritten_; }
     inline const std::string PhaseSpaceFileWriter::getFileName() const { return fileName_; }
     inline ByteOrder PhaseSpaceFileWriter::getByteOrder() const { return buffer_.getByteOrder(); }
+    inline std::uint64_t PhaseSpaceFileWriter::getPendingHistories() const { return historiesToAccountFor_; }
 
     inline bool PhaseSpaceFileWriter::isXConstant() const { return fixedValues_.xIsConstant; }
     inline bool PhaseSpaceFileWriter::isYConstant() const { return fixedValues_.yIsConstant; }

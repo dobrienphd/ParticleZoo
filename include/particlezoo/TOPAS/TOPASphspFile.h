@@ -315,6 +315,15 @@ namespace ParticleZoo::TOPASphspFile
             bool              accountForAdditionalHistories(std::uint64_t additionalHistories) override;
 
             /**
+             * @brief Get the number of pending histories to account for.
+             * 
+             * In this override these are the empty histories tracked for pseudo-particle writing.
+             * 
+             * @return Count of empty histories pending writing
+             */
+            std::uint64_t     getPendingHistories() const override;
+
+            /**
              * @brief Check if pseudo-particles can be written explicitly
              * @return true for BINARY format, false for ASCII and LIMITED
              */
@@ -329,6 +338,14 @@ namespace ParticleZoo::TOPASphspFile
              * @param formatType Specific TOPAS format to write
              */
             Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType);
+
+            /**
+             * @brief Write a pseudo-particle to represent empty histories
+             * 
+             * Creates and writes a pseudo-particle with negative weight
+             * indicating the number of empty histories it represents.
+             */
+            void              writePseudoParticleForEmptyHistories();
 
             /**
              * @brief Write a particle in BINARY standard format
@@ -353,8 +370,11 @@ namespace ParticleZoo::TOPASphspFile
              */
             void              writeBinaryLimitedParticle(ByteBuffer & buffer, Particle & particle);
             
-            const TOPASFormat formatType_; ///< Format type being written
-            Header header_;                ///< Header configuration and statistics
+            const TOPASFormat formatType_;               ///< Format type being written
+            Header header_;                              ///< Header configuration and statistics
+            std::uint64_t emptyHistoriesCount_{0};       ///< Accumulator for empty history tracking
+            bool lastHistoryWasDeferred_{false};         ///< Flag indicating if recording the previous particle's history was deferred
+            bool writePseudoParticleAtEndOnly_{false};   ///< Flag to wait until the end of the file to write a pseudo-particle
     };
 
     // Inline implementations for the Writer class
@@ -364,6 +384,7 @@ namespace ParticleZoo::TOPASphspFile
     inline Header & Writer::getHeader() { return header_; }
     inline std::size_t Writer::getParticleRecordLength() const { return header_.getRecordLength(); }
     inline std::size_t Writer::getMaximumASCIILineLength() const { return TOPASmaxASCIILineLength; }
+    inline std::uint64_t Writer::getPendingHistories() const { return emptyHistoriesCount_; }
 
     inline void Writer::writeBinaryParticle(ByteBuffer & buffer, Particle & particle) {
         if (formatType_ == TOPASFormat::BINARY) {
@@ -389,12 +410,8 @@ namespace ParticleZoo::TOPASphspFile
     inline bool Writer::accountForAdditionalHistories(std::uint64_t additionalHistories)
     {
         if (formatType_ == TOPASFormat::BINARY) {
-            float pseudoWeight = -static_cast<float>(additionalHistories);
-            Particle emptyHistoryPseudoParticle(
-                ParticleType::PseudoParticle, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, true, pseudoWeight
-            );
-            emptyHistoryPseudoParticle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, static_cast<std::int32_t>(additionalHistories));
-            writeParticle(emptyHistoryPseudoParticle);
+            emptyHistoriesCount_ += additionalHistories;
+            lastHistoryWasDeferred_ = true;
             return false; // do not let the base class increment the histories counter automatically, it is done by instead by the call to writeParticle() here
         } else {
             // do not use pseudoparticles with the ASCII or LIMITED formats
