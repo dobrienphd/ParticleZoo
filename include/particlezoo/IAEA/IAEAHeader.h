@@ -936,12 +936,7 @@ namespace ParticleZoo::IAEAphspFile
         minY_ = std::min(minY_, y);
         maxY_ = std::max(maxY_, y);
         minZ_ = std::min(minZ_, z);
-        float previousMaxZ = maxZ_;
         maxZ_ = std::max(maxZ_, z);
-
-        if (maxZ_ != previousMaxZ) {
-            previousMaxZ += 100;
-        }
 
         checksum_ = numberOfParticles_ * recordLength_;
     }

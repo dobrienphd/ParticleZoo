@@ -33,6 +33,7 @@ namespace ParticleZoo
       historiesWritten_(0),
       particlesWritten_(0),
       particleRecordLength_(0),
+      historiesToAccountFor_(0),
       buffer_(BUFFER_SIZE),
       writeParticleDepth_(0),
       fixedValues_(fixedValues)
@@ -76,6 +77,8 @@ namespace ParticleZoo
     }
 
     void PhaseSpaceFileWriter::close() {
+        historiesWritten_ += historiesToAccountFor_;
+        historiesToAccountFor_ = 0;
         if (file_.is_open()) {
             writeNextBlock();
             writeHeaderToFile();
@@ -143,9 +146,19 @@ namespace ParticleZoo
             throw std::runtime_error("Attempting to write particle with unsupported type to phase space file.");
         }
 
+        if (historiesToAccountFor_ > 0) {
+            if (particle.isNewHistory()) {
+                std::uint64_t incrementalHistories = particle.getIncrementalHistories();
+                incrementalHistories += historiesToAccountFor_;
+                particle.setIncrementalHistories(static_cast<std::uint32_t>(incrementalHistories));
+            } else {
+                particle.setIncrementalHistories(static_cast<std::uint32_t>(historiesToAccountFor_));
+            }
+            historiesToAccountFor_ = 0;
+        }
+
         // do not attempt to write pseudoparticles to the file unless the writer explicitly supports that
         if (type != ParticleType::PseudoParticle || canWritePseudoParticlesExplicitly()) {
-
             bool recheckDirectionNormalization = false;
             if (fixedValues_.xIsConstant) particle.setX(fixedValues_.constantX);
             if (fixedValues_.yIsConstant) particle.setY(fixedValues_.constantY);
@@ -227,12 +240,7 @@ namespace ParticleZoo
 
         // Update the number of histories written based on the particle's history status (even for pseudoparticles)
         if (particle.isNewHistory()) {
-            std::uint64_t historiesWritten = 1; // Default to 1 for a new history
-            if (particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER)) {
-                std::uint64_t incrementalHistoryNumber = particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER);
-                if (incrementalHistoryNumber > 0) historiesWritten = incrementalHistoryNumber;
-            }
-            historiesWritten_ += historiesWritten;
+            historiesWritten_ += particle.getIncrementalHistories();
         }
     }
 

@@ -92,6 +92,8 @@ namespace ParticleZoo
 
             /**
              * @brief Get the number of Monte Carlo histories that have been read so far.
+             * If the end of the file has been reached, this will return the total number of original histories
+             * unless more histories than expected have already been read - in which case it returns the actual count.
              * 
              * @return std::uint64_t The number of histories read
              */
@@ -566,7 +568,11 @@ namespace ParticleZoo
     inline const FixedValues PhaseSpaceFileReader::getFixedValues() const { return fixedValues_; }
 
     inline std::uint64_t PhaseSpaceFileReader::getHistoriesRead() {
-        if (!hasMoreParticles()) historiesRead_ = getNumberOfOriginalHistories();
+        if (!hasMoreParticles()) {
+            // If we have reached the end of the file, we should set historiesRead_ to the total number of original histories
+            // Unless we have already read more histories than that (which implies something is wrong - maybe bad header information, or maybe a bug - so keep the current count and let the caller handle it)
+            historiesRead_ = std::max(getNumberOfOriginalHistories(), historiesRead_);
+        }
         return historiesRead_;
     }
 

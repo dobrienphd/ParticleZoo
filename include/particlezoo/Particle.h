@@ -236,6 +236,13 @@ namespace ParticleZoo {
             void setNewHistory(bool isNewHistory);
 
             /**
+             * @brief Convenience function to set the number of incremental histories using the INCREMENTAL_HISTORY_NUMBER integer property.
+             * 
+             * @param incrementalHistories The number of incremental histories to set (must be greater than 0)
+             */
+            void setIncrementalHistories(std::uint32_t incrementalHistories);
+
+            /**
              * @brief Get the particle type.
              * 
              * @return ParticleType The type of particle (electron, photon, proton, etc.)
@@ -556,6 +563,15 @@ namespace ParticleZoo {
     inline void Particle::setDirectionalCosineZ(float pz) { pz_ = pz; }
     inline void Particle::setWeight(float weight) { weight_ = weight; }
     inline void Particle::setNewHistory(bool isNewHistory) { isNewHistory_ = isNewHistory; }
+
+    inline void Particle::setIncrementalHistories(std::uint32_t incrementalHistories)
+    {
+        if (incrementalHistories == 0) {
+            throw std::invalid_argument("Incremental histories must be greater than 0.");
+        }
+        isNewHistory_ = true; // Setting incremental histories implies this is a new history
+        setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, static_cast<std::int32_t>(incrementalHistories));
+    }
 
     inline ParticleType Particle::getType() const { return type_; }
     inline float Particle::getKineticEnergy() const { return kineticEnergy_; }

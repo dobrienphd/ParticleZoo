@@ -525,6 +525,8 @@ namespace ParticleZoo
             std::uint64_t particlesWritten_;
             std::size_t particleRecordLength_;
 
+            std::uint64_t historiesToAccountFor_;
+
             ByteBuffer buffer_;
             std::unique_ptr<ByteBuffer> particleBuffer_;
             int writeParticleDepth_; // to track nested calls to writeParticle
@@ -537,7 +539,7 @@ namespace ParticleZoo
 
 
     inline const std::string PhaseSpaceFileWriter::getPHSPFormat() const { return phspFormat_; }
-    inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_; }
+    inline std::uint64_t PhaseSpaceFileWriter::getHistoriesWritten() const { return historiesWritten_ + historiesToAccountFor_; }
     inline std::uint64_t PhaseSpaceFileWriter::getParticlesWritten() const { return particlesWritten_; }
     inline const std::string PhaseSpaceFileWriter::getFileName() const { return fileName_; }
     inline ByteOrder PhaseSpaceFileWriter::getByteOrder() const { return buffer_.getByteOrder(); }
@@ -624,7 +626,7 @@ namespace ParticleZoo
 
     inline void PhaseSpaceFileWriter::addAdditionalHistories(std::uint64_t additionalHistories) {
         if (accountForAdditionalHistories(additionalHistories)) {
-            historiesWritten_ += additionalHistories;
+            historiesToAccountFor_ = additionalHistories;
         }
     }
 
