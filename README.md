@@ -15,7 +15,7 @@ ParticleZoo serves as a universal translator and processor for particle phase sp
 - **Extensible Architecture**: Plugin-style registry system for adding new formats
 - **Unit Consistency**: Built-in unit system ensures proper dimensional handling
 - **Memory Efficient**: Streaming interfaces for processing large files
-- **Cross-Platform**: Windows, linux and macOS support with standard build tools
+- **Cross-Platform**: Windows, Linux and macOS support with standard build tools
 
 ## Supported Formats
 
