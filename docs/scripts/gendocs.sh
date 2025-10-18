@@ -1,5 +1,8 @@
 #!/bin/bash
 # Script to generate the doxygen documentation and copy the README and LICENSE files to the docs folder
+# Prerequisites: doxygen, LaTeX, gawk
+#   On Debian based systems, you can install these with:
+#     sudo apt-get install doxygen graphviz texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended gawk
 # Run from the docs/scripts folder
 # Usage: ./gendocs.sh
 
@@ -21,7 +24,7 @@ sed -i '/\[\!\[License: MIT\]/d' docs/README.md
 sed -i '/^## License$/,$d' docs/README.md
 
 # Extract version number from version.h
-VERSION=$(awk '
+VERSION=$(gawk '
 /MAJOR_VERSION.*=/ {major=$NF; gsub(/[^0-9]/,"",major)} 
 /MINOR_VERSION.*=/ {minor=$NF; gsub(/[^0-9]/,"",minor)} 
 /PATCH_VERSION.*=/ {patch=$NF; gsub(/[^0-9]/,"",patch)} 
