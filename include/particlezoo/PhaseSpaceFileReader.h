@@ -609,14 +609,15 @@ namespace ParticleZoo
         // For binary files, return the number of times the record length fits into the file size minus the header size
         // For other formats, just return getNumberOfParticles()
         if (formatType_ != FormatType::BINARY) {
-            return getNumberOfParticles();
+            return static_cast<std::size_t>(getNumberOfParticles());
         }
-        std::uint64_t headerSize = getParticleRecordStartOffset();
-        if (bytesInFile_ <= headerSize) {
+        std::size_t bytesInFile = static_cast<std::size_t>(bytesInFile_);
+        std::size_t headerSize = getParticleRecordStartOffset();
+        if (bytesInFile <= headerSize) {
             return 0;
         }
         std::size_t recordLength = getParticleRecordLength();
-        return recordLength > 0 ? (bytesInFile_ - headerSize) / recordLength : 0;
+        return recordLength > 0 ? (bytesInFile - headerSize) / recordLength : 0;
     }
 
     inline float PhaseSpaceFileReader::calcThirdUnitComponent(float & u, float & v) const {
