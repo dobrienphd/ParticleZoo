@@ -38,7 +38,7 @@ namespace ParticleZoo::IAEAphspFile
                 std::uint64_t particleCount = header_.getNumberOfParticles();
 
                 const std::size_t   recordLength = header_.getRecordLength();
-                const std::size_t   fileSize = std::filesystem::file_size(phspPath);
+                const std::size_t   fileSize = static_cast<std::size_t>(std::filesystem::file_size(phspPath));
 
                 // Check that the checksum matches the file size, if not update it
                 if (checksum != fileSize) {
