@@ -7,6 +7,15 @@ This directory contains a Python package that exposes the C++ ParticleZoo API us
 - A C++20 compiler (g++ or clang++)
 - pybind11 (will be installed automatically by pip)
 
+## Setup
+Create a new Python virtual environment and activate it by running the following commands:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -U pip setuptools wheel pybind11
+```
+
 ## Build and install (editable)
 From the repository root or from this folder:
 
