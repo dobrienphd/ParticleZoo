@@ -3,7 +3,8 @@
 
 #include "particlezoo/Particle.h"
 #include "particlezoo/PDGParticleCodes.h"
-#include "particlezoo/IAEA/IAEAphspFile.h"
+#include "particlezoo/PhaseSpaceFileReader.h"
+#include "particlezoo/utilities/formats.h"
 
 namespace py = pybind11;
 using namespace ParticleZoo;
@@ -11,10 +12,25 @@ using namespace ParticleZoo;
 PYBIND11_MODULE(_pz, m) {
     m.doc() = "Python bindings for ParticleZoo core and IAEA reader";
 
-    // ParticleType enum (expose only sentinel values; use helpers for full mapping)
-    py::enum_<ParticleType>(m, "ParticleType")
-        .value("Unsupported", ParticleType::Unsupported)
-        .value("PseudoParticle", ParticleType::PseudoParticle);
+    // Ensure built-in formats are registered before any factory calls
+    try { FormatRegistry::RegisterStandardFormats(); } catch (...) { /* idempotent; ignore */ }
+
+    // ParticleType enum (full mapping from X-macro via helper in header)
+    auto pyParticleType = py::enum_<ParticleType>(m, "ParticleType");
+    for (const auto &entry : getAllParticleTypes()) {
+        pyParticleType.value(std::string(entry.first).c_str(), entry.second);
+    }
+    // ensure enum is closed/usable
+    pyParticleType.export_values();
+
+    // Convenience: return all particle types as a dict name -> enum value
+    m.def("all_particle_types", [](){
+        py::dict d;
+        for (const auto &entry : getAllParticleTypes()) {
+            d[py::str(entry.first)] = entry.second;
+        }
+        return d;
+    }, "Return a mapping of ParticleType names to enum values");
 
     // Property enums
     py::enum_<IntPropertyType>(m, "IntPropertyType")
@@ -75,25 +91,65 @@ PYBIND11_MODULE(_pz, m) {
         .def("set_incremental_histories", &Particle::setIncrementalHistories)
         ;
 
-    // IAEA Reader
-    using IAEAReader = IAEAphspFile::Reader;
-    py::class_<IAEAReader>(m, "IAEAReader")
-        .def(py::init<const std::string&, const UserOptions&>(),
-             py::arg("filename"), py::arg("options") = UserOptions{})
-        .def("get_number_of_particles", static_cast<std::uint64_t (IAEAReader::*)() const>(&IAEAReader::getNumberOfParticles))
-        .def("get_number_of_particles_by_type", static_cast<std::uint64_t (IAEAReader::*)(ParticleType) const>(&IAEAReader::getNumberOfParticles), py::arg("particle_type"))
-    .def("get_number_of_original_histories", &IAEAReader::getNumberOfOriginalHistories)
-    .def("has_more_particles", &IAEAReader::hasMoreParticles)
-    .def("get_next_particle", static_cast<Particle (IAEAReader::*)()>(&IAEAReader::getNextParticle))
-    .def("get_file_size", &IAEAReader::getFileSize)
-    .def("get_file_name", &IAEAReader::getFileName)
-    .def("close", &IAEAReader::close)
-        .def("__iter__", [](IAEAReader &self) -> IAEAReader& { return self; }, py::return_value_policy::reference_internal)
-        .def("__next__", [](IAEAReader &self) {
+    // PhaseSpaceFileReader (abstract base; created via FormatRegistry factories)
+    py::class_<PhaseSpaceFileReader, std::unique_ptr<PhaseSpaceFileReader>>(m, "PhaseSpaceFileReader")
+        .def("get_number_of_particles", &PhaseSpaceFileReader::getNumberOfParticles)
+        .def("get_number_of_original_histories", &PhaseSpaceFileReader::getNumberOfOriginalHistories)
+        .def("get_histories_read", &PhaseSpaceFileReader::getHistoriesRead)
+        .def("get_particles_read", static_cast<std::uint64_t (PhaseSpaceFileReader::*)()>(&PhaseSpaceFileReader::getParticlesRead))
+        .def("has_more_particles", &PhaseSpaceFileReader::hasMoreParticles)
+        .def("get_next_particle", static_cast<Particle (PhaseSpaceFileReader::*)()>(&PhaseSpaceFileReader::getNextParticle))
+        .def("get_file_size", &PhaseSpaceFileReader::getFileSize)
+        .def("get_file_name", &PhaseSpaceFileReader::getFileName)
+        .def("get_phsp_format", &PhaseSpaceFileReader::getPHSPFormat)
+        .def("move_to_particle", &PhaseSpaceFileReader::moveToParticle, py::arg("index"))
+        .def("is_x_constant", &PhaseSpaceFileReader::isXConstant)
+        .def("is_y_constant", &PhaseSpaceFileReader::isYConstant)
+        .def("is_z_constant", &PhaseSpaceFileReader::isZConstant)
+        .def("is_px_constant", &PhaseSpaceFileReader::isPxConstant)
+        .def("is_py_constant", &PhaseSpaceFileReader::isPyConstant)
+        .def("is_pz_constant", &PhaseSpaceFileReader::isPzConstant)
+        .def("is_weight_constant", &PhaseSpaceFileReader::isWeightConstant)
+        .def("get_constant_x", &PhaseSpaceFileReader::getConstantX)
+        .def("get_constant_y", &PhaseSpaceFileReader::getConstantY)
+        .def("get_constant_z", &PhaseSpaceFileReader::getConstantZ)
+        .def("get_constant_px", &PhaseSpaceFileReader::getConstantPx)
+        .def("get_constant_py", &PhaseSpaceFileReader::getConstantPy)
+        .def("get_constant_pz", &PhaseSpaceFileReader::getConstantPz)
+        .def("get_constant_weight", &PhaseSpaceFileReader::getConstantWeight)
+        .def("close", &PhaseSpaceFileReader::close)
+        .def("__iter__", [](PhaseSpaceFileReader &self) -> PhaseSpaceFileReader& { return self; }, py::return_value_policy::reference_internal)
+        .def("__next__", [](PhaseSpaceFileReader &self) {
             if (!self.hasMoreParticles()) throw py::stop_iteration();
             return self.getNextParticle();
         })
         ;
+
+    // SupportedFormat struct
+    py::class_<SupportedFormat>(m, "SupportedFormat")
+        .def_property_readonly("name", [](const SupportedFormat& f){ return f.name; })
+        .def_property_readonly("description", [](const SupportedFormat& f){ return f.description; })
+        .def_property_readonly("file_extension", [](const SupportedFormat& f){ return f.fileExtension; })
+        .def_property_readonly("file_extension_can_have_suffix", [](const SupportedFormat& f){ return f.fileExtensionCanHaveSuffix; })
+        ;
+
+    // FormatRegistry static interface
+    py::class_<FormatRegistry>(m, "FormatRegistry")
+        .def_static("register_standard_formats", &FormatRegistry::RegisterStandardFormats)
+        .def_static("supported_formats", &FormatRegistry::SupportedFormats)
+        .def_static("formats_for_extension", &FormatRegistry::FormatsForExtension, py::arg("extension"))
+        .def_static("extension_for_format", &FormatRegistry::ExtensionForFormat, py::arg("format_name"))
+        ;
+
+    // Convenience factory functions for readers
+    m.def("create_reader", [](const std::string& filename){
+        FormatRegistry::RegisterStandardFormats();
+        return FormatRegistry::CreateReader(filename, UserOptions{});
+    }, py::arg("filename"));
+    m.def("create_reader_for_format", [](const std::string& format, const std::string& filename){
+        FormatRegistry::RegisterStandardFormats();
+        return FormatRegistry::CreateReader(format, filename, UserOptions{});
+    }, py::arg("format_name"), py::arg("filename"));
 
     // Expose a simple alias to create a Particle by PDG code
     m.def("particle_from_pdg", [](int pdg, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory, float weight){
