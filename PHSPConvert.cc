@@ -69,129 +69,137 @@
 using namespace ParticleZoo;
 
 
-// Usage message
-const std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
-                            "\n"
-                            "Convert particle phase space files between different formats.\n"
-                            "\n"
-                            "Required Arguments:\n"
-                            "  <inputfile>               Input phase space file to convert\n"
-                            "  <outputfile>              Output file path (must be different from input)\n"
-                            "\n"
-                            "Examples:\n"
-                            "  PHSPConvert input.egsphsp output.IAEAphsp\n"
-                            "  PHSPConvert --maxParticles 500000 simulation.phsp converted.egsphsp\n"
-                            "  PHSPConvert --inputFormat TOPAS --outputFormat IAEA input.phsp output.IAEAphsp\n"
-                            "  PHSPConvert --formats";
+namespace {
+
+    // Usage message
+    const std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
+                                "\n"
+                                "Convert particle phase space files between different formats.\n"
+                                "\n"
+                                "Required Arguments:\n"
+                                "  <inputfile>               Input phase space file to convert\n"
+                                "  <outputfile>              Output file path (must be different from input)\n"
+                                "\n"
+                                "Examples:\n"
+                                "  PHSPConvert input.egsphsp output.IAEAphsp\n"
+                                "  PHSPConvert --maxParticles 500000 simulation.phsp converted.egsphsp\n"
+                                "  PHSPConvert --inputFormat TOPAS --outputFormat IAEA input.phsp output.IAEAphsp\n"
+                                "  PHSPConvert --formats";
 
 
-// Custom command line arguments
-const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
-const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
-const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
-const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
-const CLICommand PROJECT_TO_Y_COMMAND = CLICommand(NONE, "", "projectToY", "Project particles along their direction to this Y position in cm", { CLI_FLOAT });
-const CLICommand PROJECT_TO_Z_COMMAND = CLICommand(NONE, "", "projectToZ", "Project particles along their direction to this Z position in cm", { CLI_FLOAT });
-const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_BOOL }, { true });
-const CLICommand PHOTONS_ONLY_COMMAND = CLICommand(NONE, "", "photonsOnly", "Only convert photon particles, rejecting all others", { CLI_VALUELESS });
-const CLICommand ELECTRONS_ONLY_COMMAND = CLICommand(NONE, "", "electronsOnly", "Only convert electron particles, rejecting all others", { CLI_VALUELESS });
-const CLICommand FILTER_BY_PDG_COMMAND = CLICommand(NONE, "", "filterByPDG", "Only convert particles with the specified PDG code", { CLI_INT });
-const CLICommand MINIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "minEnergy", "Only convert particles with kinetic energy greater than or equal to this value in MeV", { CLI_FLOAT });
-const CLICommand MAXIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "maxEnergy", "Only convert particles with kinetic energy less than or equal to this value in MeV", { CLI_FLOAT });
+    // Custom command line arguments
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
+    const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
+    const CLICommand PROJECT_TO_Y_COMMAND = CLICommand(NONE, "", "projectToY", "Project particles along their direction to this Y position in cm", { CLI_FLOAT });
+    const CLICommand PROJECT_TO_Z_COMMAND = CLICommand(NONE, "", "projectToZ", "Project particles along their direction to this Z position in cm", { CLI_FLOAT });
+    const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_BOOL }, { true });
+    const CLICommand PHOTONS_ONLY_COMMAND = CLICommand(NONE, "", "photonsOnly", "Only convert photon particles, rejecting all others", { CLI_VALUELESS });
+    const CLICommand ELECTRONS_ONLY_COMMAND = CLICommand(NONE, "", "electronsOnly", "Only convert electron particles, rejecting all others", { CLI_VALUELESS });
+    const CLICommand FILTER_BY_PDG_COMMAND = CLICommand(NONE, "", "filterByPDG", "Only convert particles with the specified PDG code", { CLI_INT });
+    const CLICommand MINIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "minEnergy", "Only convert particles with kinetic energy greater than or equal to this value in MeV", { CLI_FLOAT });
+    const CLICommand MAXIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "maxEnergy", "Only convert particles with kinetic energy less than or equal to this value in MeV", { CLI_FLOAT });
 
 
-// App configuration state
-struct AppConfig {
-    const std::string   inputFile;
-    const std::string   outputFile;
-    const std::string   inputFormat;
-    const std::string   outputFormat;
-    const std::uint64_t maxParticles;
-    const bool          preserveConstants;
-    const bool          projectToX;
-    const bool          projectToY;
-    const bool          projectToZ;
-    const float         projectToXValue;
-    const float         projectToYValue;
-    const float         projectToZValue;
-    const ParticleType  filterByParticle;
-    const bool          filterByEnergy;
-    const float         minimumEnergy;
-    const float         maximumEnergy;
+    // App configuration state
+    struct AppConfig {
+        const std::string   inputFile;
+        const std::string   outputFile;
+        const std::string   inputFormat;
+        const std::string   outputFormat;
+        const std::uint64_t maxParticles;
+        const bool          preserveConstants;
+        const bool          projectToX;
+        const bool          projectToY;
+        const bool          projectToZ;
+        const float         projectToXValue;
+        const float         projectToYValue;
+        const float         projectToZValue;
+        const ParticleType  filterByParticle;
+        const bool          filterByEnergy;
+        const float         minimumEnergy;
+        const float         maximumEnergy;
 
-    // Constructor to initialize from user options
-    AppConfig(const UserOptions & userOptions)
-        : inputFile([&]() -> std::string {
-            std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
-            if (positionals.size() < 1) return std::string();
-            return std::get<std::string>(positionals[0]);
-          }()),
-          outputFile([&]() -> std::string {
-            std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
-            if (positionals.size() < 2) return std::string();
-            return std::get<std::string>(positionals[1]);
-          }()),
-          inputFormat(userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : ""),
-          outputFormat(userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : ""),
-          maxParticles(userOptions.contains(MAX_PARTICLES_COMMAND) ? static_cast<std::uint64_t>(std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0])) : std::numeric_limits<uint64_t>::max()),
-          preserveConstants(userOptions.contains(PRESERVE_CONSTANTS_COMMAND) ? std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) : false),
-          projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
-          projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
-          projectToZ(userOptions.contains(PROJECT_TO_Z_COMMAND)),
-          projectToXValue(projectToX ? std::get<float>(userOptions.at(PROJECT_TO_X_COMMAND)[0]) * cm : 0.0f),
-          projectToYValue(projectToY ? std::get<float>(userOptions.at(PROJECT_TO_Y_COMMAND)[0]) * cm : 0.0f),
-          projectToZValue(projectToZ ? std::get<float>(userOptions.at(PROJECT_TO_Z_COMMAND)[0]) * cm : 0.0f),
-          filterByParticle([&]() -> ParticleType {
-            if (userOptions.contains(PHOTONS_ONLY_COMMAND)) return ParticleType::Photon;
-            if (userOptions.contains(ELECTRONS_ONLY_COMMAND)) return ParticleType::Electron;
-            if (userOptions.contains(FILTER_BY_PDG_COMMAND)) {
+        // Constructor to initialize from user options
+        AppConfig(const UserOptions & userOptions)
+        :   inputFile(userOptions.extractPositional(0)),
+            outputFile(userOptions.extractPositional(1)),
+            inputFormat(userOptions.extractStringOption(INPUT_FORMAT_COMMAND)),
+            outputFormat(userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND)),
+            maxParticles(static_cast<std::uint64_t>(userOptions.extractIntOption(MAX_PARTICLES_COMMAND, std::numeric_limits<uint64_t>::max()))),
+            preserveConstants(userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, true)),
+            projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
+            projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
+            projectToZ(userOptions.contains(PROJECT_TO_Z_COMMAND)),
+            projectToXValue(projectToX ? userOptions.extractFloatOption(PROJECT_TO_X_COMMAND, 0.0f) * cm : 0.0f),
+            projectToYValue(projectToY ? userOptions.extractFloatOption(PROJECT_TO_Y_COMMAND, 0.0f) * cm : 0.0f),
+            projectToZValue(projectToZ ? userOptions.extractFloatOption(PROJECT_TO_Z_COMMAND, 0.0f) * cm : 0.0f),
+            filterByParticle(determineParticleFilter(userOptions)),
+            filterByEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) || userOptions.contains(MAXIMUM_ENERGY_COMMAND)),
+            minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MINIMUM_ENERGY_COMMAND, 0.0f) * MeV : 0.0f),
+            maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND, std::numeric_limits<float>::max()) * MeV : std::numeric_limits<float>::max())
+        {
+            // Validate the configuration
+            validate(userOptions);
+        }
+
+        bool useProjection() const { return projectToX || projectToY || projectToZ; }
+
+    private:
+        ParticleType determineParticleFilter(const UserOptions& userOptions) const {
+            if (userOptions.contains(PHOTONS_ONLY_COMMAND)) {
+                return ParticleType::Photon;
+            } else if (userOptions.contains(ELECTRONS_ONLY_COMMAND)) {
+                return ParticleType::Electron;
+            } else if (userOptions.contains(FILTER_BY_PDG_COMMAND)) {
                 int pdgCode = std::get<int>(userOptions.at(FILTER_BY_PDG_COMMAND)[0]);
                 return getParticleTypeFromPDGID(static_cast<std::int32_t>(pdgCode));
             }
             return ParticleType::Unsupported;
-          }()),
-          filterByEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) || userOptions.contains(MAXIMUM_ENERGY_COMMAND)),
-          minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? std::get<float>(userOptions.at(MINIMUM_ENERGY_COMMAND)[0]) * MeV : 0.0f),
-          maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? std::get<float>(userOptions.at(MAXIMUM_ENERGY_COMMAND)[0]) * MeV : std::numeric_limits<float>::max())
-    {
-        // Validate parameters
-        if (inputFile.empty()) throw std::runtime_error("No input file specified.");
-        if (outputFile.empty()) throw std::runtime_error("No output file specified.");
-        if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
-        if (userOptions.contains(FILTER_BY_PDG_COMMAND) && filterByParticle == ParticleType::Unsupported) {
-            throw std::runtime_error("Invalid PDG code specified for particle filter.");
         }
-        if (filterByEnergy && minimumEnergy > maximumEnergy) {
-            throw std::runtime_error("Minimum energy cannot be greater than maximum energy for energy filter.");
-        }
-        if ((userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(ELECTRONS_ONLY_COMMAND))
-            || (userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))
-            || (userOptions.contains(ELECTRONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))) {
+
+        void validate(const UserOptions& userOptions) const {
+            // Validate parameters
+            if (inputFile.empty()) throw std::runtime_error("No input file specified.");
+            if (outputFile.empty()) throw std::runtime_error("No output file specified.");
+            if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
+            if (userOptions.contains(FILTER_BY_PDG_COMMAND) && filterByParticle == ParticleType::Unsupported)
+            {
+                throw std::runtime_error("Invalid PDG code specified for particle filter.");
+            }
+            if (filterByEnergy && minimumEnergy > maximumEnergy)
+            {
+                throw std::runtime_error("Minimum energy cannot be greater than maximum energy for energy filter.");
+            }
+            if ((userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(ELECTRONS_ONLY_COMMAND))
+                || (userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))
+                || (userOptions.contains(ELECTRONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND)))
+            {
                 throw std::runtime_error("Conflicting particle filter options specified.");
             }
-    }
+        }
+    };
 
-    bool useProjection() const { return projectToX || projectToY || projectToZ; }
-};
-
-
-// Function to apply filters to a particle based on the application configuration
-inline bool applyFilters(const Particle & particle, const AppConfig & config)
-{
-    // Apply particle type filter if specified
-    if (config.filterByParticle != ParticleType::Unsupported && config.filterByParticle != particle.getType()) {
-        return false;
-    }
-
-    // Apply energy filters
-    if (config.filterByEnergy) {
-        float energy = particle.getKineticEnergy();
-        if (energy < config.minimumEnergy || energy > config.maximumEnergy) {
+    // Function to apply filters to a particle based on the application configuration
+    inline bool applyFilters(const Particle & particle, const AppConfig & config)
+    {
+        // Apply particle type filter if specified
+        if (config.filterByParticle != ParticleType::Unsupported && config.filterByParticle != particle.getType()) {
             return false;
         }
+
+        // Apply energy filters
+        if (config.filterByEnergy) {
+            float energy = particle.getKineticEnergy();
+            if (energy < config.minimumEnergy || energy > config.maximumEnergy) {
+                return false;
+            }
+        }
+        
+        return true;
     }
-    
-    return true;
+
 }
 
 
