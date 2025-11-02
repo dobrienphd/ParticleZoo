@@ -57,8 +57,9 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <chrono>
-#include <filesystem>
+#include <vector>
 
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/formats.h"
@@ -66,13 +67,13 @@
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
-using namespace ParticleZoo;
-
 
 namespace {
 
+    using namespace ParticleZoo;
+
     // Usage message
-    const std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
+    constexpr std::string_view usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
                                 "\n"
                                 "Convert particle phase space files between different formats.\n"
                                 "\n"
@@ -100,7 +101,7 @@ namespace {
     const CLICommand FILTER_BY_PDG_COMMAND = CLICommand(NONE, "", "filterByPDG", "Only convert particles with the specified PDG code", { CLI_INT });
     const CLICommand MINIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "minEnergy", "Only convert particles with kinetic energy greater than or equal to this value in MeV", { CLI_FLOAT });
     const CLICommand MAXIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "maxEnergy", "Only convert particles with kinetic energy less than or equal to this value in MeV", { CLI_FLOAT });
-
+    const CLICommand ERROR_ON_WARNING_COMMAND = CLICommand(NONE, "", "errorOnWarning", "Treat warnings as errors when returning exit code", { CLI_VALUELESS });
 
     // App configuration state
     struct AppConfig {
@@ -120,6 +121,7 @@ namespace {
         const bool          filterByEnergy;
         const float         minimumEnergy;
         const float         maximumEnergy;
+        const bool          errorOnWarning;
 
         // Constructor to initialize from user options
         AppConfig(const UserOptions & userOptions)
@@ -127,7 +129,7 @@ namespace {
             outputFile(userOptions.extractPositional(1)),
             inputFormat(userOptions.extractStringOption(INPUT_FORMAT_COMMAND)),
             outputFormat(userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND)),
-            maxParticles(static_cast<std::uint64_t>(userOptions.extractIntOption(MAX_PARTICLES_COMMAND, std::numeric_limits<uint64_t>::max()))),
+            maxParticles(static_cast<std::uint64_t>(userOptions.extractIntOption(MAX_PARTICLES_COMMAND, std::numeric_limits<std::uint64_t>::max()))),
             preserveConstants(userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, true)),
             projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
             projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
@@ -138,7 +140,8 @@ namespace {
             filterByParticle(determineParticleFilter(userOptions)),
             filterByEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) || userOptions.contains(MAXIMUM_ENERGY_COMMAND)),
             minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MINIMUM_ENERGY_COMMAND, 0.0f) * MeV : 0.0f),
-            maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND, std::numeric_limits<float>::max()) * MeV : std::numeric_limits<float>::max())
+            maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND, std::numeric_limits<float>::max()) * MeV : std::numeric_limits<float>::max()),
+            errorOnWarning(userOptions.contains(ERROR_ON_WARNING_COMMAND))
         {
             // Validate the configuration
             validate(userOptions);
@@ -182,7 +185,7 @@ namespace {
     };
 
     // Function to apply filters to a particle based on the application configuration
-    inline bool applyFilters(const Particle & particle, const AppConfig & config)
+    bool applyFilters(const Particle & particle, const AppConfig & config)
     {
         // Apply particle type filter if specified
         if (config.filterByParticle != ParticleType::Unsupported && config.filterByParticle != particle.getType()) {
@@ -206,8 +209,13 @@ namespace {
 // Main function
 int main(int argc, char* argv[]) {
 
-    // Set default error code
-    int errorCode = 0;
+    // Use ParticleZoo namespace
+    using namespace ParticleZoo;
+
+    // Define constants
+    constexpr int SUCCESS_CODE = 0;
+    constexpr int ERROR_CODE = 1;
+    constexpr int MINUMUM_REQUIRED_POSITIONAL_ARGS = 2;
 
     // Register custom command line arguments
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
@@ -222,35 +230,39 @@ int main(int argc, char* argv[]) {
     ArgParser::RegisterCommand(FILTER_BY_PDG_COMMAND);
     ArgParser::RegisterCommand(MINIMUM_ENERGY_COMMAND);
     ArgParser::RegisterCommand(MAXIMUM_ENERGY_COMMAND);
+    ArgParser::RegisterCommand(ERROR_ON_WARNING_COMMAND);
     
     // Define usage message and parse command line arguments
-    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 2);
+    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, MINUMUM_REQUIRED_POSITIONAL_ARGS);
     const AppConfig config(userOptions);
 
-    // Create the reader for the input file
+    // Declare the reader for the input file
     std::unique_ptr<PhaseSpaceFileReader> reader;
-    if (config.inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(config.inputFile, userOptions);
-    } else {
-        reader = FormatRegistry::CreateReader(config.inputFormat, config.inputFile, userOptions);
-    }
-
-    // If requested, try to keep the same constant values in the new phase space file if it supports them
-    const FixedValues fixedValues = config.preserveConstants ? reader->getFixedValues() : FixedValues{};
-
-    // Create the writer for the output file
     std::unique_ptr<PhaseSpaceFileWriter> writer;
-    if (config.outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(config.outputFile, userOptions, fixedValues);
-    } else {
-        writer = FormatRegistry::CreateWriter(config.outputFormat, config.outputFile, userOptions, fixedValues);
-    }
 
-    // Keep a list of errors
-    std::list<std::string> errorMessages;
+    // Keep a list of errors and warnings encountered during processing
+    std::vector<std::string> errorMessages;
+    std::vector<std::string> warningMessages;
 
     // Error handling for both reader and writer
     try {
+
+        // Create the reader for the input file
+        if (config.inputFormat.empty()) {
+            reader = FormatRegistry::CreateReader(config.inputFile, userOptions);
+        } else {
+            reader = FormatRegistry::CreateReader(config.inputFormat, config.inputFile, userOptions);
+        }
+
+        // If requested, try to keep the same constant values in the new phase space file if it supports them
+        const FixedValues fixedValues = config.preserveConstants ? reader->getFixedValues() : FixedValues{};
+
+        // Create the writer for the output file
+        if (config.outputFormat.empty()) {
+            writer = FormatRegistry::CreateWriter(config.outputFile, userOptions, fixedValues);
+        } else {
+            writer = FormatRegistry::CreateWriter(config.outputFormat, config.outputFile, userOptions, fixedValues);
+        }
 
         // Report the conversion details
         std::cout << "Converting particles from " 
@@ -258,25 +270,26 @@ int main(int argc, char* argv[]) {
                   << config.outputFile << " (" << writer->getPHSPFormat() << ")..." << std::endl;
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
-        uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t particlesToRead = particlesInFile > config.maxParticles ? config.maxParticles : particlesInFile;
-        uint64_t particlesRejected = 0;
-        uint64_t particlesRejectedByProjection = 0;
+        std::uint64_t particlesInFile = reader->getNumberOfParticles();
+        std::uint64_t particlesToRead = std::min(config.maxParticles, particlesInFile);
+        std::uint64_t particlesRejected = 0;
+        std::uint64_t particlesRejectedByProjection = 0;
         bool readPartialFile = particlesToRead < particlesInFile;
 
         // Determine progress update interval
-        uint64_t onePercentInterval = particlesToRead >= 100 
-                                    ? particlesToRead / 100 
+        constexpr std::uint64_t MAX_PERCENTAGE = 100;
+        std::uint64_t progressUpdateInterval = particlesToRead >= MAX_PERCENTAGE
+                                    ? particlesToRead / MAX_PERCENTAGE  // Update every 1%
                                     : 1;
 
         // Start the timer
-        auto start_time = std::chrono::steady_clock::now();
+        auto startTime = std::chrono::steady_clock::now();
 
         // Check if there are particles to read
         if (particlesToRead > 0) {
 
             // Set up the progress bar for the current file
-            Progress<uint64_t> progress(particlesToRead);
+            Progress<std::uint64_t> progress(particlesToRead);
             progress.Start("Converting:");
 
             // Read the particles from the input file and write them into the output file
@@ -317,15 +330,16 @@ int main(int argc, char* argv[]) {
 
                 // Update progress bar every 1% of particles read
                 std::uint64_t particlesSoFar = reader->getParticlesRead();
-                if (particlesSoFar % onePercentInterval == 0) {
+                if (particlesSoFar % progressUpdateInterval == 0) {
                     progress.Update(particlesSoFar, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
                 }
             }
 
             // Check that the number of particles written matches the expected number
+            std::uint64_t particlesExpected = particlesToRead - particlesRejected;
             std::uint64_t particlesWritten = writer->getParticlesWritten();
-            if (particlesWritten != particlesToRead - particlesRejected) {
-                errorMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesToRead - particlesRejected) + "). The output file will reflect the number of particles actually written.");
+            if (particlesWritten != particlesExpected) {
+                warningMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesExpected) + "). The output file will reflect the number of particles actually written.");
             }
 
             // Finalize history counts, if the original file contained more histories than have been written then add the difference (this can happen if uneventful histories occurred after the final particle was recorded)
@@ -334,21 +348,17 @@ int main(int argc, char* argv[]) {
             if (historiesWritten < historiesInOriginalFile) {
                 writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
             } else if (historiesWritten > historiesInOriginalFile) {
-                errorMessages.push_back("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
+                warningMessages.push_back("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
             }
 
             // Complete the progress bar
-            if (errorMessages.empty()) {
-                progress.Complete("Conversion complete.");
-            } else {
-                progress.Complete("Conversion complete with " + std::to_string(errorMessages.size()) + " warnings.");
-            }
+            progress.Complete("Conversion complete.");
         }
 
         // Measure elapsed time and report it
-        auto end_time = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(end_time - start_time).count();
-        std::cout << "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories with " + std::to_string(writer->getParticlesWritten()) + " particles in " + std::to_string(elapsed) + " seconds" << std::endl;
+        auto endTime = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(endTime - startTime).count();
+        std::cout << "Processed " << std::to_string(writer->getHistoriesWritten()) << " histories with " << std::to_string(writer->getParticlesWritten()) << " particles in " << std::to_string(elapsed) << " seconds" << std::endl;
 
         // Report any rejected particles
         if (particlesRejected > 0) {
@@ -359,21 +369,25 @@ int main(int argc, char* argv[]) {
     } catch (const std::exception& e) {
         // Catch any exceptions and report them
         errorMessages.push_back(e.what());
-        errorCode = 1;
     }
 
     // Ensure that the reader and writer are closed even if an exception occurs
-    if (writer) writer->close();
-    if (reader) reader->close();
+    try { if (reader) reader->close(); } catch (const std::exception& e) { errorMessages.push_back("Error closing reader: " + std::string(e.what())); }
+    try { if (writer) writer->close(); } catch (const std::exception& e) { errorMessages.push_back("Error closing writer: " + std::string(e.what())); }
 
     // Output any error messages
     for (const auto& error : errorMessages) {
-        std::cerr << "Warning: " << error << std::endl;
+        std::cerr << "Error: " << error << std::endl;
     }
 
-    // Set error code to 1 if there were any error messages
-    errorCode = errorMessages.empty() ? errorCode : 1;
+    // Output any warning messages
+    for (const auto& warning : warningMessages) {
+        std::cerr << "Warning: " << warning << std::endl;
+    }
 
-    // Return the error code
+    // Return appropriate error code
+    int errorCode = (!errorMessages.empty()
+                        || (config.errorOnWarning && !warningMessages.empty()))
+                        ? ERROR_CODE : SUCCESS_CODE;
     return errorCode;
 }
