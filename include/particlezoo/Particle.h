@@ -70,20 +70,20 @@ namespace ParticleZoo {
      */
     struct FixedValues
     {
-        bool xIsConstant{0};        ///< True if X coordinate is constant for all particles
-        bool yIsConstant{0};        ///< True if Y coordinate is constant for all particles
-        bool zIsConstant{0};        ///< True if Z coordinate is constant for all particles
-        bool pxIsConstant{0};       ///< True if X directional cosine is constant for all particles
-        bool pyIsConstant{0};       ///< True if Y directional cosine is constant for all particles
-        bool pzIsConstant{0};       ///< True if Z directional cosine is constant for all particles
-        bool weightIsConstant{0};   ///< True if statistical weight is constant for all particles
-        float constantX{0};         ///< Constant X coordinate value (when xIsConstant is true)
-        float constantY{0};         ///< Constant Y coordinate value (when yIsConstant is true)
-        float constantZ{0};         ///< Constant Z coordinate value (when zIsConstant is true)
-        float constantPx{0};        ///< Constant X directional cosine value (when pxIsConstant is true)
-        float constantPy{0};        ///< Constant Y directional cosine value (when pyIsConstant is true)
-        float constantPz{0};        ///< Constant Z directional cosine value (when pzIsConstant is true)
-        float constantWeight{1};    ///< Constant statistical weight value (when weightIsConstant is true)
+        bool xIsConstant{false};        ///< True if X coordinate is constant for all particles
+        bool yIsConstant{false};        ///< True if Y coordinate is constant for all particles
+        bool zIsConstant{false};        ///< True if Z coordinate is constant for all particles
+        bool pxIsConstant{false};       ///< True if X directional cosine is constant for all particles
+        bool pyIsConstant{false};       ///< True if Y directional cosine is constant for all particles
+        bool pzIsConstant{false};       ///< True if Z directional cosine is constant for all particles
+        bool weightIsConstant{false};   ///< True if statistical weight is constant for all particles
+        float constantX{0};             ///< Constant X coordinate value (when xIsConstant is true)
+        float constantY{0};             ///< Constant Y coordinate value (when yIsConstant is true)
+        float constantZ{0};             ///< Constant Z coordinate value (when zIsConstant is true)
+        float constantPx{0};            ///< Constant X directional cosine value (when pxIsConstant is true)
+        float constantPy{0};            ///< Constant Y directional cosine value (when pyIsConstant is true)
+        float constantPz{0};            ///< Constant Z directional cosine value (when pzIsConstant is true)
+        float constantWeight{1};        ///< Constant statistical weight value (when weightIsConstant is true)
 
         /**
          * @brief Equality comparison operator for FixedValues.
