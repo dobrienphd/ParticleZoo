@@ -161,6 +161,14 @@ struct AppConfig {
         if (userOptions.contains(FILTER_BY_PDG_COMMAND) && filterByParticle == ParticleType::Unsupported) {
             throw std::runtime_error("Invalid PDG code specified for particle filter.");
         }
+        if (filterByEnergy && minimumEnergy > maximumEnergy) {
+            throw std::runtime_error("Minimum energy cannot be greater than maximum energy for energy filter.");
+        }
+        if ((userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(ELECTRONS_ONLY_COMMAND))
+            || (userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))
+            || (userOptions.contains(ELECTRONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))) {
+                throw std::runtime_error("Conflicting particle filter options specified.");
+            }
     }
 
     bool useProjection() const { return projectToX || projectToY || projectToZ; }
