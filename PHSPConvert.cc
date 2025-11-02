@@ -66,28 +66,11 @@
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
-int main(int argc, char* argv[]) {
+using namespace ParticleZoo;
 
-    // Initial setup
-    using namespace ParticleZoo;
-    int errorCode = 0;
 
-    // Custom command line arguments
-    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
-    const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
-    const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
-    const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
-    const CLICommand PROJECT_TO_Y_COMMAND = CLICommand(NONE, "", "projectToY", "Project particles along their direction to this Y position in cm", { CLI_FLOAT });
-    const CLICommand PROJECT_TO_Z_COMMAND = CLICommand(NONE, "", "projectToZ", "Project particles along their direction to this Z position in cm", { CLI_FLOAT });
-    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
-    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
-    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_X_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_Y_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_Z_COMMAND);
-    
-    // Define usage message and parse command line arguments
-    std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
+// Usage message
+const std::string usageMessage = "Usage: PHSPConvert [OPTIONS] <inputfile> <outputfile>\n"
                             "\n"
                             "Convert particle phase space files between different formats.\n"
                             "\n"
@@ -100,43 +83,151 @@ int main(int argc, char* argv[]) {
                             "  PHSPConvert --maxParticles 500000 simulation.phsp converted.egsphsp\n"
                             "  PHSPConvert --inputFormat TOPAS --outputFormat IAEA input.phsp output.IAEAphsp\n"
                             "  PHSPConvert --formats";
-    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 2);
 
-    // Validate parameters
-    std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
-    std::string inputFile = std::get<std::string>(positionals[0]);
-    std::string outputFile = std::get<std::string>(positionals[1]);
-    std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
-    std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
-    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
-    bool projectToX = userOptions.contains(PROJECT_TO_X_COMMAND);
-    bool projectToY = userOptions.contains(PROJECT_TO_Y_COMMAND);
-    bool projectToZ = userOptions.contains(PROJECT_TO_Z_COMMAND);
-    bool useProjection = projectToX || projectToY || projectToZ;
-    float projectToXValue = projectToX ? std::get<float>(userOptions.at(PROJECT_TO_X_COMMAND)[0]) * cm : 0.0f;
-    float projectToYValue = projectToY ? std::get<float>(userOptions.at(PROJECT_TO_Y_COMMAND)[0]) * cm : 0.0f;
-    float projectToZValue = projectToZ ? std::get<float>(userOptions.at(PROJECT_TO_Z_COMMAND)[0]) * cm : 0.0f;
-    if (inputFile.empty()) throw std::runtime_error("No input file specified.");
-    if (outputFile.empty()) throw std::runtime_error("No output file specified.");
-    if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
+
+// Custom command line arguments
+const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
+const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
+const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
+const CLICommand PROJECT_TO_Y_COMMAND = CLICommand(NONE, "", "projectToY", "Project particles along their direction to this Y position in cm", { CLI_FLOAT });
+const CLICommand PROJECT_TO_Z_COMMAND = CLICommand(NONE, "", "projectToZ", "Project particles along their direction to this Z position in cm", { CLI_FLOAT });
+const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_BOOL }, { true });
+const CLICommand PHOTONS_ONLY_COMMAND = CLICommand(NONE, "", "photonsOnly", "Only convert photon particles, rejecting all others", { CLI_VALUELESS });
+const CLICommand ELECTRONS_ONLY_COMMAND = CLICommand(NONE, "", "electronsOnly", "Only convert electron particles, rejecting all others", { CLI_VALUELESS });
+const CLICommand FILTER_BY_PDG_COMMAND = CLICommand(NONE, "", "filterByPDG", "Only convert particles with the specified PDG code", { CLI_INT });
+const CLICommand MINIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "minEnergy", "Only convert particles with kinetic energy greater than or equal to this value in MeV", { CLI_FLOAT });
+const CLICommand MAXIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "maxEnergy", "Only convert particles with kinetic energy less than or equal to this value in MeV", { CLI_FLOAT });
+
+
+// App configuration state
+struct AppConfig {
+    const std::string   inputFile;
+    const std::string   outputFile;
+    const std::string   inputFormat;
+    const std::string   outputFormat;
+    const std::uint64_t maxParticles;
+    const bool          preserveConstants;
+    const bool          projectToX;
+    const bool          projectToY;
+    const bool          projectToZ;
+    const float         projectToXValue;
+    const float         projectToYValue;
+    const float         projectToZValue;
+    const ParticleType  filterByParticle;
+    const bool          filterByEnergy;
+    const float         minimumEnergy;
+    const float         maximumEnergy;
+
+    // Constructor to initialize from user options
+    AppConfig(const UserOptions & userOptions)
+        : inputFile([&]() -> std::string {
+            std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
+            if (positionals.size() < 1) return std::string();
+            return std::get<std::string>(positionals[0]);
+          }()),
+          outputFile([&]() -> std::string {
+            std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{ "", "" };
+            if (positionals.size() < 2) return std::string();
+            return std::get<std::string>(positionals[1]);
+          }()),
+          inputFormat(userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : ""),
+          outputFormat(userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : ""),
+          maxParticles(userOptions.contains(MAX_PARTICLES_COMMAND) ? static_cast<std::uint64_t>(std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0])) : std::numeric_limits<uint64_t>::max()),
+          preserveConstants(userOptions.contains(PRESERVE_CONSTANTS_COMMAND) ? std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) : false),
+          projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
+          projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
+          projectToZ(userOptions.contains(PROJECT_TO_Z_COMMAND)),
+          projectToXValue(projectToX ? std::get<float>(userOptions.at(PROJECT_TO_X_COMMAND)[0]) * cm : 0.0f),
+          projectToYValue(projectToY ? std::get<float>(userOptions.at(PROJECT_TO_Y_COMMAND)[0]) * cm : 0.0f),
+          projectToZValue(projectToZ ? std::get<float>(userOptions.at(PROJECT_TO_Z_COMMAND)[0]) * cm : 0.0f),
+          filterByParticle([&]() -> ParticleType {
+            if (userOptions.contains(PHOTONS_ONLY_COMMAND)) return ParticleType::Photon;
+            if (userOptions.contains(ELECTRONS_ONLY_COMMAND)) return ParticleType::Electron;
+            if (userOptions.contains(FILTER_BY_PDG_COMMAND)) {
+                int pdgCode = std::get<int>(userOptions.at(FILTER_BY_PDG_COMMAND)[0]);
+                return getParticleTypeFromPDGID(static_cast<std::int32_t>(pdgCode));
+            }
+            return ParticleType::Unsupported;
+          }()),
+          filterByEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) || userOptions.contains(MAXIMUM_ENERGY_COMMAND)),
+          minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? std::get<float>(userOptions.at(MINIMUM_ENERGY_COMMAND)[0]) * MeV : 0.0f),
+          maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? std::get<float>(userOptions.at(MAXIMUM_ENERGY_COMMAND)[0]) * MeV : std::numeric_limits<float>::max())
+    {
+        // Validate parameters
+        if (inputFile.empty()) throw std::runtime_error("No input file specified.");
+        if (outputFile.empty()) throw std::runtime_error("No output file specified.");
+        if (inputFile == outputFile) throw std::runtime_error("Input and output files must be different.");
+        if (userOptions.contains(FILTER_BY_PDG_COMMAND) && filterByParticle == ParticleType::Unsupported) {
+            throw std::runtime_error("Invalid PDG code specified for particle filter.");
+        }
+    }
+
+    bool useProjection() const { return projectToX || projectToY || projectToZ; }
+};
+
+
+// Function to apply filters to a particle based on the application configuration
+inline bool applyFilters(const Particle & particle, const AppConfig & config)
+{
+    // Apply particle type filter if specified
+    if (config.filterByParticle != ParticleType::Unsupported && config.filterByParticle != particle.getType()) {
+        return false;
+    }
+
+    // Apply energy filters
+    if (config.filterByEnergy) {
+        float energy = particle.getKineticEnergy();
+        if (energy < config.minimumEnergy || energy > config.maximumEnergy) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+
+// Main function
+int main(int argc, char* argv[]) {
+
+    // Set default error code
+    int errorCode = 0;
+
+    // Register custom command line arguments
+    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
+    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_X_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_Y_COMMAND);
+    ArgParser::RegisterCommand(PROJECT_TO_Z_COMMAND);
+    ArgParser::RegisterCommand(PRESERVE_CONSTANTS_COMMAND);
+    ArgParser::RegisterCommand(PHOTONS_ONLY_COMMAND);
+    ArgParser::RegisterCommand(ELECTRONS_ONLY_COMMAND);
+    ArgParser::RegisterCommand(FILTER_BY_PDG_COMMAND);
+    ArgParser::RegisterCommand(MINIMUM_ENERGY_COMMAND);
+    ArgParser::RegisterCommand(MAXIMUM_ENERGY_COMMAND);
+    
+    // Define usage message and parse command line arguments
+    auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 2);
+    const AppConfig config(userOptions);
 
     // Create the reader for the input file
     std::unique_ptr<PhaseSpaceFileReader> reader;
-    if (inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(inputFile, userOptions);
+    if (config.inputFormat.empty()) {
+        reader = FormatRegistry::CreateReader(config.inputFile, userOptions);
     } else {
-        reader = FormatRegistry::CreateReader(inputFormat, inputFile, userOptions);
+        reader = FormatRegistry::CreateReader(config.inputFormat, config.inputFile, userOptions);
     }
 
-    // Try to keep the same constant values in the new phase space file if it supports them
-    FixedValues fixedValues = reader->getFixedValues();
+    // If requested, try to keep the same constant values in the new phase space file if it supports them
+    const FixedValues fixedValues = config.preserveConstants ? reader->getFixedValues() : FixedValues{};
 
     // Create the writer for the output file
     std::unique_ptr<PhaseSpaceFileWriter> writer;
-    if (outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, userOptions, fixedValues);
+    if (config.outputFormat.empty()) {
+        writer = FormatRegistry::CreateWriter(config.outputFile, userOptions, fixedValues);
     } else {
-        writer = FormatRegistry::CreateWriter(outputFormat, outputFile, userOptions, fixedValues);
+        writer = FormatRegistry::CreateWriter(config.outputFormat, config.outputFile, userOptions, fixedValues);
     }
 
     // Keep a list of errors
@@ -144,15 +235,17 @@ int main(int argc, char* argv[]) {
 
     // Error handling for both reader and writer
     try {
-        // Start the process
+
+        // Report the conversion details
         std::cout << "Converting particles from " 
-                  << inputFile << " (" << reader->getPHSPFormat() << ") to "
-                  << outputFile << " (" << writer->getPHSPFormat() << ")..." << std::endl;
+                  << config.inputFile << " (" << reader->getPHSPFormat() << ") to "
+                  << config.outputFile << " (" << writer->getPHSPFormat() << ")..." << std::endl;
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t particlesToRead = particlesInFile > maxParticles ? maxParticles : particlesInFile;
+        uint64_t particlesToRead = particlesInFile > config.maxParticles ? config.maxParticles : particlesInFile;
         uint64_t particlesRejected = 0;
+        uint64_t particlesRejectedByProjection = 0;
         bool readPartialFile = particlesToRead < particlesInFile;
 
         // Determine progress update interval
@@ -172,27 +265,42 @@ int main(int argc, char* argv[]) {
 
             // Read the particles from the input file and write them into the output file
             while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() < particlesToRead)) {
+
+                if (reader->getHistoriesRead() >= 1199999990) {
+                    int debug = 0;
+                }
+
                 Particle particle = reader->getNextParticle();
 
-                if (useProjection) {
+                // Apply filters
+                bool particleRejected = !applyFilters(particle, config);
+
+                // Handle particle projection if requested
+                if (!particleRejected && config.useProjection()) {
                     // Project the particle if projection is enabled
                     // If the projection fails (e.g. particle direction is parallel to the projection plane) then skip writing this particle
-                    // If we don't write the particle and it is a new history then we need to account for the history count
+                    // If we don't write the particle and it is a new history then we need to adjust the history count
                     bool projectionSuccess = particle.getType() != ParticleType::PseudoParticle; // Do not project pseudo-particles
-                    if (projectToX && projectionSuccess) projectionSuccess = particle.projectToXValue(projectToXValue);
-                    if (projectToY && projectionSuccess) projectionSuccess = particle.projectToYValue(projectToYValue);
-                    if (projectToZ && projectionSuccess) projectionSuccess = particle.projectToZValue(projectToZValue);
-                    if (projectionSuccess) {
-                        // If projection was successful, write the particle
-                        writer->writeParticle(particle);
-                    } else {
-                        if (particle.isNewHistory()) {
-                            // If projection failed and this is a new history, account for the history but do not write the particle
-                            writer->addAdditionalHistories(particle.getIncrementalHistories());
-                        }
-                        particlesRejected++;
+                    if (config.projectToX && projectionSuccess) projectionSuccess = particle.projectToXValue(config.projectToXValue);
+                    if (config.projectToY && projectionSuccess) projectionSuccess = particle.projectToYValue(config.projectToYValue);
+                    if (config.projectToZ && projectionSuccess) projectionSuccess = particle.projectToZValue(config.projectToZValue);
+                    if (!projectionSuccess) {
+                        // Projection failed, reject the particle
+                        particleRejected = true;
+                        particlesRejectedByProjection++;
                     }
+                }
+
+                // Either write or reject the particle
+                if (particleRejected) {
+                    // If this is a new history, account for the missing histories
+                    if (particle.isNewHistory()) {
+                        uint32_t incrementalHistories = particle.getIncrementalHistories();
+                        writer->addAdditionalHistories(incrementalHistories);
+                    }
+                    particlesRejected++;
                 } else {
+                    // Write the particle to the output file
                     writer->writeParticle(particle);
                 }
 
@@ -230,11 +338,15 @@ int main(int argc, char* argv[]) {
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();
         std::cout << "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories with " + std::to_string(writer->getParticlesWritten()) + " particles in " + std::to_string(elapsed) + " seconds" << std::endl;
-        if (useProjection && particlesRejected > 0) {
-            std::cout << "Note: " << particlesRejected << " plane-parallel particles were rejected during projection." << std::endl;
+
+        // Report any rejected particles
+        if (particlesRejected > 0) {
+            std::cout << "Note: " << particlesRejected << " particles were rejected during conversion." << std::endl;
+            if (particlesRejectedByProjection > 0) std::cout << "      " << particlesRejectedByProjection << " plane-parallel particles were rejected during projection." << std::endl;
         }
-    }
-    catch (const std::exception& e) {
+
+    } catch (const std::exception& e) {
+        // Catch any exceptions and report them
         errorMessages.push_back(e.what());
         errorCode = 1;
     }
@@ -243,10 +355,12 @@ int main(int argc, char* argv[]) {
     if (writer) writer->close();
     if (reader) reader->close();
 
+    // Output any error messages
     for (const auto& error : errorMessages) {
         std::cerr << "Warning: " << error << std::endl;
     }
 
+    // Set error code to 1 if there were any error messages
     errorCode = errorMessages.empty() ? errorCode : 1;
 
     // Return the error code
