@@ -161,6 +161,14 @@ namespace std {
 namespace ParticleZoo {
 
     /**
+     * @brief Special command representing positional arguments.
+     * 
+     * This predefined command is used internally to handle positional arguments
+     * (arguments without flags) passed on the command line.
+     */
+    const CLICommand CLI_POSITIONALS { BOTH, "", "positionals", "", { CLI_STRING } };
+
+    /**
      * @brief Type alias for user options map.
      * 
      * Maps CLICommand objects to vectors of CLIValue objects, representing
@@ -250,14 +258,6 @@ namespace ParticleZoo {
             throw std::runtime_error("Unable to extract boolean option for command.");
         }
     };
-
-    /**
-     * @brief Special command representing positional arguments.
-     * 
-     * This predefined command is used internally to handle positional arguments
-     * (arguments without flags) passed on the command line.
-     */
-    const CLICommand CLI_POSITIONALS { BOTH, "", "positionals", "", { CLI_STRING } };
 
     /**
      * @brief Singleton class for parsing command line arguments.
