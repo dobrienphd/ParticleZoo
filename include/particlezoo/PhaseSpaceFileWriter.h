@@ -639,7 +639,7 @@ namespace ParticleZoo
 
     inline void PhaseSpaceFileWriter::addAdditionalHistories(std::uint64_t additionalHistories) {
         if (accountForAdditionalHistories(additionalHistories)) {
-            historiesToAccountFor_ = additionalHistories;
+            historiesToAccountFor_ += additionalHistories;
         }
     }
 
