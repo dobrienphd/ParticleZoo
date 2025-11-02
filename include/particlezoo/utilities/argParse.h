@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <unordered_map>
 #include <iostream>
@@ -354,7 +355,7 @@ namespace ParticleZoo {
              * @param usageMessage The main usage message to display
              * @param exitCode The exit code to use when terminating the program (default: 1)
              */
-            static void PrintUsage(std::string usageMessage, int exitCode = 1);
+            static void PrintUsage(const std::string_view & usageMessage, const int exitCode = 1);
 
             /**
              * @brief Parses command line arguments based on registered commands.
@@ -370,7 +371,7 @@ namespace ParticleZoo {
              * @return const UserOptions A map of parsed commands and their values
              * @throws Calls PrintUsage() and exits on parsing errors
              */
-            static const UserOptions ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs = 0);
+            static const UserOptions ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs = 0);
     };
 
 } // namespace ParticleZoo

@@ -70,7 +70,7 @@ namespace ParticleZoo {
     /// @param usageMessage Message to display for usage information.
     /// @param minimumPositionalArgs Minimum required positional arguments.
     /// @return A map of parsed user options.
-    const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs)
+    const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs)
     {
         // Retrieve the singleton instance
         ArgParser& parser = Instance();
@@ -262,7 +262,7 @@ namespace ParticleZoo {
         return opts;
     }
 
-    void ArgParser::PrintUsage(std::string usageMessage, int exitCode) {
+    void ArgParser::PrintUsage(const std::string_view & usageMessage, const int exitCode) {
         // Retrieve the singleton instance
         ArgParser& parser = Instance();
         auto& commands = parser.commands;
