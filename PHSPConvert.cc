@@ -68,8 +68,10 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
 
+// Anonymous namespace for internal linkage
 namespace {
 
+    // Use ParticleZoo namespace
     using namespace ParticleZoo;
 
     // Usage message
@@ -216,21 +218,24 @@ int main(int argc, char* argv[]) {
     constexpr int SUCCESS_CODE = 0;
     constexpr int ERROR_CODE = 1;
     constexpr int MINUMUM_REQUIRED_POSITIONAL_ARGS = 2;
+    constexpr std::uint64_t MAX_PERCENTAGE = 100;
 
     // Register custom command line arguments
-    ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
-    ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
-    ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_X_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_Y_COMMAND);
-    ArgParser::RegisterCommand(PROJECT_TO_Z_COMMAND);
-    ArgParser::RegisterCommand(PRESERVE_CONSTANTS_COMMAND);
-    ArgParser::RegisterCommand(PHOTONS_ONLY_COMMAND);
-    ArgParser::RegisterCommand(ELECTRONS_ONLY_COMMAND);
-    ArgParser::RegisterCommand(FILTER_BY_PDG_COMMAND);
-    ArgParser::RegisterCommand(MINIMUM_ENERGY_COMMAND);
-    ArgParser::RegisterCommand(MAXIMUM_ENERGY_COMMAND);
-    ArgParser::RegisterCommand(ERROR_ON_WARNING_COMMAND);
+    ArgParser::RegisterCommands({
+        MAX_PARTICLES_COMMAND,
+        INPUT_FORMAT_COMMAND,
+        OUTPUT_FORMAT_COMMAND,
+        PROJECT_TO_X_COMMAND,
+        PROJECT_TO_Y_COMMAND,
+        PROJECT_TO_Z_COMMAND,
+        PRESERVE_CONSTANTS_COMMAND,
+        PHOTONS_ONLY_COMMAND,
+        ELECTRONS_ONLY_COMMAND,
+        FILTER_BY_PDG_COMMAND,
+        MINIMUM_ENERGY_COMMAND,
+        MAXIMUM_ENERGY_COMMAND,
+        ERROR_ON_WARNING_COMMAND
+    });
     
     // Define usage message and parse command line arguments
     auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, MINUMUM_REQUIRED_POSITIONAL_ARGS);
@@ -277,7 +282,6 @@ int main(int argc, char* argv[]) {
         bool readPartialFile = particlesToRead < particlesInFile;
 
         // Determine progress update interval
-        constexpr std::uint64_t MAX_PERCENTAGE = 100;
         std::uint64_t progressUpdateInterval = particlesToRead >= MAX_PERCENTAGE
                                     ? particlesToRead / MAX_PERCENTAGE  // Update every 1%
                                     : 1;
