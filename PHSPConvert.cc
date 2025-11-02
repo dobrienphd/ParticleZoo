@@ -273,11 +273,6 @@ int main(int argc, char* argv[]) {
 
             // Read the particles from the input file and write them into the output file
             while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() < particlesToRead)) {
-
-                if (reader->getHistoriesRead() >= 1199999990) {
-                    int debug = 0;
-                }
-
                 Particle particle = reader->getNextParticle();
 
                 // Apply filters
