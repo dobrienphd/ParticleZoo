@@ -358,6 +358,17 @@ namespace ParticleZoo {
             static void PrintUsage(const std::string_view & usageMessage, const int exitCode = 1);
 
             /**
+             * @brief Prints usage information for the command line interface.
+             * 
+             * Displays the usage message along with all registered commands and their
+             * descriptions. Exits the program with the specified exit code.
+             * 
+             * @param usageMessage The main usage message to display
+             * @param exitCode The exit code to use when terminating the program (default: 1)
+             */            
+            static void PrintUsage(const std::string & usageMessage, const int exitCode = 1);
+
+            /**
              * @brief Parses command line arguments based on registered commands.
              * 
              * Processes the command line arguments according to the registered command
@@ -372,6 +383,22 @@ namespace ParticleZoo {
              * @throws Calls PrintUsage() and exits on parsing errors
              */
             static const UserOptions ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs = 0);
+       
+            /**
+             * @brief Parses command line arguments based on registered commands.
+             * 
+             * Processes the command line arguments according to the registered command
+             * definitions. Validates argument types and counts, handles both short and
+             * long command forms, and extracts positional arguments.
+             * 
+             * @param argc The number of command line arguments
+             * @param argv The array of command line argument strings
+             * @param usageMessage The usage message to display on error
+             * @param minimumPositionalArgs The minimum number of positional arguments required (default: 0)
+             * @return const UserOptions A map of parsed commands and their values
+             * @throws Calls PrintUsage() and exits on parsing errors
+             */     
+            static const UserOptions ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs = 0);
     };
 
 } // namespace ParticleZoo

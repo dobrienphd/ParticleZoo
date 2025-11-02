@@ -70,6 +70,17 @@ namespace ParticleZoo {
     /// @param usageMessage Message to display for usage information.
     /// @param minimumPositionalArgs Minimum required positional arguments.
     /// @return A map of parsed user options.
+    const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs)
+    {
+        return ParseArgs(argc, argv, std::string_view(usageMessage), minimumPositionalArgs);
+    }
+
+    /// @brief Parses command line arguments based on registered commands.
+    /// @param argc Argument count.
+    /// @param argv Argument vector.
+    /// @param usageMessage Message to display for usage information.
+    /// @param minimumPositionalArgs Minimum required positional arguments.
+    /// @return A map of parsed user options.
     const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs)
     {
         // Retrieve the singleton instance
@@ -260,6 +271,10 @@ namespace ParticleZoo {
         opts[CLI_POSITIONALS] = positional;
 
         return opts;
+    }
+
+    void ArgParser::PrintUsage(const std::string & usageMessage, const int exitCode) {
+        PrintUsage(std::string_view(usageMessage), exitCode);
     }
 
     void ArgParser::PrintUsage(const std::string_view & usageMessage, const int exitCode) {
