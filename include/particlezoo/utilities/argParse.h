@@ -10,6 +10,7 @@
 #include <vector>
 #include <variant>
 #include <array>
+#include <optional>
 
 namespace ParticleZoo {
 
@@ -165,7 +166,89 @@ namespace ParticleZoo {
      * the parsed command line arguments. Each command can have multiple values
      * if it accepts multiple arguments.
      */
-    using UserOptions = std::unordered_map<CLICommand, std::vector<CLIValue>>;
+    class UserOptions : public std::unordered_map<CLICommand, std::vector<CLIValue>> {
+        public:
+            UserOptions() = default;
+            ~UserOptions() = default;
+
+        /**
+         * @brief Extract a positional argument by index.
+         * @param index The zero-based index of the positional argument
+         * @return The positional argument as a string, or empty string if not found
+         */
+        std::string extractPositional(size_t index) const {
+            auto it = this->find(CLI_POSITIONALS);
+            if (it == this->end()) return "";
+            const auto& positionals = it->second;
+            if (index >= positionals.size()) return "";
+            return std::get<std::string>(positionals[index]);
+        }
+
+        /**
+         * @brief Extract a string option value from a command.
+         * @param cmd The command to extract the value from
+         * @return The string value, or empty string if not found or wrong type
+         */
+        std::string extractStringOption(const CLICommand& cmd, int index = 0) const {
+            auto it = this->find(cmd);
+            if (it == this->end() || it->second.empty()) return "";
+            if (auto* str = std::get_if<std::string>(&it->second[index])) {
+                return *str;
+            }
+            return "";
+        }
+
+        /**
+         * @brief Extract an integer option value from a command.
+         */
+        int extractIntOption(const CLICommand& cmd, std::optional<int> defaultValue = std::nullopt, int index = 0) const {
+            auto it = this->find(cmd);
+            bool validCommand = !(it == this->end() || it->second.empty());
+            if (validCommand) {
+                if (auto* val = std::get_if<int>(&it->second[index])) {
+                    return *val;
+                }
+            }
+            if (defaultValue.has_value()) {
+                return defaultValue.value();
+            }
+            throw std::runtime_error("Unable to extract integer option for command.");
+        }
+        
+        /**
+         * @brief Extract a float option value from a command.
+         */
+        float extractFloatOption(const CLICommand& cmd, std::optional<float> defaultValue = std::nullopt, int index = 0) const {
+            auto it = this->find(cmd);
+            bool validCommand = !(it == this->end() || it->second.empty());
+            if (validCommand) {
+                if (auto* val = std::get_if<float>(&it->second[index])) {
+                    return *val;
+                }
+            }
+            if (defaultValue.has_value()) {
+                return defaultValue.value();
+            }
+            throw std::runtime_error("Unable to extract float option for command.");
+        }
+        
+        /**
+         * @brief Extract a boolean option value from a command.
+         */
+        bool extractBoolOption(const CLICommand& cmd, std::optional<bool> defaultValue = std::nullopt, int index = 0) const {
+            auto it = this->find(cmd);
+            bool validCommand = !(it == this->end() || it->second.empty());
+            if (validCommand) {
+                if (auto* val = std::get_if<bool>(&it->second[index])) {
+                    return *val;
+                }
+            }
+            if (defaultValue.has_value()) {
+                return defaultValue.value();
+            }
+            throw std::runtime_error("Unable to extract boolean option for command.");
+        }
+    };
 
     /**
      * @brief Special command representing positional arguments.
