@@ -67,7 +67,7 @@ namespace ParticleZoo {
          * that do not add new features. Applications should always be able to
          * upgrade to higher patch versions safely.
          */
-        static constexpr const int   PATCH_VERSION  = 2;
+        static constexpr const int   PATCH_VERSION  = 0;
 
         /**
          * @brief Development status indicator.
