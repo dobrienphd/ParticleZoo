@@ -109,10 +109,27 @@ enum ImageFormat {
     BMP
 };
 
+// Enum for the projection type
 enum class ProjectionType {
     FLATTEN,    // All particle Z coordinates will be forced to the plane location
     PROJECTION, // Particles will be projected onto the plane based on their direction
     NONE        // Only particles that are already at the plane location will be counted
+};
+
+// Enum for the quantity type
+enum class QuantityType {
+    PARTICLE_FLUENCE,
+    ENERGY_FLUENCE,
+    X_DIRECTIONAL_COSINE,
+    Y_DIRECTIONAL_COSINE,
+    Z_DIRECTIONAL_COSINE
+};
+
+// Enum for the particle generation type
+enum class GenerationType {
+    ALL,
+    PRIMARIES_ONLY,
+    EXCLUDE_PRIMARIES
 };
 
 int main(int argc, char* argv[]) {
@@ -121,12 +138,13 @@ int main(int argc, char* argv[]) {
     using namespace ParticleZoo;
     int errorCode = 0;
     ImageFormat outputFormat = TIFF; // default output format
-    bool energyWeighted = false; // default to particle fluence instead of energy fluence
     bool normalizeByParticles = false; // default to normalizing by histories instead of particles
     bool printDetails = false; // default to not printing detailed info about the parameters being used
     Plane plane = XY; // default plane
     float planeLocation = 0; // default plane location
     ProjectionType projectionType = ProjectionType::FLATTEN; // default projection type
+    QuantityType quantityType = QuantityType::PARTICLE_FLUENCE; // default quantity type
+    GenerationType generationType = GenerationType::ALL; // default generation type
 
     // Set default dimensions and image size
     float minDim1 = -40 * cm;
@@ -155,7 +173,10 @@ int main(int argc, char* argv[]) {
     const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
     const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { tolerance });
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
-    const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence instead of particle fluence", { CLI_VALUELESS });
+    const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence (equivalent to --score energy)", { CLI_VALUELESS });
+    const CLICommand QUANTITY_TYPE_COMMAND = CLICommand(NONE, "", "score", "Quantity to score (particle weight applies to all quantities and each is normalized by unit area): count, energy, xDir, yDir, zDir", { CLI_STRING }, { "count" });
+    const CLICommand PRIMARIES_ONLY_COMMAND = CLICommand(NONE, "", "primariesOnly", "Only process primary particles from the phase space file", { CLI_VALUELESS });
+    const CLICommand EXCLUDE_PRIMARIES_COMMAND = CLICommand(NONE, "", "excludePrimaries", "Exclude primary particles from processing", { CLI_VALUELESS });
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
     const CLICommand SHOW_DETAILS_COMMAND = CLICommand(NONE, "", "showDetails", "Show detailed info about the parameters being used", { CLI_VALUELESS });
     ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
@@ -176,6 +197,9 @@ int main(int argc, char* argv[]) {
     ArgParser::RegisterCommand(TOLERANCE_COMMAND);
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(ENERGY_WEIGHTED_COMMAND);
+    ArgParser::RegisterCommand(QUANTITY_TYPE_COMMAND);
+    ArgParser::RegisterCommand(PRIMARIES_ONLY_COMMAND);
+    ArgParser::RegisterCommand(EXCLUDE_PRIMARIES_COMMAND);
     ArgParser::RegisterCommand(NORMALIZE_BY_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(SHOW_DETAILS_COMMAND);
     
@@ -306,10 +330,35 @@ int main(int argc, char* argv[]) {
         throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
     }
     if (userOptions.contains(ENERGY_WEIGHTED_COMMAND)) {
-        energyWeighted = true;
+        quantityType = QuantityType::ENERGY_FLUENCE;
+    }
+    if (userOptions.contains(QUANTITY_TYPE_COMMAND)) {
+        std::string quantityStr = std::get<std::string>(userOptions.at(QUANTITY_TYPE_COMMAND)[0]);
+        if (quantityStr == "count") {
+            quantityType = QuantityType::PARTICLE_FLUENCE;
+        } else if (quantityStr == "energy") {
+            quantityType = QuantityType::ENERGY_FLUENCE;
+        } else if (quantityStr == "xDir") {
+            quantityType = QuantityType::X_DIRECTIONAL_COSINE;
+        } else if (quantityStr == "yDir") {
+            quantityType = QuantityType::Y_DIRECTIONAL_COSINE;
+        } else if (quantityStr == "zDir") {
+            quantityType = QuantityType::Z_DIRECTIONAL_COSINE;
+        } else {
+            throw std::runtime_error("Invalid quantity type specified. Use count, energy, xDir, yDir, or zDir.");
+        }
     }
     if (userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)) {
         normalizeByParticles = true;
+    }
+    if (userOptions.contains(PRIMARIES_ONLY_COMMAND) && userOptions.contains(EXCLUDE_PRIMARIES_COMMAND)) {
+        throw std::runtime_error("Cannot use both --primariesOnly and --excludePrimaries options together.");
+    }
+    if (userOptions.contains(PRIMARIES_ONLY_COMMAND)) {
+        generationType = GenerationType::PRIMARIES_ONLY;
+    }
+    if (userOptions.contains(EXCLUDE_PRIMARIES_COMMAND)) {
+        generationType = GenerationType::EXCLUDE_PRIMARIES;
     }
     if (userOptions.contains(SHOW_DETAILS_COMMAND)) {
         printDetails = true;
@@ -350,7 +399,12 @@ int main(int argc, char* argv[]) {
         if (projectionType == ProjectionType::NONE) {
             std::cout << "  Thickness in third dimension: " << tolerance/cm << " cm" << std::endl;
         }
-        std::cout << "  Energy Weighted: " << (energyWeighted ? "true" : "false") << std::endl;
+        std::cout << "  Quantity scored: " 
+                  << (quantityType == QuantityType::PARTICLE_FLUENCE ? "Particle Fluence" 
+                      : quantityType == QuantityType::ENERGY_FLUENCE ? "Energy Fluence" 
+                      : quantityType == QuantityType::X_DIRECTIONAL_COSINE ? "X Directional Cosine"
+                      : quantityType == QuantityType::Y_DIRECTIONAL_COSINE ? "Y Directional Cosine"
+                      : "Z Directional Cosine") << std::endl;
         std::cout << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint64_t>::max() ? "all" : std::to_string(maxParticles)) << std::endl;
     }
 
@@ -451,12 +505,38 @@ int main(int argc, char* argv[]) {
             }
             
             // Process the particle if it falls within the image boundaries
-            validPixel = validPixel && (pixelX >= 0 && pixelX < imageWidth && pixelY >= 0 && pixelY < imageHeight);               
+            validPixel = validPixel && (pixelX >= 0 && pixelX < imageWidth && pixelY >= 0 && pixelY < imageHeight);
+
+            // Check if the particle is a included based on generation type
+            if (generationType != GenerationType::ALL && particle.hasBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE)) {
+                bool isPrimary = particle.getBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE) ? false : true;
+                if (generationType == GenerationType::PRIMARIES_ONLY && !isPrimary) {
+                    validPixel = false;
+                } else if (generationType == GenerationType::EXCLUDE_PRIMARIES && isPrimary) {
+                    validPixel = false;
+                }
+            }
+
             if (validPixel) {
                 // Determine the weight to associate with this particle
                 float weight = particle.getWeight();
-                if (energyWeighted) {
-                    weight *= particle.getKineticEnergy() / MeV;
+                switch (quantityType) {
+                    case QuantityType::ENERGY_FLUENCE:
+                        weight *= particle.getKineticEnergy() / MeV;
+                        break;
+                    case QuantityType::X_DIRECTIONAL_COSINE:
+                        weight *= particle.getDirectionalCosineX();
+                        break;
+                    case QuantityType::Y_DIRECTIONAL_COSINE:
+                        weight *= particle.getDirectionalCosineY();
+                        break;
+                    case QuantityType::Z_DIRECTIONAL_COSINE:
+                        weight *= particle.getDirectionalCosineZ();
+                        break;
+                    case QuantityType::PARTICLE_FLUENCE:
+                    default:
+                        // weight remains unchanged
+                        break;
                 }
 
                 // Set pixel color based on the particle's weight
