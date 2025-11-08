@@ -68,7 +68,7 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
 
-// Anonymous namespace for internal linkage
+// Anonymous namespace for internal definitions
 namespace {
 
     // Use ParticleZoo namespace
@@ -205,7 +205,7 @@ namespace {
         return true;
     }
 
-}
+} // end anonymous namespace
 
 
 // Main function
