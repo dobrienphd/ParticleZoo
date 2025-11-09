@@ -95,6 +95,7 @@
 #include "particlezoo/utilities/progress.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
+#include "particlezoo/egs/EGSLATCH.h"
 
 // Anonymous namespace for internal definitions
 namespace {
@@ -150,8 +151,9 @@ namespace {
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
     const CLICommand SHOW_DETAILS_COMMAND = CLICommand(NONE, "", "showDetails", "Show detailed info about the parameters being used", { CLI_VALUELESS });
     const CLICommand ERROR_ON_WARNING_COMMAND = CLICommand(NONE, "", "errorOnWarning", "Treat warnings as errors when returning exit code", { CLI_VALUELESS });
+    using EGSphspFile::EGSLATCHFilterCommand;
 
-
+    
     // Enum for the imaging plane
     enum Plane {
         XY,
@@ -220,6 +222,9 @@ namespace {
 
             const bool           errorOnWarning;
 
+            const bool           useLATCHFilter;
+            const unsigned int   LATCHFilter;
+
             // Constructor to initialize from user options
             AppConfig(const UserOptions & userOptions)
             :   plane(determinePlane(userOptions)),
@@ -238,7 +243,9 @@ namespace {
                 imageWidth(userOptions.extractIntOption(IMAGE_WIDTH_COMMAND, DEFAULT_IMAGE_SIDE)),
                 imageHeight(userOptions.extractIntOption(IMAGE_HEIGHT_COMMAND, DEFAULT_IMAGE_SIDE)),
                 planeLocation(determinePlaneLocation(userOptions)),
-                errorOnWarning(userOptions.contains(ERROR_ON_WARNING_COMMAND))
+                errorOnWarning(userOptions.contains(ERROR_ON_WARNING_COMMAND)),
+                useLATCHFilter(userOptions.contains(EGSLATCHFilterCommand)),
+                LATCHFilter(userOptions.extractUIntOption(EGSLATCHFilterCommand, 0))
             {
                 // Validate the configuration
                 validate(userOptions);
@@ -296,6 +303,10 @@ namespace {
                 ss << "  Normalization: by " << (normalizeByParticles ? "particles" : "histories") << "\n";
                 // Show error handling preference
                 ss << "  Error on warnings: " << (errorOnWarning ? "true" : "false") << "\n";
+                // Show LATCH filter
+                if (useLATCHFilter) {
+                    ss << "  EGS LATCH Filter: 0x" << std::hex << LATCHFilter << std::dec << "\n";
+                }
                 
                 std::cout << ss.str() << std::flush;
             }
@@ -490,7 +501,8 @@ int main(int argc, char* argv[]) {
         PRIMARIES_ONLY_COMMAND,
         EXCLUDE_PRIMARIES_COMMAND,
         NORMALIZE_BY_PARTICLES_COMMAND,
-        SHOW_DETAILS_COMMAND
+        SHOW_DETAILS_COMMAND,
+        EGSLATCHFilterCommand
     });
     
     // Define usage message and parse command line arguments
@@ -615,7 +627,7 @@ int main(int argc, char* argv[]) {
             validPixel = validPixel && (pixelX >= 0 && pixelX < config.imageWidth && pixelY >= 0 && pixelY < config.imageHeight);
 
             // Check if the particle is a included based on generation type
-            if (config.generationType != GenerationType::ALL) {
+            if (validPixel && config.generationType != GenerationType::ALL) {
                 if (particle.hasBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE)) {
                     bool isPrimary = particle.getBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE) ? false : true;
                     if (config.generationType == GenerationType::PRIMARIES_ONLY && !isPrimary) {
@@ -627,6 +639,11 @@ int main(int argc, char* argv[]) {
                     warningMessages.push_back("Could not determine particle generation (primary/secondary) from the phase space file. Generation-based filtering was not applied.");
                     generationDetectionFailed = true;
                 }
+            }
+
+            // Check if the particle passes the LATCH filter if enabled
+            if (validPixel && config.useLATCHFilter) {
+                validPixel = EGSphspFile::DoesParticlePassLATCHFilter(particle, config.LATCHFilter);
             }
 
             if (validPixel) {
@@ -700,6 +717,8 @@ int main(int argc, char* argv[]) {
 
     // Ensure that the reader is closed even if an exception occurs
     try { if (reader) reader->close(); } catch (const std::exception& e) { errorMessages.push_back("Error closing reader: " + std::string(e.what())); }
+
+    std::cout << std::endl;
 
     // Output any error messages
     for (const auto& error : errorMessages) {
