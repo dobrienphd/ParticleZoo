@@ -63,9 +63,12 @@ jobs:
 
     - name: Download and install ROOT framework
       run: |
-        curl -L -o root.zip https://root.cern/download/root_v6.36.04.win64.python311.vc17.zip
+        echo "Downloading and installing ROOT framework..."
+        curl -sL -o root.zip https://root.cern/download/root_v6.36.04.win64.python311.vc17.zip
+        echo "Extracting ROOT framework..."
         Expand-Archive -Path root.zip -DestinationPath C:\
-        echo "C:\root_v6.36.04.win64.python311.vc17\bin" >> $env:GITHUB_PATH
+        echo "Adding ROOT to PATH..."
+        echo "C:\root\bin" >> $env:GITHUB_PATH
       shell: pwsh
 
     - name: Build and install ParticleZoo library
