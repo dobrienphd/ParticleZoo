@@ -146,7 +146,7 @@ if not defined VS_PATH (
   exit /b 1
 )
 echo Visual Studio installation found at: %VS_PATH%
-call "%VS_PATH%\Common7\Tools\VsDevCmd.bat"
+call "%VS_PATH%\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
 
 REM Common include paths
 set INCLUDES=/I include
