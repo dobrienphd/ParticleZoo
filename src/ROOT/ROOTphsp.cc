@@ -298,7 +298,7 @@ namespace ParticleZoo::ROOT {
         if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to read more particles than available in the ROOT file.");
 
         if (!treeHasHistoryNumber_) {
-            historyNumber_ = getHistoriesRead();
+            historyNumber_ = static_cast<int>(getHistoriesRead());
         }
         
         int lastHistoryNumber = historyNumber_;

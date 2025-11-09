@@ -80,7 +80,7 @@ namespace ParticleZoo::EGSphspFile
 
         if (ignoreHeaderParticleCount) {
             std::cout << "Overriding header particle count " << numberOfParticles_;
-            numberOfParticles_ = (unsigned int) (getFileSize() - getParticleRecordStartOffset()) / getParticleRecordLength();
+            numberOfParticles_ = static_cast<unsigned int>((getFileSize() - getParticleRecordStartOffset()) / getParticleRecordLength());
             std::cout << " with " << numberOfParticles_ << std::endl;
         }
 

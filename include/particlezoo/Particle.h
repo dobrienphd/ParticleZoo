@@ -168,7 +168,28 @@ namespace ParticleZoo {
              * @param isNewHistory Whether this particle starts a new Monte Carlo history (default: true)
              * @param weight The statistical weight of the particle (default: 1.0)
              */
-            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0);
+            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0f);
+
+            /**
+             * @brief Construct a Particle with specified properties.
+             * 
+             * Creates a particle with the given position, momentum direction, energy, and other properties.
+             * The directional cosines are automatically normalized to ensure they represent a unit vector.
+             * 
+             * This overload accepts double precision inputs and converts them to float internally.
+             * 
+             * @param type The particle type (electron, photon, proton, etc.)
+             * @param kineticEnergy The kinetic energy of the particle
+             * @param x The X coordinate position
+             * @param y The Y coordinate position  
+             * @param z The Z coordinate position
+             * @param directionalCosineX The X component of the momentum unit vector
+             * @param directionalCosineY The Y component of the momentum unit vector
+             * @param directionalCosineZ The Z component of the momentum unit vector
+             * @param isNewHistory Whether this particle starts a new Monte Carlo history (default: true)
+             * @param weight The statistical weight of the particle (default: 1.0)
+             */
+            Particle(ParticleType type, double kineticEnergy, double x, double y, double z, double directionalCosineX, double directionalCosineY, double directionalCosineZ, bool isNewHistory = true, double weight = 1.0);
 
             // Getters and setters for basic particle properties
 
@@ -546,6 +567,23 @@ namespace ParticleZoo {
 
     /* Implementation of Particle class methods */
 
+    inline Particle::Particle(ParticleType type, double kineticEnergy, double x, double y, double z, double px, double py, double pz, bool isNewHistory, double weight)
+    :   type_(type),
+        kineticEnergy_(static_cast<float>(kineticEnergy)),
+        x_(static_cast<float>(x)),
+        y_(static_cast<float>(y)),
+        z_(static_cast<float>(z)),
+        px_(static_cast<float>(px)),
+        py_(static_cast<float>(py)),
+        pz_(static_cast<float>(pz)),
+        isNewHistory_(isNewHistory),
+        weight_(static_cast<float>(weight)),
+        properties_
+        ()
+    {
+        // Normalize the directional cosines
+        normalizeDirectionalCosines();
+    }
 
     inline Particle::Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory, float weight)
     : type_(type), kineticEnergy_(kineticEnergy), x_(x), y_(y), z_(z), px_(px), py_(py), pz_(pz), isNewHistory_(isNewHistory), weight_(weight), properties_()
@@ -594,9 +632,9 @@ namespace ParticleZoo {
         }
     }
 
-    inline int Particle::getNumberOfBoolProperties() const { return properties_.boolProperties.size(); }
-    inline int Particle::getNumberOfFloatProperties() const { return properties_.floatProperties.size(); }
-    inline int Particle::getNumberOfIntProperties() const { return properties_.intProperties.size(); }
+    inline int Particle::getNumberOfBoolProperties() const { return static_cast<int>(properties_.boolProperties.size()); }
+    inline int Particle::getNumberOfFloatProperties() const { return static_cast<int>(properties_.floatProperties.size()); }
+    inline int Particle::getNumberOfIntProperties() const { return static_cast<int>(properties_.intProperties.size()); }
 
     inline const std::vector<bool>& Particle::getCustomBoolProperties() const { return properties_.customBoolProperties; }
     inline const std::vector<float>& Particle::getCustomFloatProperties() const { return properties_.customFloatProperties; }
@@ -706,7 +744,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.boolProperties.push_back(value);
                 properties_.boolPropertyTypes.push_back(type);
-                properties_.boolPropertyTypeIndices[type] = properties_.boolProperties.size() - 1;
+                properties_.boolPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.boolProperties.size() - 1);
             } else {
                 properties_.boolProperties[index] = value;
             }
@@ -722,7 +760,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.floatProperties.push_back(value);
                 properties_.floatPropertyTypes.push_back(type);
-                properties_.floatPropertyTypeIndices[type] = properties_.floatProperties.size() - 1;
+                properties_.floatPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.floatProperties.size() - 1);
             } else {
                 properties_.floatProperties[index] = value;
             }
@@ -738,7 +776,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.intProperties.push_back(value);
                 properties_.intPropertyTypes.push_back(type);
-                properties_.intPropertyTypeIndices[type] = properties_.intProperties.size() - 1;
+                properties_.intPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.intProperties.size() - 1);
             } else {
                 properties_.intProperties[index] = value;
             }

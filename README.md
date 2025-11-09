@@ -444,7 +444,7 @@ Available branch mapping options:
 
 **Build Problems:**
 - *"config.status not found"* → Run `./configure` before `make`
-- *"The C++ standard in this build does not match ROOT configuration"* → The ROOT installation on your system was compiled with a different C++ standard than ParticleZoo. It may still work, but it cannot be guaranteed. Either rebuild both with the same C++ standard or use at your own risk.
+- *"The C++ standard in this build does not match ROOT configuration"* → The ROOT installation on your system was compiled with a different C++ standard than ParticleZoo. It may still work, but it is not supported. Either rebuild both with the same C++ standard or accept the risk.
 - *"ROOT support: no"* → Ensure `root-config` is in PATH and re-run `./configure`
 - *"checking whether g++ accepts -std=c++20... no"* → Update compiler (GCC 10+ or Clang 13+)
 
