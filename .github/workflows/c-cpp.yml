@@ -64,7 +64,7 @@ jobs:
     - name: Build and install ParticleZoo library
       run: |
         .\build.bat install
-        echo "C:\Users\runneradmin\AppData\Local\particlezoo\bin" >> $env:GITHUB_PATH
+        echo "$env:LOCALAPPDATA\particlezoo\bin" >> $env:GITHUB_PATH
 
     - name: Verify installation
       run: |
