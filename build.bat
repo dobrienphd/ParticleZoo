@@ -98,8 +98,9 @@ if "%NO_ROOT%"=="1" (
             )
         )
         
-        REM Get ROOT library flags
-        for /f "delims=" %%i in ('root-config --libs') do set "ROOT_LIBS=%%i"
+        REM Get ROOT library flags and strip /link prefix if present
+        for /f "delims=" %%i in ('root-config --libs') do set "ROOT_LIBS_RAW=%%i"
+        set "ROOT_LIBS=!ROOT_LIBS_RAW:/link =!"
         
         REM Validate that ROOT provided flags
         if defined ROOT_CFLAGS (
@@ -173,6 +174,12 @@ src\IAEA\IAEAHeader.cc ^
 src\IAEA\IAEAphspFile.cc ^
 src\topas\TOPASHeader.cc ^
 src\topas\TOPASphspFile.cc
+
+REM Add ROOT sources if ROOT is enabled
+if "%USE_ROOT%"=="1" (
+    set COMMON_SRCS=!COMMON_SRCS! ^
+src\ROOT\ROOTphsp.cc
+)
 
 REM Static Library sources (same as common sources)
 set LIB_SRCS=%COMMON_SRCS%
