@@ -88,13 +88,16 @@ if "%NO_ROOT%"=="1" (
         REM Get ROOT compile flags and filter out -std: flag
         for /f "delims=" %%i in ('root-config --cflags') do set "ROOT_CFLAGS_RAW=%%i"
         
-        REM Remove any -std:c++XX flag from ROOT_CFLAGS to avoid conflicts with our /std:c++20
+        REM Remove any -std:c++XX and /wd flags from ROOT_CFLAGS
         set "ROOT_CFLAGS="
         for %%f in (!ROOT_CFLAGS_RAW!) do (
             set "flag=%%f"
             echo !flag! | findstr /B /C:"-std:c++" >nul
             if !ERRORLEVEL! NEQ 0 (
-                set "ROOT_CFLAGS=!ROOT_CFLAGS! %%f"
+                echo !flag! | findstr /B /C:"/wd" >nul
+                if !ERRORLEVEL! NEQ 0 (
+                    set "ROOT_CFLAGS=!ROOT_CFLAGS! %%f"
+                )
             )
         )
         
