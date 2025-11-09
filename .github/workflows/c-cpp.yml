@@ -1,0 +1,25 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clone ParticleZoo repository
+      uses: actions/checkout@v4
+      
+    - name: Install ROOT framework
+      run: sudo snap install root-framework
+      
+    - name: Build and install C/C++ library
+      run: |
+        ./configure
+        make
+        sudo make install
