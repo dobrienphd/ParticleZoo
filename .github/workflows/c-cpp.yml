@@ -5,8 +5,7 @@ on:
   pull_request:
 
 jobs:
-  build:
-
+  build-linux:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,8 +15,21 @@ jobs:
     - name: Install ROOT framework
       run: sudo snap install root-framework
       
-    - name: Build and install C/C++ library
+    - name: Build and install ParticleZoo library
       run: |
         ./configure
         make
         sudo make install
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Clone ParticleZoo repository
+      uses: actions/checkout@v4
+      
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Build C/C++ library
+      run: .\build.bat
