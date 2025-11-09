@@ -58,15 +58,6 @@ jobs:
     - name: Clone ParticleZoo repository
       uses: actions/checkout@v4
       
-    - name: Setup Miniconda
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        auto-update-conda: true
-        
-    - name: Install ROOT
-      run: conda install -c conda-forge root
-      shell: bash -el {0}
-
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 

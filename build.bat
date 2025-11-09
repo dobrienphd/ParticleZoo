@@ -5,7 +5,6 @@ REM Parse command-line arguments
 set PREFIX=%LOCALAPPDATA%\particlezoo
 set BUILD_TYPE=release
 set JOBS=
-set NO_ROOT=0
 
 :parse_args
 if "%~1"=="" goto :end_parse_args
@@ -17,11 +16,6 @@ if /I "%~1"=="--prefix" (
 )
 if /I "%~1:~0,9%"=="--prefix=" (
     set "PREFIX=!%~1:~9!"
-    shift
-    goto :parse_args
-)
-if /I "%~1"=="--no-root" (
-    set NO_ROOT=1
     shift
     goto :parse_args
 )
@@ -67,36 +61,17 @@ shift
 goto :parse_args
 :end_parse_args
 
-REM Detect ROOT installation
-set USE_ROOT=0
-set ROOT_CFLAGS=
-set ROOT_LIBS=
-
-if !NO_ROOT!==0 (
-    echo Checking for ROOT framework...
-    where root-config >nul 2>&1
-    if !errorlevel!==0 (
-        echo ROOT found. Configuring with ROOT support...
-        
-        REM Get ROOT compiler flags
-        for /f "delims=" %%i in ('root-config --cflags') do set ROOT_CFLAGS=%%i
-        
-        REM Get ROOT linker flags
-        for /f "delims=" %%i in ('root-config --libs') do set ROOT_LIBS=%%i
-        
-        set USE_ROOT=1
-    ) else (
-        echo ROOT not found. Building without ROOT support.
-    )
-) else (
-    echo ROOT support disabled via --no-root flag.
-)
-
 echo Configuration:
 echo   Build type: %BUILD_TYPE%
 echo   Install prefix: %PREFIX%
-echo   USE_ROOT: %USE_ROOT%
 if defined JOBS echo   Parallel jobs: %JOBS%
+
+
+REM Write configuration to config.status
+echo Writing configuration to config.status...
+(
+echo PREFIX=%PREFIX%
+) > config.status
 
 echo Configuration complete.
 
@@ -143,16 +118,10 @@ src\IAEA\IAEAphspFile.cc ^
 src\topas\TOPASHeader.cc ^
 src\topas\TOPASphspFile.cc
 
-REM Add ROOT source if enabled
-if %USE_ROOT%==1 (
-    set COMMON_SRCS=!COMMON_SRCS! src\ROOT\ROOTphsp.cc
-)
-
 REM Static Library sources (same as common sources)
 set LIB_SRCS=%COMMON_SRCS%
 set LIB_NAME=libparticlezoo.lib
 
-REM Set compiler flags based on build type
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
     set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX
@@ -161,12 +130,7 @@ if /I "%BUILD_TYPE%"=="debug" (
     set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX
 )
 
-REM Add ROOT flags if enabled
-if %USE_ROOT%==1 (
-    set CFLAGS=!CFLAGS! /DUSE_ROOT=1 !ROOT_CFLAGS!
-)
-
-REM Add multi-processor compilation if jobs specified
+REM Add multi-processor compilation if jobs specified (default: let MSVC pick if just /MP)
 if defined JOBS (
     for /f "tokens=*" %%J in ("%JOBS%") do set CFLAGS=%CFLAGS% /MP%%J
 ) else (
@@ -177,33 +141,34 @@ echo Compiling common sources (parallel)...
 set PDB=%OUTDIR%\particlezoo.pdb
 cl.exe %CFLAGS% /FS /Fd"%PDB%" /Fo"%OBJDIR%\\" %INCLUDES% /c %COMMON_SRCS% || goto :build_fail
 
-REM Build OBJ_LIST
+REM Build OBJ_LIST (now that objects are produced by single invocation)
 set "OBJ_LIST="
 for %%F in (%COMMON_SRCS%) do set "OBJ_LIST=!OBJ_LIST! %OBJDIR%\%%~nF.obj"
+REM echo Objects: !OBJ_LIST!
 
 echo Building static library %LIB_NAME% ...
 lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST! || goto :build_fail
-
+REM Build executables (compile unique source then link with common objects)
 echo Building PHSPConvert.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPConvert.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPConvert.exe" !OBJ_LIST! %OBJDIR%\PHSPConvert.obj /link !ROOT_LIBS! || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPConvert.exe" !OBJ_LIST! %OBJDIR%\PHSPConvert.obj || goto :build_fail
 
 echo Building PHSPCombine.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPCombine.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPCombine.exe" !OBJ_LIST! %OBJDIR%\PHSPCombine.obj /link !ROOT_LIBS! || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPCombine.exe" !OBJ_LIST! %OBJDIR%\PHSPCombine.obj || goto :build_fail
 
 echo Building PHSPImage.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPImage.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPImage.exe" !OBJ_LIST! %OBJDIR%\PHSPImage.obj /link !ROOT_LIBS! || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPImage.exe" !OBJ_LIST! %OBJDIR%\PHSPImage.obj || goto :build_fail
 
 echo Building PHSPSplit.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPSplit.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj /link !ROOT_LIBS! || goto :build_fail
+cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj || goto :build_fail
 
 REM Build dynamic library
 if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
 echo Building dynamic library particlezoo.dll ...
-link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! !ROOT_LIBS! || goto :build_fail
+link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! || goto :build_fail
 goto :build_success
 
 :build_success
@@ -216,6 +181,9 @@ echo Build failed.
 exit /b 1
 
 :post_build
+
+REM Decide whether to keep objects; keeping helps incremental builds. Uncomment to delete.
+REM del /Q "%OBJDIR%\*.obj"
 
 REM Install if requested
 if defined DO_INSTALL (
@@ -230,7 +198,7 @@ if defined DO_INSTALL (
     ) else (
         mkdir "%PREFIX%\include" 2>nul
         mkdir "%PREFIX%\lib" 2>nul
-
+    REM Added /Y to suppress overwrite prompts (prevents hidden hang when artifacts already exist)
     copy /Y "%OUTDIR%\PHSPConvert.exe" "%PREFIX%\bin\" >nul
     copy /Y "%OUTDIR%\PHSPCombine.exe" "%PREFIX%\bin\" >nul
     copy /Y "%OUTDIR%\PHSPImage.exe" "%PREFIX%\bin\" >nul
