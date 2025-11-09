@@ -1,1 +1,5 @@
 .github/workflows export-ignore
+docs/assets export-ignore
+docs/scripts export-ignore
+ext export-ignore
+Doxyfile export-ignore
