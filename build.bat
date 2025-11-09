@@ -94,7 +94,7 @@ if "%NO_ROOT%"=="1" (
             set "flag=%%f"
             echo !flag! | findstr /B /C:"-std:c++" >nul
             if !ERRORLEVEL! NEQ 0 (
-                echo !flag! | findstr /B /C:"/wd" >nul
+                echo !flag! | findstr /B /C:"-wd" >nul
                 if !ERRORLEVEL! NEQ 0 (
                     set "ROOT_CFLAGS=!ROOT_CFLAGS! %%f"
                 )
