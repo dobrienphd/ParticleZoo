@@ -15,8 +15,24 @@ jobs:
     - name: Install ROOT framework
       run: sudo snap install root-framework
       
-    - name: Build and install ParticleZoo library
+    - name: Build and install ParticleZoo library without ROOT support
       run: |
+        ./configure --no-root
+        make
+        sudo make install
+
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
+        PHSPConvert -f
+
+    - name: Build and install ParticleZoo library with ROOT support
+      run: |
+        sudo make uninstall
+        make clean
         ./configure
         make
         sudo make install
@@ -27,6 +43,7 @@ jobs:
         PHSPCombine --version
         PHSPConvert --version
         PHSPSplit --version
+        PHSPConvert -f
 
   build-macos:
     runs-on: macos-latest
@@ -38,8 +55,24 @@ jobs:
     - name: Install ROOT framework
       run: brew install root
       
-    - name: Build and install ParticleZoo library
+    - name: Build and install ParticleZoo library without ROOT support
       run: |
+        ./configure --no-root
+        make
+        sudo make install
+
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
+        PHSPConvert -f
+
+    - name: Build and install ParticleZoo library with ROOT support
+      run: |
+        sudo make uninstall
+        make clean
         ./configure
         make
         sudo make install
@@ -50,6 +83,7 @@ jobs:
         PHSPCombine --version
         PHSPConvert --version
         PHSPSplit --version
+        PHSPConvert -f
 
   build-windows:
     runs-on: windows-latest
@@ -71,7 +105,20 @@ jobs:
         echo "C:\root\bin" >> $env:GITHUB_PATH
       shell: pwsh
 
-    - name: Build and install ParticleZoo library
+    - name: Build and install ParticleZoo library without ROOT support
+      run: |
+        .\build.bat install --no-root
+        echo "$env:LOCALAPPDATA\particlezoo\bin" >> $env:GITHUB_PATH
+
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
+        PHSPConvert -f
+
+    - name: Build and install ParticleZoo library with ROOT support
       run: |
         .\build.bat install
         echo "$env:LOCALAPPDATA\particlezoo\bin" >> $env:GITHUB_PATH
@@ -82,3 +129,4 @@ jobs:
         PHSPCombine --version
         PHSPConvert --version
         PHSPSplit --version
+        PHSPConvert -f
