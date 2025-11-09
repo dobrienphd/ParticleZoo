@@ -31,5 +31,5 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Build C/C++ library
-      run: .\build.bat
+    - name: Build and install ParticleZoo library
+      run: .\build.bat install
