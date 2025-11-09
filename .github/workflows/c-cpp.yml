@@ -95,14 +95,24 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Cache ROOT framework
+      id: cache-root
+      uses: actions/cache@v4
+      with:
+        path: C:\root
+        key: root-v6.36.04-win64-python311-vc17
+
     - name: Download and install ROOT framework
+      if: steps.cache-root.outputs.cache-hit != 'true'
       run: |
         echo "Downloading and installing ROOT framework..."
         curl -sL -o root.zip https://root.cern/download/root_v6.36.04.win64.python311.vc17.zip
         echo "Extracting ROOT framework..."
         Expand-Archive -Path root.zip -DestinationPath C:\
-        echo "Adding ROOT to PATH..."
-        echo "C:\root\bin" >> $env:GITHUB_PATH
+      shell: pwsh
+
+    - name: Add ROOT to PATH
+      run: echo "C:\root\bin" >> $env:GITHUB_PATH
       shell: pwsh
 
     - name: Build and install ParticleZoo library without ROOT support
