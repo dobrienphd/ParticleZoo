@@ -121,7 +121,7 @@ namespace {
     // Default parameter values
     constexpr static float DEFAULT_DISTANCE = 40.0f * cm;
     constexpr static float DEFAULT_TOLERANCE = 0.25f * cm;
-    constexpr static float DEFAULT_IMAGE_SIDE = 1024;
+    constexpr static int   DEFAULT_IMAGE_SIDE = 1024;
     constexpr static float DEFAULT_PLANE_LOCATION = 0.0f * cm;
     constexpr static std::uint32_t DEFAULT_MAX_PARTICLES = std::numeric_limits<std::uint32_t>::max();
 
