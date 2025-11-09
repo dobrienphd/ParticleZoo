@@ -91,7 +91,7 @@ namespace {
 
 
     // Custom command line arguments
-    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_UINT });
     const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
     const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
     const CLICommand PROJECT_TO_X_COMMAND = CLICommand(NONE, "", "projectToX", "Project particles along their direction to this X position in cm", { CLI_FLOAT });
@@ -111,7 +111,7 @@ namespace {
         const std::string   outputFile;
         const std::string   inputFormat;
         const std::string   outputFormat;
-        const std::uint64_t maxParticles;
+        const std::uint32_t maxParticles;
         const bool          preserveConstants;
         const bool          projectToX;
         const bool          projectToY;
@@ -131,7 +131,7 @@ namespace {
             outputFile(userOptions.extractPositional(1)),
             inputFormat(userOptions.extractStringOption(INPUT_FORMAT_COMMAND)),
             outputFormat(userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND)),
-            maxParticles(static_cast<std::uint64_t>(userOptions.extractIntOption(MAX_PARTICLES_COMMAND, std::numeric_limits<std::uint64_t>::max()))),
+            maxParticles(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND, std::numeric_limits<std::uint32_t>::max())),
             preserveConstants(userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, true)),
             projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
             projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
         std::uint64_t particlesInFile = reader->getNumberOfParticles();
-        std::uint64_t particlesToRead = std::min(config.maxParticles, particlesInFile);
+        std::uint64_t particlesToRead = std::min((std::uint64_t)config.maxParticles, particlesInFile);
         std::uint64_t particlesRejected = 0;
         std::uint64_t particlesRejectedByProjection = 0;
         bool readPartialFile = particlesToRead < particlesInFile;

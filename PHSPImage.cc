@@ -123,7 +123,7 @@ namespace {
     constexpr static float DEFAULT_TOLERANCE = 0.25f * cm;
     constexpr static float DEFAULT_IMAGE_SIDE = 1024;
     constexpr static float DEFAULT_PLANE_LOCATION = 0.0f * cm;
-    constexpr static std::uint64_t DEFAULT_MAX_PARTICLES = std::numeric_limits<std::uint64_t>::max();
+    constexpr static std::uint32_t DEFAULT_MAX_PARTICLES = std::numeric_limits<std::uint32_t>::max();
 
 
     // Custom command line arguments
@@ -143,7 +143,7 @@ namespace {
     const CLICommand MAX_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
     const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
     const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { DEFAULT_TOLERANCE });
-    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_UINT });
     const CLICommand ENERGY_WEIGHTED_COMMAND = CLICommand(NONE, "", "energyWeighted", "Score energy fluence (equivalent to --score energy)", { CLI_VALUELESS });
     const CLICommand QUANTITY_TYPE_COMMAND = CLICommand(NONE, "", "score", "Quantity to score (particle weight applies to all quantities and each is normalized by unit area): count, energy, xDir, yDir, zDir", { CLI_STRING }, { "count" });
     const CLICommand PRIMARIES_ONLY_COMMAND = CLICommand(NONE, "", "primariesOnly", "Only process primary particles from the phase space file", { CLI_VALUELESS });
@@ -206,7 +206,7 @@ namespace {
             const std::string    outputFile;
             const std::string    inputFormat;
             const ImageFormat    outputFormat;
-            const std::uint64_t  maxParticles;
+            const std::uint32_t  maxParticles;
             const bool           normalizeByParticles;
             const bool           printDetails;
 
@@ -223,7 +223,7 @@ namespace {
             const bool           errorOnWarning;
 
             const bool           useLATCHFilter;
-            const unsigned int   LATCHFilter;
+            const std::uint32_t  LATCHFilter;
 
             // Constructor to initialize from user options
             AppConfig(const UserOptions & userOptions)
@@ -233,7 +233,7 @@ namespace {
                 outputFile(userOptions.extractPositional(1)),
                 inputFormat(userOptions.extractStringOption(INPUT_FORMAT_COMMAND)),
                 outputFormat(determineOutputFormat(userOptions)),
-                maxParticles(static_cast<std::uint64_t>(userOptions.extractIntOption(MAX_PARTICLES_COMMAND, DEFAULT_MAX_PARTICLES))),
+                maxParticles(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND, DEFAULT_MAX_PARTICLES)),
                 normalizeByParticles(userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND)),
                 printDetails(userOptions.contains(SHOW_DETAILS_COMMAND)),
                 projectionType(determineProjectionType(userOptions)),
@@ -298,7 +298,7 @@ namespace {
                        : generationType == GenerationType::PRIMARIES_ONLY ? "Primaries only"
                        : "Exclude primaries")
                    << "\n";
-                ss << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<std::uint64_t>::max() ? "all" : std::to_string(maxParticles)) << "\n";
+                ss << "  Max Particles to Read: " << (maxParticles == DEFAULT_MAX_PARTICLES ? "all" : std::to_string(maxParticles)) << "\n";
                 // Show normalization mode
                 ss << "  Normalization: by " << (normalizeByParticles ? "particles" : "histories") << "\n";
                 // Show error handling preference
@@ -535,11 +535,11 @@ int main(int argc, char* argv[]) {
                   << config.outputFile << "..." << std::endl;
 
         // Determine how many particles to read - capping out at maxParticles if a limit has been set
-        uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t particlesToRead = particlesInFile > config.maxParticles ? config.maxParticles : particlesInFile;
+        std::uint64_t particlesInFile = reader->getNumberOfParticles();
+        std::uint64_t particlesToRead = particlesInFile > (std::uint64_t)config.maxParticles ? (std::uint64_t)config.maxParticles : particlesInFile;
         
         // Determine progress update interval
-        uint64_t onePercentInterval = particlesToRead >= MAX_PERCENTAGE 
+        std::uint64_t onePercentInterval = particlesToRead >= MAX_PERCENTAGE 
                                     ? particlesToRead / MAX_PERCENTAGE 
                                     : 1;
 
