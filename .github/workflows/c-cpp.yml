@@ -28,6 +28,29 @@ jobs:
         PHSPConvert --version
         PHSPSplit --version
 
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Clone ParticleZoo repository
+      uses: actions/checkout@v4
+      
+    - name: Install ROOT framework
+      run: brew install root
+      
+    - name: Build and install ParticleZoo library
+      run: |
+        ./configure
+        make
+        sudo make install
+
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
+
   build-windows:
     runs-on: windows-latest
 
