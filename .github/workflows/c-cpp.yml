@@ -21,6 +21,13 @@ jobs:
         make
         sudo make install
 
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
+
   build-windows:
     runs-on: windows-latest
 
@@ -32,4 +39,13 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Build and install ParticleZoo library
-      run: .\build.bat install
+      run: |
+        .\build.bat install
+        setx PATH "%PATH%;C:\Users\runneradmin\AppData\Local\particlezoo\bin"
+
+    - name: Verify installation
+      run: |
+        PHSPImage --version
+        PHSPCombine --version
+        PHSPConvert --version
+        PHSPSplit --version
