@@ -4,6 +4,8 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 #include "particlezoo/IAEA/IAEAHeader.h"
 
+#include "particlezoo/egs/EGSLATCH.h"
+
 namespace ParticleZoo::IAEAphspFile
 {
     /// @brief Standard file extension for IAEA phase space data files
@@ -99,6 +101,7 @@ namespace ParticleZoo::IAEAphspFile
 
         private:
             const IAEAHeader header_;  ///< Header information for the phase space file
+            EGSphspFile::EGSLATCHOPTION EGSlatchOption_; ///< LATCH interpretation option
 
     };
 
@@ -230,6 +233,7 @@ namespace ParticleZoo::IAEAphspFile
             IAEAHeader header_;                        ///< Header configuration
             bool useCustomHistoryCount_{false};        ///< Flag for custom history count override
             std::uint64_t custumNumberOfHistories_{};  ///< Custom history count value
+            EGSphspFile::EGSLATCHOPTION EGSlatchOption_; ///< LATCH interpretation option
 
     };
 
