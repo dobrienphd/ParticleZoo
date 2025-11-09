@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "particlezoo/Particle.h"
+#include "particlezoo/egs/EGSLATCH.h"
 
 namespace ParticleZoo
 {
@@ -67,7 +68,14 @@ namespace ParticleZoo
                  * @return EGSMODE The detected file mode
                  */
                 EGSMODE getMode() const { return mode_; };
-                
+
+                /**
+                 * @brief Get the LATCH interpretation option.
+                 * 
+                 * @return EGSLATCHOPTION The LATCH option used for reading particles
+                 */
+                EGSLATCHOPTION getLATCHOption() const { return latchOption_; };
+
                 /**
                  * @brief Get the number of photons in the phase space.
                  * 
@@ -124,6 +132,7 @@ namespace ParticleZoo
 
             private:
                 EGSMODE mode_;                         ///< File mode (MODE0 or MODE2)
+                EGSLATCHOPTION latchOption_;           ///< LATCH interpretation option
                 unsigned int numberOfParticles_{};     ///< Total number of particles in file
                 unsigned int numberOfPhotons_{};       ///< Number of photon particles
                 float maxKineticEnergy_{};             ///< Maximum kinetic energy in file
@@ -171,6 +180,20 @@ namespace ParticleZoo
                  * @return std::uint64_t Maximum particle count (limited by 32-bit unsigned integer)
                  */
                 std::uint64_t getMaximumSupportedParticles() const override { return std::numeric_limits<std::uint32_t>::max(); };
+
+                /**
+                 * @brief Get the EGS file mode (MODE0 or MODE2).
+                 * 
+                 * @return EGSMODE The file mode
+                 */
+                EGSMODE getMode() const { return mode_; };
+
+                /**
+                 * @brief Get the LATCH interpretation option.
+                 * 
+                 * @return EGSLATCHOPTION The LATCH option used for writing particles
+                 */
+                EGSLATCHOPTION getLATCHOption() const { return latchOption_; };
 
                 /**
                  * @brief Manually set the number of original Monte Carlo histories.
@@ -231,6 +254,7 @@ namespace ParticleZoo
 
             private:
                 EGSMODE mode_;                                                      ///< File mode (MODE0 or MODE2)
+                EGSLATCHOPTION latchOption_;                                        ///< LATCH interpretation option
                 unsigned int numberOfParticles_{};                                  ///< Total number of particles written
                 unsigned int numberOfPhotons_{};                                    ///< Number of photon particles written
                 float maxKineticEnergy_{};                                          ///< Maximum kinetic energy encountered

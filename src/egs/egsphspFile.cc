@@ -18,7 +18,7 @@ namespace ParticleZoo::EGSphspFile
     constexpr float ELECTRON_REST_MASS_MEV = 0.5109989461f;    ///< Electron rest mass, stored explicitly in MeV for operating directly on the energy value in the file before conversion to internal units
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader("EGS", fileName, options), particleZValue_(0), mode_(EGSMODE::MODE0)
+    : PhaseSpaceFileReader("EGS", fileName, options), mode_(EGSMODE::MODE0), particleZValue_(0), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2)
     {
         bool ignoreHeaderParticleCount = false;
 
@@ -32,13 +32,30 @@ namespace ParticleZoo::EGSphspFile
             particleZValue_ = std::get<float>(particleZValue) * cm;
         }
 
+        if (options.contains(EGSLATCHOptionCommand)) {
+            int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
+            switch (latchOptionInt) {
+                case 1:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_1;
+                    break;
+                case 2:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_2;
+                    break;
+                case 3:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_3;
+                    break;
+                default:
+                    throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+            }
+        }
+
         setConstantZ(particleZValue_);
 
         readHeader(ignoreHeaderParticleCount);
     }
 
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() {
-        return { EGSIgnoreHeaderCountCommand, EGSParticleZValueCommand };
+        return { EGSIgnoreHeaderCountCommand, EGSParticleZValueCommand, EGSLATCHOptionCommand };
     }
 
     void Reader::readHeader(bool ignoreHeaderParticleCount)
@@ -76,7 +93,7 @@ namespace ParticleZoo::EGSphspFile
     Particle Reader::readBinaryParticle(ByteBuffer & buffer)
     {
         unsigned int LATCH = buffer.read<unsigned int>();
-        float energy = buffer.read<float>(); // keep in explicit MeV for now
+        float energy = buffer.read<float>(); // keep in explicit MeV for now, rest mass needs to be subtracted in a consistent way
         float x = buffer.read<float>() * cm;
         float y = buffer.read<float>() * cm;
         float z = particleZValue_; // EGS format does not store the particle z value
@@ -93,8 +110,6 @@ namespace ParticleZoo::EGSphspFile
 
         bool isNewHistory = energy < 0;
         if (isNewHistory) { energy = -energy; }
-        
-        bool isMultiPasser = ((LATCH >> 31) & 1) == 1;
 
         unsigned int particleChargeBits = (LATCH >> 29) & 3;
 
@@ -117,15 +132,13 @@ namespace ParticleZoo::EGSphspFile
         energy *= MeV; // Convert to internal units
 
         Particle particle(type, energy, x, y, z, u, v, w, isNewHistory, weight);
-        particle.setIntProperty(IntPropertyType::EGS_LATCH, LATCH);
+        ApplyLATCHToParticle(particle, LATCH, latchOption_);
 
         if (mode_ == EGSMODE::MODE2) {
             float ZLAST = buffer.read<float>() * cm;
             particle.setFloatProperty(FloatPropertyType::ZLAST, ZLAST);
         }
-
-        particle.setBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER, isMultiPasser);
-
+        
         return particle;
     }
 
@@ -150,7 +163,7 @@ namespace ParticleZoo::EGSphspFile
     }
 
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
-        return { EGSModeCommand };
+        return { EGSModeCommand, EGSLATCHOptionCommand };
     }
 
     void Writer::writeHeaderData(ByteBuffer & buffer)
@@ -208,38 +221,22 @@ namespace ParticleZoo::EGSphspFile
             minElectronEnergy_ = energy;
         }
 
-        unsigned int LATCH;
-        if (particle.hasIntProperty(IntPropertyType::EGS_LATCH)) {
-            LATCH = (unsigned int) particle.getIntProperty(IntPropertyType::EGS_LATCH);
-        } else {
-            LATCH = 0;
-        }
-
-        if (particle.hasBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER) && particle.getBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER)) {
-            LATCH |= (1 << 31);
-        } else {
-            LATCH &= ~(1 << 31);
-        }
+        unsigned int LATCH = ExtractLATCHFromParticle(particle, latchOption_);
         
         energy *= inv_MeV; // Convert to MeV before adding rest mass if needed
 
-        unsigned int particleChargeBits;
         switch (particle.getType()) {
             case ParticleType::Photon:
-                particleChargeBits = 0;
                 break;
             case ParticleType::Electron:
-                particleChargeBits = 1;
                 energy += ELECTRON_REST_MASS_MEV; // Convert to total energy
                 break;
             case ParticleType::Positron:
-                particleChargeBits = 2;
                 energy += ELECTRON_REST_MASS_MEV; // Convert to total energy
                 break;
             default:
                 throw std::runtime_error("Particle type " + std::string(getParticleTypeName(particle.getType())) + " not supported by EGS phase-space file format.");
         }
-        LATCH |= (particleChargeBits << 29);
 
         if (particle.isNewHistory()) {
             energy *= -1;
