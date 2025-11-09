@@ -5,6 +5,7 @@ REM Parse command-line arguments
 set PREFIX=%LOCALAPPDATA%\particlezoo
 set BUILD_TYPE=release
 set JOBS=
+set NO_ROOT=0
 
 :parse_args
 if "%~1"=="" goto :end_parse_args
@@ -56,6 +57,11 @@ if /I "%~1:~0,7%"=="--jobs=" (
     shift
     goto :parse_args
 )
+if /I "%~1"=="--no-root" (
+    set NO_ROOT=1
+    shift
+    goto :parse_args
+)
 echo Unknown option: %~1
 shift
 goto :parse_args
@@ -66,14 +72,43 @@ echo   Build type: %BUILD_TYPE%
 echo   Install prefix: %PREFIX%
 if defined JOBS echo   Parallel jobs: %JOBS%
 
+REM Check for ROOT installation
+set USE_ROOT=0
+set ROOT_CFLAGS=
+set ROOT_LIBS=
 
-REM Write configuration to config.status
-echo Writing configuration to config.status...
-(
-echo PREFIX=%PREFIX%
-) > config.status
-
-echo Configuration complete.
+if "%NO_ROOT%"=="1" (
+    echo ROOT support disabled by --no-root option
+) else (
+    echo Checking for ROOT installation...
+    where root-config >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo Found root-config, extracting ROOT configuration...
+        
+        REM Get ROOT compile flags
+        for /f "delims=" %%i in ('root-config --cflags') do set "ROOT_CFLAGS=%%i"
+        
+        REM Get ROOT library flags
+        for /f "delims=" %%i in ('root-config --libs') do set "ROOT_LIBS=%%i"
+        
+        REM Validate that ROOT provided flags
+        if defined ROOT_CFLAGS (
+            if defined ROOT_LIBS (
+                set USE_ROOT=1
+                echo ROOT support enabled
+                echo   ROOT_CFLAGS: !ROOT_CFLAGS!
+                echo   ROOT_LIBS: !ROOT_LIBS!
+            ) else (
+                echo ROOT found but no library flags provided - disabling ROOT support
+            )
+        ) else (
+            echo ROOT found but no compile flags provided - disabling ROOT support
+        )
+    ) else (
+        echo root-config not found - building without ROOT support
+    )
+)
+echo.
 
 REM Set output directories
 set GCC_BIN_DIR_REL=build\msvc\release
@@ -106,6 +141,14 @@ call "%VS_PATH%\Common7\Tools\VsDevCmd.bat"
 REM Common include paths
 set INCLUDES=/I include
 
+REM Add ROOT includes if enabled
+if "%USE_ROOT%"=="1" (
+    set INCLUDES=%INCLUDES% %ROOT_CFLAGS%
+    set MACRO_DEFINE=/DUSE_ROOT=1
+) else (
+    set MACRO_DEFINE=
+)
+
 REM Common source files
 set COMMON_SRCS=src\PhaseSpaceFileReader.cc ^
 src\PhaseSpaceFileWriter.cc ^
@@ -124,10 +167,10 @@ set LIB_NAME=libparticlezoo.lib
 
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
-    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX
+    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE%
 ) else (
     echo Release build.
-    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX
+    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE%
 )
 
 REM Add multi-processor compilation if jobs specified (default: let MSVC pick if just /MP)
@@ -141,34 +184,34 @@ echo Compiling common sources (parallel)...
 set PDB=%OUTDIR%\particlezoo.pdb
 cl.exe %CFLAGS% /FS /Fd"%PDB%" /Fo"%OBJDIR%\\" %INCLUDES% /c %COMMON_SRCS% || goto :build_fail
 
-REM Build OBJ_LIST (now that objects are produced by single invocation)
+REM Build OBJ_LIST
 set "OBJ_LIST="
 for %%F in (%COMMON_SRCS%) do set "OBJ_LIST=!OBJ_LIST! %OBJDIR%\%%~nF.obj"
-REM echo Objects: !OBJ_LIST!
 
 echo Building static library %LIB_NAME% ...
 lib.exe /OUT:%OUTDIR%\%LIB_NAME% !OBJ_LIST! || goto :build_fail
-REM Build executables (compile unique source then link with common objects)
+
+REM Build executables
 echo Building PHSPConvert.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPConvert.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPConvert.exe" !OBJ_LIST! %OBJDIR%\PHSPConvert.obj || goto :build_fail
+link.exe /OUT:"%OUTDIR%\PHSPConvert.exe" !OBJ_LIST! %OBJDIR%\PHSPConvert.obj %ROOT_LIBS% || goto :build_fail
 
 echo Building PHSPCombine.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPCombine.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPCombine.exe" !OBJ_LIST! %OBJDIR%\PHSPCombine.obj || goto :build_fail
+link.exe /OUT:"%OUTDIR%\PHSPCombine.exe" !OBJ_LIST! %OBJDIR%\PHSPCombine.obj %ROOT_LIBS% || goto :build_fail
 
 echo Building PHSPImage.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPImage.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPImage.exe" !OBJ_LIST! %OBJDIR%\PHSPImage.obj || goto :build_fail
+link.exe /OUT:"%OUTDIR%\PHSPImage.exe" !OBJ_LIST! %OBJDIR%\PHSPImage.obj %ROOT_LIBS% || goto :build_fail
 
 echo Building PHSPSplit.exe ...
 cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPSplit.cc || goto :build_fail
-cl.exe %CFLAGS% /Fe"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj || goto :build_fail
+link.exe /OUT:"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj %ROOT_LIBS% || goto :build_fail
 
 REM Build dynamic library
 if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
 echo Building dynamic library particlezoo.dll ...
-link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! || goto :build_fail
+link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! %ROOT_LIBS% || goto :build_fail
 goto :build_success
 
 :build_success
@@ -181,9 +224,6 @@ echo Build failed.
 exit /b 1
 
 :post_build
-
-REM Decide whether to keep objects; keeping helps incremental builds. Uncomment to delete.
-REM del /Q "%OBJDIR%\*.obj"
 
 REM Install if requested
 if defined DO_INSTALL (

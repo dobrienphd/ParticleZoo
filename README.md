@@ -454,14 +454,12 @@ Available branch mapping options:
 
 **Performance Issues:**
 - Large files processing slowly → Consider using `--maxParticles` for testing
-- Memory usage too high → Check if streaming interface is being used properly
 
 ### Getting Help
 
 For additional support:
 1. Use `--formats` option to verify supported formats at runtime
 2. Try explicit format specification with `--inputFormat`/`--outputFormat`
-3. Verify file integrity using third-party format-specific validation tools if available
 
 ## License
 
