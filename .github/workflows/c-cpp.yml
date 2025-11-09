@@ -61,6 +61,13 @@ jobs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Download and install ROOT framework
+      run: |
+        curl -L -o root.zip https://root.cern/download/root_v6.36.04.win64.python311.vc17.zip
+        Expand-Archive -Path root.zip -DestinationPath C:\
+        echo "C:\root_v6.36.04.win64.python311.vc17\bin" >> $env:GITHUB_PATH
+      shell: pwsh
+
     - name: Build and install ParticleZoo library
       run: |
         .\build.bat install
