@@ -21,7 +21,7 @@ namespace ParticleZoo {
      * A variant type that can hold different types of values that can be passed
      * as command line arguments: floating point numbers, integers, strings, or booleans.
      */
-    using CLIValue = std::variant<float,int,std::string,bool>;
+    using CLIValue = std::variant<float,unsigned int,int,std::string,bool>;
 
     /**
      * @brief Enumeration for command line argument types.
@@ -31,6 +31,7 @@ namespace ParticleZoo {
      */
     enum CLIArgType { 
         CLI_FLOAT,      ///< Floating point number argument
+        CLI_UINT,       ///< Unsigned integer number argument
         CLI_INT,        ///< Integer number argument  
         CLI_STRING,     ///< String argument
         CLI_BOOL,       ///< Boolean flag argument
@@ -222,6 +223,23 @@ namespace ParticleZoo {
                 return defaultValue.value();
             }
             throw std::runtime_error("Unable to extract integer option for command.");
+        }
+
+        /**
+         * @brief Extract an unsigned integer option value from a command.
+         */
+        unsigned int extractUIntOption(const CLICommand& cmd, std::optional<unsigned int> defaultValue = std::nullopt, int index = 0) const {
+            auto it = this->find(cmd);
+            bool validCommand = !(it == this->end() || it->second.empty());
+            if (validCommand) {
+                if (auto* val = std::get_if<unsigned int>(&it->second[index])) {
+                    return *val;
+                }
+            }
+            if (defaultValue.has_value()) {
+                return defaultValue.value();
+            }
+            throw std::runtime_error("Unable to extract unsigned integer option for command.");
         }
         
         /**

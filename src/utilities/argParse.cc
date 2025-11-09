@@ -123,6 +123,15 @@ namespace ParticleZoo {
             switch (type) {
                 case CLI_FLOAT:
                     return std::stof(value);
+                case CLI_UINT:
+                    {
+                        // std::stoul with base 0 auto-detects: 0x prefix = hex, 0 prefix = octal, otherwise decimal
+                        unsigned long ulValue = std::stoul(value, nullptr, 0);
+                        if (ulValue > static_cast<unsigned long>(std::numeric_limits<unsigned int>::max())) {
+                            throw std::out_of_range("Value out of range for unsigned int");
+                        }
+                        return static_cast<unsigned int>(ulValue);
+                    }
                 case CLI_INT:
                     return std::stoi(value);
                 case CLI_STRING:
@@ -316,6 +325,7 @@ namespace ParticleZoo {
         auto typeToString = [](CLIArgType type) -> std::string {
             switch (type) {
                 case CLI_FLOAT: return "number";
+                case CLI_UINT: return "unsigned integer";
                 case CLI_INT: return "integer";
                 case CLI_STRING: return "text";
                 case CLI_BOOL: return "true/false";
