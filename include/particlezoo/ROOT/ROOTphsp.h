@@ -299,7 +299,7 @@ namespace ParticleZoo::ROOT {
         return std::numeric_limits<std::uint64_t>::max();
     }
 
-    inline void Writer::writeHeaderData(ByteBuffer & buffer) {}
+    inline void Writer::writeHeaderData(ByteBuffer &) {}
 
 } // namespace ParticleZoo::ROOT
 

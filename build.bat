@@ -155,8 +155,11 @@ REM Add ROOT includes if enabled
 if "%USE_ROOT%"=="1" (
     set INCLUDES=%INCLUDES% %ROOT_CFLAGS%
     set MACRO_DEFINE=/DUSE_ROOT=1
+    REM Suppress warnings from ROOT headers (C4127: conditional expression is constant, C4245: signed/unsigned mismatch)
+    set ROOT_WARNING_SUPPRESSION=/wd4127 /wd4245
 ) else (
     set MACRO_DEFINE=
+    set ROOT_WARNING_SUPPRESSION=
 )
 
 REM Common source files
@@ -177,10 +180,10 @@ set LIB_NAME=libparticlezoo.lib
 
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
-    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE%
+    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE% %ROOT_WARNING_SUPPRESSION%
 ) else (
     echo Release build.
-    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE%
+    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE% %ROOT_WARNING_SUPPRESSION%
 )
 
 REM Add multi-processor compilation if jobs specified (default: let MSVC pick if just /MP)
