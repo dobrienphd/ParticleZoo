@@ -154,13 +154,19 @@ set INCLUDES=/I include
 
 REM Add ROOT includes if enabled
 if "%USE_ROOT%"=="1" (
-    set INCLUDES=%INCLUDES% %ROOT_CFLAGS%
+    REM Extract include path from ROOT_CFLAGS
+    for %%f in (!ROOT_CFLAGS!) do (
+        set "flag=%%f"
+        if "!flag:~0,2!"=="-I" (
+            set "ROOT_INCLUDE_PATH=!flag:~2!"
+        )
+    )
+
+    REM Add ROOT flags and mark ROOT includes as external (suppresses warnings from ROOT headers only)
+    set INCLUDES=%INCLUDES% /external:I "!ROOT_INCLUDE_PATH!" /external:W0 %ROOT_CFLAGS%
     set MACRO_DEFINE=/DUSE_ROOT=1
-    REM Suppress warnings from ROOT headers (C4127: conditional expression is constant, C4245: signed/unsigned mismatch)
-    set ROOT_WARNING_SUPPRESSION=/wd4127 /wd4245
 ) else (
     set MACRO_DEFINE=
-    set ROOT_WARNING_SUPPRESSION=
 )
 
 REM Common source files
@@ -187,10 +193,10 @@ set LIB_NAME=libparticlezoo.lib
 
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
-    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE% %ROOT_WARNING_SUPPRESSION%
+    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE%
 ) else (
     echo Release build.
-    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE% %ROOT_WARNING_SUPPRESSION%
+    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE%
 )
 
 REM Add multi-processor compilation if jobs specified (default: let MSVC pick if just /MP)
