@@ -248,7 +248,7 @@ namespace {
                 LATCHFilter(userOptions.extractUIntOption(EGSLATCHFilterCommand, 0))
             {
                 // Validate the configuration
-                validate(userOptions);
+                validate();
             }
 
             float minDim1() const { return dimensionLimits[0]; }
@@ -450,7 +450,7 @@ namespace {
                 }
             }
 
-            void validate(const UserOptions & userOptions) const {
+            void validate() const {
                 // Validate parameters
                 if (inputFile.empty()) throw std::runtime_error("No input file specified.");
                 if (outputFile.empty()) throw std::runtime_error("No output file specified.");
