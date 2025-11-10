@@ -3,23 +3,29 @@
 Example: List supported formats and read a phase space file.
 
 Usage:
-  python read_phase_space.py /path/to/file.IAEAphsp [--format IAEA] [--limit N]
+  python read_phase_space.py <file> [options]
   python read_phase_space.py --formats-only
 
-Arguments:
-  path                Path to a phase space file to read. If omitted with --formats-only,
-                      the script just lists formats and exits.
+Examples:
+  python read_phase_space.py file.IAEAphsp
+  python read_phase_space.py file.root --ROOT-format OpenGATE
+  python read_phase_space.py file.root --ROOT-format TOPAS --limit 10
 
-Options:
-  --format NAME       Explicit format name (e.g., IAEA, EGS, TOPAS, penEasy).
+This script passes all command line arguments through to ParticleZoo's C++ argument
+parser, which handles format-specific options automatically.
+
+Note: The filename must come first, before any optional arguments.
+
+Common options:
   --limit N           Print at most N particles (default: all).
   --formats-only      Only list formats and exit.
+  
+Format-specific options are automatically supported (e.g., --ROOT-format, --iaea-ignore-zlast, etc.)
+Run with --help to see all available options.
 """
 
 from __future__ import annotations
-import argparse
 import sys
-from typing import Optional
 
 import particlezoo as pz
 
@@ -33,39 +39,68 @@ def print_supported_formats() -> None:
         ))
 
 
-def create_reader(path: str, fmt: Optional[str]) -> pz.PhaseSpaceFileReader:
-    if fmt:
-        return pz.create_reader_for_format(fmt, path)
-    return pz.create_reader(path)
-
-
 def print_particle_summary(p: pz.Particle, idx: int) -> None:
     tname = pz.get_particle_type_name(p.type)
+    # Convert to human-readable units for display
+    ke_mev = p.kinetic_energy / pz.MeV
+    x_cm = p.x / pz.cm
+    y_cm = p.y / pz.cm
+    z_cm = p.z / pz.cm
+    
     print(
-        f"[{idx}] type={tname:<20} KE={p.kinetic_energy:.6g}"
-        f" pos=({p.x:.6g},{p.y:.6g},{p.z:.6g})"
+        f"[{idx}] type={tname:<20} KE={ke_mev:.6g} MeV"
+        f" pos=({x_cm:.6g},{y_cm:.6g},{z_cm:.6g}) cm"
         f" dir=({p.px:.6g},{p.py:.6g},{p.pz:.6g})"
         f" w={p.weight:.6g} newHist={p.is_new_history}"
     )
 
 
+
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(description="List formats and read a phase space file")
-    ap.add_argument("path", nargs="?", help="Path to phase space file")
-    ap.add_argument("--format", dest="format", help="Explicit format name to use")
-    ap.add_argument("--limit", type=int, default=None, help="Print at most N particles")
-    ap.add_argument("--formats-only", action="store_true", help="Only list formats and exit")
-    args = ap.parse_args(argv)
-
-    print_supported_formats()
-    if args.formats_only and not args.path:
+    # Parse arguments using ParticleZoo's C++ argument parser
+    # This will handle --help, --formats, and all format-specific options automatically
+    usage_message = (
+        "Usage: read_phase_space.py <file> [options]\n\n"
+        "Example script to read phase space files.\n\n"
+        "Options:\n"
+        "  --limit N           Print at most N particles\n"
+        "  --formats-only      Only list formats and exit\n"
+    )
+    
+    # Check for --formats-only flag manually before parsing
+    if "--formats-only" in argv:
+        print_supported_formats()
         return 0
+    
+    # Extract the limit option manually (not a format-specific option)
+    limit = None
+    clean_argv = []
+    skip_next = False
+    for i, arg in enumerate(argv):
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--limit":
+            if i + 1 < len(argv):
+                try:
+                    limit = int(argv[i + 1])
+                    skip_next = True
+                    continue
+                except ValueError:
+                    pass
+        clean_argv.append(arg)
+    
+    # Parse remaining arguments through C++ parser (requires at least 1 positional arg: the file path)
+    options = pz.ArgParser.parse_args(clean_argv, usage_message, min_positional_args=1)
+    
+    # Extract the file path (first positional argument)
+    filepath = options.extract_positional(0)
+    
+    print_supported_formats()
+    print()
 
-    if not args.path:
-        ap.error("path is required unless --formats-only is provided")
-
-    # Create reader
-    reader = create_reader(args.path, args.format)
+    # Create reader with parsed options - format detection and options handled automatically
+    reader = pz.create_reader(filepath, options)
 
     # File summary
     try:
@@ -89,7 +124,7 @@ def main(argv: list[str]) -> int:
     for idx, p in enumerate(reader):
         print_particle_summary(p, idx)
         count += 1
-        if args.limit is not None and count >= args.limit:
+        if limit is not None and count >= limit:
             break
 
     print(f"\nRead {count} particles. Histories read: {reader.get_histories_read()}.")
