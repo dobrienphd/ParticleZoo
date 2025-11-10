@@ -103,10 +103,18 @@ def main(argv: list[str]) -> int:
     print(f"\nGenerating and writing {particle_count} particles...")
     
     # Create and write sample particles
-    particles = create_sample_particles(particle_count)
-    for particle in particles:
-        writer.write_particle(particle)
-    
+    batch_size = 1000  # Adjust based on memory constraints
+    batches = particle_count // batch_size
+    remainder = particle_count % batch_size
+    for _ in range(batches):
+        particles = create_sample_particles(batch_size)
+        for particle in particles:
+            writer.write_particle(particle)
+    if remainder > 0:
+        particles = create_sample_particles(remainder)
+        for particle in particles:
+            writer.write_particle(particle)
+
     # Close the writer (flushes buffers and finalizes the file)
     writer.close()
     
