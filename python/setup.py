@@ -32,8 +32,8 @@ extra_link_args = []
 
 # Fix for macOS: std::filesystem requires macOS 10.15+
 if sys.platform == "darwin":
-    extra_compile_args.extend(["-mmacosx-version-min=10.15"])
-    extra_link_args.extend(["-mmacosx-version-min=10.15"])
+    extra_compile_args.extend(["-mmacosx-version-min=13.3"])
+    extra_link_args.extend(["-mmacosx-version-min=13.3"])
 
 # Try to read ROOT configuration from config.status
 config_status = proj / "config.status"
