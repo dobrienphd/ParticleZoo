@@ -48,7 +48,7 @@ PROJECT_NAME           = "ParticleZoo"
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = v1.0.0
+PROJECT_NUMBER         = v1.1.0 BETA
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -2027,7 +2027,7 @@ LATEX_HEADER           = docs/scripts/header.tex
 # doing!
 # This tag requires that the tag GENERATE_LATEX is set to YES.
 
-LATEX_FOOTER           = 
+LATEX_FOOTER           = docs/scripts/footer.tex
 
 # The LATEX_EXTRA_STYLESHEET tag can be used to specify additional user-defined
 # LaTeX style sheets that are included after the standard style sheets created
@@ -2046,7 +2046,7 @@ LATEX_EXTRA_STYLESHEET = docs/scripts/custom_doxygen.sty
 # markers available.
 # This tag requires that the tag GENERATE_LATEX is set to YES.
 
-LATEX_EXTRA_FILES      = docs/assets/particlezoo.png
+LATEX_EXTRA_FILES      = docs/assets/particlezoo.png docs/scripts/python_appendix.tex
 
 # If the PDF_HYPERLINKS tag is set to YES, the LaTeX that is generated is
 # prepared for conversion to PDF (using ps2pdf or pdflatex). The PDF file will
