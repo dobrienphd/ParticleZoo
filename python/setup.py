@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import re
+import sys
 from setuptools import setup
 from setuptools.command.build_ext import build_ext
 from pybind11.setup_helpers import Pybind11Extension, build_ext as build_ext_pybind
@@ -28,6 +29,11 @@ sources = [
 define_macros = [("PYBIND11_DETAILED_ERROR_MESSAGES", "1")]
 extra_compile_args = ["-O3", "-fvisibility=hidden", "-std=c++20"]
 extra_link_args = []
+
+# Fix for macOS: std::filesystem requires macOS 10.15+
+if sys.platform == "darwin":
+    extra_compile_args.extend(["-mmacosx-version-min=10.15"])
+    extra_link_args.extend(["-mmacosx-version-min=10.15"])
 
 # Try to read ROOT configuration from config.status
 config_status = proj / "config.status"
