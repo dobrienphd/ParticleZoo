@@ -500,8 +500,8 @@ namespace ParticleZoo
             const std::uint64_t bytesInFile_;
             std::uint64_t bytesRead_;
             std::uint64_t particlesRead_;     /// counts all particle records even if they are skipped or are only meta-data particles
-            std::uint64_t particlesSkipped_;  /// counts all particles skipped by moveToParticle
             std::uint64_t metaparticlesRead_; /// counts all metadata-only particles read which are not counted towards the reported number of particles in the file
+            std::uint64_t particlesSkipped_;  /// counts all particles skipped by moveToParticle
             std::uint64_t historiesRead_;
             std::uint64_t numberOfParticlesToRead_;
             std::size_t particleRecordLength_;
