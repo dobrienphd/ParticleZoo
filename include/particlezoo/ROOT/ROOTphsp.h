@@ -152,6 +152,16 @@ namespace ParticleZoo::ROOT {
              */
             Particle      readParticleManually() override;
 
+            /**
+             * @brief Peek at the next particle from ROOT TTree without advancing the file position.
+             * 
+             * Reads the next particle but does not move the internal file pointer forward.
+             * This allows for inspecting the upcoming particle without consuming it.
+             * 
+             * @return Particle object with data from next TTree entry
+             */
+            Particle      peekParticleManually() override;
+
         private:
             /**
              * @brief Internal constructor with explicit branch mapping.

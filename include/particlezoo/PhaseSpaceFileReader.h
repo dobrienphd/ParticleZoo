@@ -56,6 +56,16 @@ namespace ParticleZoo
             Particle              getNextParticle();
             
             /**
+             * @brief Peek at the next particle without advancing the file position.
+             * 
+             * Reads the next particle but does not move the internal file pointer forward.
+             * This allows for inspecting the upcoming particle without consuming it.
+             * 
+             * @return Particle The next particle object containing position, momentum, energy, etc.
+             */
+            Particle              peekNextParticle();
+
+            /**
              * @brief Check if there are more particles to read in the file.
              * 
              * @return true if there are more particles available to read
@@ -414,6 +424,20 @@ namespace ParticleZoo
              * @throws std::runtime_error if not implemented
              */
             virtual Particle      readParticleManually();
+
+            /**
+             * @brief Peek at a particle manually (for formats requiring third-party I/O).
+             * 
+             * Can be implemented by derived classes to support manual file I/O,
+             * circumventing the internal file stream and buffer.
+             * 
+             * Must be implemented by derived classes that specify FormatType::NONE.
+             * The default implementation throws an exception.
+             * 
+             * @return Particle The manually entered particle object
+             * @throws std::runtime_error if not implemented
+             */
+            virtual Particle      peekParticleManually();
             
             /**
              * @brief Get the maximum line length for ASCII format files.
@@ -603,6 +627,10 @@ namespace ParticleZoo
 
     inline Particle PhaseSpaceFileReader::readParticleManually() {
         throw std::runtime_error("readParticleManually() must be implemented for manual particle reading.");
+    }
+
+    inline Particle PhaseSpaceFileReader::peekParticleManually() {
+        throw std::runtime_error("peekParticleManually() must be implemented for manual particle reading.");
     }
 
     inline std::size_t PhaseSpaceFileReader::getNumberOfEntriesInFile() const {
