@@ -56,6 +56,16 @@ namespace ParticleZoo
             Particle              getNextParticle();
             
             /**
+             * @brief Peek at the next particle without advancing the file position.
+             * 
+             * Reads the next particle but does not move the internal file pointer forward.
+             * This allows for inspecting the upcoming particle without consuming it.
+             * 
+             * @return Particle The next particle object containing position, momentum, energy, etc.
+             */
+            Particle              peekNextParticle();
+
+            /**
              * @brief Check if there are more particles to read in the file.
              * 
              * @return true if there are more particles available to read
@@ -414,6 +424,20 @@ namespace ParticleZoo
              * @throws std::runtime_error if not implemented
              */
             virtual Particle      readParticleManually();
+
+            /**
+             * @brief Peek at a particle manually (for formats requiring third-party I/O).
+             * 
+             * Can be implemented by derived classes to support manual file I/O,
+             * circumventing the internal file stream and buffer.
+             * 
+             * Must be implemented by derived classes that specify FormatType::NONE.
+             * The default implementation throws an exception.
+             * 
+             * @return Particle The manually entered particle object
+             * @throws std::runtime_error if not implemented
+             */
+            virtual Particle      peekParticleManually();
             
             /**
              * @brief Get the maximum line length for ASCII format files.
@@ -500,8 +524,8 @@ namespace ParticleZoo
             const std::uint64_t bytesInFile_;
             std::uint64_t bytesRead_;
             std::uint64_t particlesRead_;     /// counts all particle records even if they are skipped or are only meta-data particles
-            std::uint64_t particlesSkipped_;  /// counts all particles skipped by moveToParticle
             std::uint64_t metaparticlesRead_; /// counts all metadata-only particles read which are not counted towards the reported number of particles in the file
+            std::uint64_t particlesSkipped_;  /// counts all particles skipped by moveToParticle
             std::uint64_t historiesRead_;
             std::uint64_t numberOfParticlesToRead_;
             std::size_t particleRecordLength_;
@@ -603,6 +627,10 @@ namespace ParticleZoo
 
     inline Particle PhaseSpaceFileReader::readParticleManually() {
         throw std::runtime_error("readParticleManually() must be implemented for manual particle reading.");
+    }
+
+    inline Particle PhaseSpaceFileReader::peekParticleManually() {
+        throw std::runtime_error("peekParticleManually() must be implemented for manual particle reading.");
     }
 
     inline std::size_t PhaseSpaceFileReader::getNumberOfEntriesInFile() const {

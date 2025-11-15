@@ -18,7 +18,7 @@ namespace ParticleZoo::EGSphspFile
     constexpr float ELECTRON_REST_MASS_MEV = 0.5109989461f;    ///< Electron rest mass, stored explicitly in MeV for operating directly on the energy value in the file before conversion to internal units
 
     Reader::Reader(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileReader("EGS", fileName, options), mode_(EGSMODE::MODE0), particleZValue_(0), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2)
+    : PhaseSpaceFileReader("EGS", fileName, options), mode_(EGSMODE::MODE0), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2), particleZValue_(0)
     {
         bool ignoreHeaderParticleCount = false;
 

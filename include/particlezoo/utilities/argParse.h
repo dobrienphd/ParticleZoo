@@ -179,6 +179,10 @@ namespace ParticleZoo {
     class UserOptions : public std::unordered_map<CLICommand, std::vector<CLIValue>> {
         public:
             UserOptions() = default;
+
+            UserOptions(std::initializer_list<std::pair<const CLICommand, std::vector<CLIValue>>> init)
+            : std::unordered_map<CLICommand, std::vector<CLIValue>>(init) {}
+
             ~UserOptions() = default;
 
         /**

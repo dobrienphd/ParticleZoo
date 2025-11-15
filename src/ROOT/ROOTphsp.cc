@@ -336,6 +336,57 @@ namespace ParticleZoo::ROOT {
         return particle;
     }
 
+    Particle Reader::peekParticleManually()
+    {
+        std::uint64_t particlesRead = getParticlesRead(true);
+        if (particlesRead >= numberOfParticles_) throw std::runtime_error("Attempted to peek more particles than available in the ROOT file.");
+
+        if (!treeHasHistoryNumber_) {
+            historyNumber_ = static_cast<int>(getHistoriesRead());
+        }
+        
+        int lastHistoryNumber = historyNumber_;
+        bool lastIsNewHistory = isNewHistory_;
+
+        tree->GetEntry(particlesRead);
+
+        if (!treeHasHistoryNumber_ && !treeHasNewHistoryMarker_) isNewHistory_ = true; // If no history info is available, assume each particle is a new history
+
+        ParticleType type = getParticleTypeFromPDGID(pdgCode_);
+
+        double px = px_;
+        double py = py_;
+        double pz = pz_;
+        if (!pzIsStored_) {
+            pz = calcThirdUnitComponent(px, py);
+            if (pzIsNegative_) { pz = -pz; }
+        }
+
+        int historyIncrement = historyNumber_ - lastHistoryNumber;
+        if (getHistoriesRead() == 0 || (historyIncrement == 0 && isNewHistory_)) historyIncrement = 1;
+        isNewHistory_ = historyIncrement > 0;
+
+        Particle particle(type,
+                        energy_ * energyUnits_,
+                        x_ * xUnits_,
+                        y_ * yUnits_,
+                        z_ * zUnits_,
+                        px,
+                        py,
+                        pz,
+                        isNewHistory_,
+                        weight_);
+
+        if (treeHasHistoryNumber_) {
+            particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, historyIncrement);
+        }
+
+        historyNumber_ = lastHistoryNumber; // Reset history number to previous value
+        isNewHistory_ = lastIsNewHistory;   // Reset isNewHistory to previous value
+
+        return particle;
+    }
+
 
     // Implementation of Writer class
 
