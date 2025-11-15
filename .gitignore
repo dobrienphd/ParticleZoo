@@ -6,3 +6,4 @@ docs/latex
 docs/html
 python
 .venv
+tests
