@@ -8,6 +8,8 @@
 #include "particlezoo/utilities/formats.h"
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/units.h"
+#include "particlezoo/egs/EGSLATCH.h"
+#include "particlezoo/penelope/ILBArray.h"
 
 namespace py = pybind11;
 using namespace ParticleZoo;
@@ -228,6 +230,27 @@ PYBIND11_MODULE(_pz, m) {
         .def("set_incremental_histories", &Particle::setIncrementalHistories,
              "Convenience function to set the number of incremental histories using the INCREMENTAL_HISTORY_NUMBER integer property. "
              "The value must be greater than 0.")
+        // Integer property methods
+        .def("has_int_property", &Particle::hasIntProperty, py::arg("property_type"),
+             "Check if the particle has a specific integer property set.")
+        .def("get_int_property", &Particle::getIntProperty, py::arg("property_type"),
+             "Get the value of an integer property. Raises error if property is not set.")
+        .def("set_int_property", &Particle::setIntProperty, py::arg("property_type"), py::arg("value"),
+             "Set the value of an integer property.")
+        // Float property methods
+        .def("has_float_property", &Particle::hasFloatProperty, py::arg("property_type"),
+             "Check if the particle has a specific float property set.")
+        .def("get_float_property", &Particle::getFloatProperty, py::arg("property_type"),
+             "Get the value of a float property. Raises error if property is not set.")
+        .def("set_float_property", &Particle::setFloatProperty, py::arg("property_type"), py::arg("value"),
+             "Set the value of a float property.")
+        // Bool property methods
+        .def("has_bool_property", &Particle::hasBoolProperty, py::arg("property_type"),
+             "Check if the particle has a specific boolean property set.")
+        .def("get_bool_property", &Particle::getBoolProperty, py::arg("property_type"),
+             "Get the value of a boolean property. Raises error if property is not set.")
+        .def("set_bool_property", &Particle::setBoolProperty, py::arg("property_type"), py::arg("value"),
+             "Set the value of a boolean property.")
         ;
 
     // FixedValues struct for writers
@@ -428,6 +451,105 @@ PYBIND11_MODULE(_pz, m) {
     }, py::arg("pdg"), py::arg("kineticEnergy"), py::arg("x"), py::arg("y"), py::arg("z"), py::arg("px"), py::arg("py"), py::arg("pz"), py::arg("isNewHistory")=true, py::arg("weight")=1.0f,
     "Create a Particle using PDG particle code instead of ParticleType enum. "
     "Automatically converts PDG code to ParticleType. Directional cosines normalized automatically.");
+
+    // ===== EGS LATCH functions =====
+    
+    // EGSLATCHOPTION enum
+    py::enum_<ParticleZoo::EGSphspFile::EGSLATCHOPTION>(m, "EGSLATCHOPTION",
+        "Enumeration of LATCH interpretation options for EGS phase space files. "
+        "Defines how the LATCH bits are interpreted when reading or writing particle data.")
+        .value("LATCH_OPTION_1", ParticleZoo::EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_1,
+               "Non-Inherited LATCH Setting: bits 1-23 store where the particle has been, "
+               "secondaries do not inherit any bits from parent particles")
+        .value("LATCH_OPTION_2", ParticleZoo::EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_2,
+               "Comprehensive LATCH Setting (default): bits 1-23 store where the particle has been, "
+               "bit settings are inherited from parent particles")
+        .value("LATCH_OPTION_3", ParticleZoo::EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_3,
+               "Comprehensive LATCH Setting 2: bits 1-23 store where the particle has interacted "
+               "instead of where it has been, bit settings are inherited from parent particles")
+        .export_values();
+
+    // EGS LATCH functions
+    m.def("apply_latch_to_particle", &ParticleZoo::EGSphspFile::ApplyLATCHToParticle,
+          py::arg("particle"), py::arg("latch"), py::arg("latch_option"),
+          "Apply EGS LATCH value to a particle. Sets the EGS_LATCH integer property, "
+          "IS_MULTIPLE_CROSSER boolean property (from bit 32), and IS_SECONDARY_PARTICLE "
+          "boolean property (from bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
+
+    m.def("extract_latch_from_particle", &ParticleZoo::EGSphspFile::ExtractLATCHFromParticle,
+          py::arg("particle"), py::arg("latch_option"),
+          "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it directly. "
+          "Otherwise, constructs LATCH from particle type (bits 29-30), IS_MULTIPLE_CROSSER flag (bit 32), "
+          "and IS_SECONDARY_PARTICLE flag (bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
+
+    m.def("does_particle_pass_latch_filter", &ParticleZoo::EGSphspFile::DoesParticlePassLATCHFilter,
+          py::arg("particle"), py::arg("latch_filter"),
+          "Check if a particle passes the specified LATCH bitmask filter. "
+          "Returns True if the particle has EGS_LATCH property and (LATCH & filter) == filter.");
+
+    // ===== PENELOPE ILB functions =====
+    
+    // Individual ILB apply functions
+    m.def("apply_ilb1_to_particle", &ParticleZoo::Penelope::ApplyILB1ToParticle,
+          py::arg("particle"), py::arg("ilb1"),
+          "Apply PENELOPE ILB1 value to a particle. ILB1 represents particle generation: "
+          "1 for primary particles, 2+ for secondary particles. Also sets IS_SECONDARY_PARTICLE flag. "
+          "Raises RuntimeError if ilb1 < 1.");
+
+    m.def("apply_ilb2_to_particle", &ParticleZoo::Penelope::ApplyILB2ToParticle,
+          py::arg("particle"), py::arg("ilb2"),
+          "Apply PENELOPE ILB2 value to a particle. ILB2 stores the parent particle type code. "
+          "Only meaningful for secondary particles (ILB1 > 1).");
+
+    m.def("apply_ilb3_to_particle", &ParticleZoo::Penelope::ApplyILB3ToParticle,
+          py::arg("particle"), py::arg("ilb3"),
+          "Apply PENELOPE ILB3 value to a particle. ILB3 stores the interaction type that created this particle. "
+          "Only meaningful for secondary particles (ILB1 > 1).");
+
+    m.def("apply_ilb4_to_particle", &ParticleZoo::Penelope::ApplyILB4ToParticle,
+          py::arg("particle"), py::arg("ilb4"),
+          "Apply PENELOPE ILB4 value to a particle. ILB4 indicates atomic relaxation transitions. "
+          "Non-zero if particle was created by atomic relaxation.");
+
+    m.def("apply_ilb5_to_particle", &ParticleZoo::Penelope::ApplyILB5ToParticle,
+          py::arg("particle"), py::arg("ilb5"),
+          "Apply PENELOPE ILB5 value to a particle. ILB5 is a user-defined tracking value "
+          "passed on to all descendant particles.");
+
+    m.def("apply_ilb_array_to_particle", &ParticleZoo::Penelope::ApplyILBArrayToParticle,
+          py::arg("particle"), py::arg("ilb_array"),
+          "Apply all five PENELOPE ILB values to a particle from a list/array. "
+          "Array must contain [ILB1, ILB2, ILB3, ILB4, ILB5] in order. "
+          "ILB1: generation (1=primary, 2+=secondary), ILB2: parent type, "
+          "ILB3: interaction type, ILB4: atomic transition, ILB5: user-defined.");
+
+    // Individual ILB extract functions
+    m.def("extract_ilb1_from_particle", &ParticleZoo::Penelope::ExtractILB1FromParticle,
+          py::arg("particle"),
+          "Extract PENELOPE ILB1 value from a particle. Returns PENELOPE_ILB1 property if set, "
+          "otherwise infers from IS_SECONDARY_PARTICLE flag (2 if secondary, 1 if primary, 0 if neither).");
+
+    m.def("extract_ilb2_from_particle", &ParticleZoo::Penelope::ExtractILB2FromParticle,
+          py::arg("particle"),
+          "Extract PENELOPE ILB2 value from a particle. Returns PENELOPE_ILB2 property if set, otherwise 0.");
+
+    m.def("extract_ilb3_from_particle", &ParticleZoo::Penelope::ExtractILB3FromParticle,
+          py::arg("particle"),
+          "Extract PENELOPE ILB3 value from a particle. Returns PENELOPE_ILB3 property if set, otherwise 0.");
+
+    m.def("extract_ilb4_from_particle", &ParticleZoo::Penelope::ExtractILB4FromParticle,
+          py::arg("particle"),
+          "Extract PENELOPE ILB4 value from a particle. Returns PENELOPE_ILB4 property if set, otherwise 0.");
+
+    m.def("extract_ilb5_from_particle", &ParticleZoo::Penelope::ExtractILB5FromParticle,
+          py::arg("particle"),
+          "Extract PENELOPE ILB5 value from a particle. Returns PENELOPE_ILB5 property if set, otherwise 0.");
+
+    m.def("extract_ilb_array_from_particle", &ParticleZoo::Penelope::ExtractILBArrayFromParticle,
+          py::arg("particle"),
+          "Extract all five PENELOPE ILB values from a particle as a list. "
+          "Returns [ILB1, ILB2, ILB3, ILB4, ILB5] extracted from particle properties. "
+          "Missing properties return 0 (except ILB1 which may infer from IS_SECONDARY_PARTICLE).");
 
     // ===== Units - expose as module constants =====
     
