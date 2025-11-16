@@ -106,6 +106,7 @@ namespace ParticleZoo
     FormatRegistry& FormatRegistry::instance()
     {
         static FormatRegistry inst;
+        FormatRegistry::RegisterStandardFormats();
         return inst;
     }
 
