@@ -22,4 +22,8 @@ python/htmlcov/
 python/.tox/
 python/.venv/
 python/venv/
+<<<<<<< HEAD
 python/ENV/
+=======
+python/ENV/
+>>>>>>> 655e046b479db2678f051320dd3d9d1abaa2b07b
