@@ -269,6 +269,13 @@ namespace ParticleZoo {
              * @return ParticleType The type of particle (electron, photon, proton, etc.)
              */
             ParticleType getType() const;
+
+            /**
+             * @brief Get the PDG identification code of the particle.
+             * 
+             * @return std::int32_t The PDG code corresponding to the particle type
+             */
+            std::int32_t getPDGCode() const;
             
             /**
              * @brief Get the kinetic energy of the particle.
@@ -612,6 +619,7 @@ namespace ParticleZoo {
     }
 
     inline ParticleType Particle::getType() const { return type_; }
+    inline std::int32_t Particle::getPDGCode() const { return getPDGIDFromParticleType(type_); }
     inline float Particle::getKineticEnergy() const { return kineticEnergy_; }
     inline float Particle::getX() const { return x_; }
     inline float Particle::getY() const { return y_; }
