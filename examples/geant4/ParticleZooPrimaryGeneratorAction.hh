@@ -30,7 +30,6 @@ namespace ParticleZoo
             /**
              * @brief Constructor.
              * @param phaseSpaceFilePath Path to the ParticleZoo phase space file.
-             * @param translation Global translation to apply to all particle positions (default is no translation).
              * @param partitionId The partition ID for this instance (used for splitting workload across multiple application instances, default is 0).
              * @param numberOfPartitions The total number of partitions (used for splitting workload across multiple application instances, default is 1).
              */
