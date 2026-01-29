@@ -109,6 +109,8 @@ namespace {
     const CLICommand MINIMUM_X_COMMAND = CLICommand(NONE, "", "minX", "Minimum X position in cm for particles to be converted", { CLI_FLOAT });
     const CLICommand MINIMUM_Y_COMMAND = CLICommand(NONE, "", "minY", "Minimum Y position in cm for particles to be converted", { CLI_FLOAT });
     const CLICommand MINIMUM_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MAXIMUM_RADIUS_COMMAND = CLICommand(NONE, "", "maxRadius", "Maximum radial distance in cm (along the XY plane) for particles to be converted", { CLI_FLOAT });
+    const CLICommand MINIMUM_RADIUS_COMMAND = CLICommand(NONE, "", "minRadius", "Minimum radial distance in cm (along the XY plane) for particles to be converted", { CLI_FLOAT });
     const CLICommand PRIMARIES_ONLY_COMMAND = CLICommand(NONE, "", "primariesOnly", "Only process primary particles from the phase space file", { CLI_VALUELESS });
     const CLICommand EXCLUDE_PRIMARIES_COMMAND = CLICommand(NONE, "", "excludePrimaries", "Exclude primary particles from processing", { CLI_VALUELESS });
     const CLICommand GENERATION_FILTER_COMMAND = CLICommand(NONE, "", "generations", "Filter particles by generation range (min and max)", { CLI_INT, CLI_INT });
@@ -142,6 +144,7 @@ namespace {
         const ParticleType  filterByParticle;
         const bool          filterByEnergy;
         const bool          filterByPosition;
+        const bool          filterByRadius;
         const GenerationFilter  generationFilter;
         const float         minimumEnergy;
         const float         maximumEnergy;
@@ -151,6 +154,8 @@ namespace {
         const float         minimumX;
         const float         minimumY;
         const float         minimumZ;
+        const float         minimumRadius;
+        const float         maximumRadius;
         const bool          errorOnWarning;
 
         // Constructor to initialize from user options
@@ -172,6 +177,7 @@ namespace {
             filterByPosition(userOptions.contains(MINIMUM_X_COMMAND) || userOptions.contains(MAXIMUM_X_COMMAND) ||
                              userOptions.contains(MINIMUM_Y_COMMAND) || userOptions.contains(MAXIMUM_Y_COMMAND) ||
                              userOptions.contains(MINIMUM_Z_COMMAND) || userOptions.contains(MAXIMUM_Z_COMMAND)),
+            filterByRadius(userOptions.contains(MINIMUM_RADIUS_COMMAND) || userOptions.contains(MAXIMUM_RADIUS_COMMAND)),
             generationFilter(determineGenerationFilter(userOptions)),
             minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MINIMUM_ENERGY_COMMAND) * MeV : 0.0f),
             maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND) * MeV : std::numeric_limits<float>::max()),
@@ -181,6 +187,8 @@ namespace {
             maximumY(userOptions.contains(MAXIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Y_COMMAND) * cm : std::numeric_limits<float>::max()),
             minimumZ(userOptions.contains(MINIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Z_COMMAND) * cm : std::numeric_limits<float>::lowest()),
             maximumZ(userOptions.contains(MAXIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Z_COMMAND) * cm : std::numeric_limits<float>::max()),
+            minimumRadius(userOptions.contains(MINIMUM_RADIUS_COMMAND) ? userOptions.extractFloatOption(MINIMUM_RADIUS_COMMAND) * cm : 0.0f),
+            maximumRadius(userOptions.contains(MAXIMUM_RADIUS_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_RADIUS_COMMAND) * cm : std::numeric_limits<float>::max()),
             errorOnWarning(userOptions.contains(ERROR_ON_WARNING_COMMAND))
         {
             // Validate the configuration
@@ -190,6 +198,7 @@ namespace {
         bool useProjection() const { return projectToX || projectToY || projectToZ; }
         bool isFilteringByEnergy() const { return filterByEnergy; }
         bool isFilteringByPosition() const { return filterByPosition; }
+        bool isFilteringByRadius() const { return filterByRadius; }
         bool isFilteringByParticle() const { return filterByParticle != ParticleType::Unsupported; }
         bool isFilteringByGeneration() const { return generationFilter.useFilter; }
 
@@ -262,6 +271,10 @@ namespace {
             {
                 throw std::runtime_error("Minimum Z position cannot be greater than maximum Z position for position filter.");
             }
+            if (filterByRadius && (minimumRadius > maximumRadius))
+            {
+                throw std::runtime_error("Minimum radius cannot be greater than maximum radius for radius filter.");
+            }
             if ((userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(ELECTRONS_ONLY_COMMAND))
                 || (userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))
                 || (userOptions.contains(ELECTRONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND)))
@@ -297,6 +310,16 @@ namespace {
             if (x < config.minimumX || x > config.maximumX ||
                 y < config.minimumY || y > config.maximumY ||
                 z < config.minimumZ || z > config.maximumZ) {
+                return false;
+            }
+        }
+
+        // Apply radius filter
+        if (config.filterByRadius) {
+            const float x = particle.getX();
+            const float y = particle.getY();
+            const float radius = std::sqrt(x*x + y*y);
+            if (radius < config.minimumRadius || radius > config.maximumRadius) {
                 return false;
             }
         }
@@ -349,6 +372,11 @@ int main(int argc, char* argv[]) {
         MAXIMUM_X_COMMAND,
         MAXIMUM_Y_COMMAND,
         MAXIMUM_Z_COMMAND,
+        MINIMUM_X_COMMAND,
+        MINIMUM_Y_COMMAND,
+        MINIMUM_Z_COMMAND,
+        MINIMUM_RADIUS_COMMAND,
+        MAXIMUM_RADIUS_COMMAND,
         PRIMARIES_ONLY_COMMAND,
         EXCLUDE_PRIMARIES_COMMAND,
         GENERATION_FILTER_COMMAND,
