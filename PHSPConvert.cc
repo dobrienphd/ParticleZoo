@@ -349,6 +349,9 @@ int main(int argc, char* argv[]) {
         MAXIMUM_X_COMMAND,
         MAXIMUM_Y_COMMAND,
         MAXIMUM_Z_COMMAND,
+        PRIMARIES_ONLY_COMMAND,
+        EXCLUDE_PRIMARIES_COMMAND,
+        GENERATION_FILTER_COMMAND,
         ERROR_ON_WARNING_COMMAND
     });
     
