@@ -22,10 +22,8 @@ namespace ParticleZoo::Penelope
      */
     inline void ApplyILB1ToParticle(Particle & particle, const int ilb1)
     {
-        if (ilb1 == 1) {
-            particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, false);
-        } else if (ilb1 > 1) {
-            particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, true);
+        if (ilb1 > 1) {
+            particle.setIntProperty(IntPropertyType::GENERATION, ilb1);
         } else {
             throw std::runtime_error("Invalid ILB1 value: " + std::to_string(ilb1));
         }
@@ -109,20 +107,20 @@ namespace ParticleZoo::Penelope
      * @brief Extracts ILB1 value from a particle
      * 
      * Retrieves the particle generation value. If PENELOPE_ILB1 property is set,
-     * returns that value directly. Otherwise, attempts to infer from IS_SECONDARY_PARTICLE
-     * flag (returns 2 if secondary, 1 if primary).
+     * returns that value directly. Otherwise, attempts to infer from GENERATION
+     * property (0 if not available, 1 if primary, 2 if secondary, etc.).
      * 
      * @param particle The particle to extract from
-     * @return The ILB1 value (particle generation), 2 if secondary flag is set, 1 if primary flag is set, or 0 if neither is available
+     * @return The ILB1 value (particle generation), 0 if not available, 1 if primary, 2 if secondary, etc.
      */
     inline int ExtractILB1FromParticle(const Particle & particle)
     {
         if (particle.hasIntProperty(IntPropertyType::PENELOPE_ILB1)) {
             return particle.getIntProperty(IntPropertyType::PENELOPE_ILB1);
-        } else if (particle.hasBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE)) {
-            return particle.getBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE) ? 2 : 1;
+        } else if (particle.hasIntProperty(IntPropertyType::GENERATION)) {
+            return particle.getIntProperty(IntPropertyType::GENERATION);
         } else {
-            return 0;
+            return 0; // If neither PENELOPE_ILB1 nor GENERATION properties are available, return 0 by default
         }
     }
 

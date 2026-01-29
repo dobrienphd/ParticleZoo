@@ -135,12 +135,12 @@ namespace {
     const CLICommand PROJECTION_TYPE_COMMAND = CLICommand(NONE, "", "projectionType", "Projection scheme: none, project, or flatten", { CLI_STRING }, { "flatten" });
     const CLICommand IMAGE_WIDTH_COMMAND = CLICommand(NONE, "", "imageWidth", "Output image width in pixels", { CLI_INT }, { DEFAULT_IMAGE_SIDE });
     const CLICommand IMAGE_HEIGHT_COMMAND = CLICommand(NONE, "", "imageHeight", "Output image height in pixels", { CLI_INT }, { DEFAULT_IMAGE_SIDE });
-    const CLICommand MIN_X_COMMAND = CLICommand(NONE, "", "minX", "Minimum X coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
-    const CLICommand MAX_X_COMMAND = CLICommand(NONE, "", "maxX", "Maximum X coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
-    const CLICommand MIN_Y_COMMAND = CLICommand(NONE, "", "minY", "Minimum Y coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
-    const CLICommand MAX_Y_COMMAND = CLICommand(NONE, "", "maxY", "Maximum Y coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
-    const CLICommand MIN_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
-    const CLICommand MAX_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
+    const CLICommand MINIMUM_X_COMMAND = CLICommand(NONE, "", "minX", "Minimum X coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
+    const CLICommand MAXIMUM_X_COMMAND = CLICommand(NONE, "", "maxX", "Maximum X coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
+    const CLICommand MINIMUM_Y_COMMAND = CLICommand(NONE, "", "minY", "Minimum Y coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
+    const CLICommand MAXIMUM_Y_COMMAND = CLICommand(NONE, "", "maxY", "Maximum Y coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
+    const CLICommand MINIMUM_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z coordinate for imaging region in cm (default: -40.0 cm)", { CLI_FLOAT });
+    const CLICommand MAXIMUM_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)", { CLI_FLOAT });
     const CLICommand SQUARE_COMMAND = CLICommand(NONE, "", "square", "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)", { CLI_FLOAT });
     const CLICommand TOLERANCE_COMMAND = CLICommand(NONE, "", "tolerance", "Tolerance in the direction perpendicular to the plane in cm", { CLI_FLOAT }, { DEFAULT_TOLERANCE });
     const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_UINT });
@@ -148,6 +148,7 @@ namespace {
     const CLICommand QUANTITY_TYPE_COMMAND = CLICommand(NONE, "", "score", "Quantity to score (particle weight applies to all quantities and each is normalized by unit area): count, energy, xDir, yDir, zDir", { CLI_STRING }, { "count" });
     const CLICommand PRIMARIES_ONLY_COMMAND = CLICommand(NONE, "", "primariesOnly", "Only process primary particles from the phase space file", { CLI_VALUELESS });
     const CLICommand EXCLUDE_PRIMARIES_COMMAND = CLICommand(NONE, "", "excludePrimaries", "Exclude primary particles from processing", { CLI_VALUELESS });
+    const CLICommand GENERATION_FILTER_COMMAND = CLICommand(NONE, "", "generations", "Filter particles by generation range (min and max)", { CLI_INT, CLI_INT });
     const CLICommand NORMALIZE_BY_PARTICLES_COMMAND = CLICommand(NONE, "", "normalizeByParticles", "Normalize by particles instead of histories", { CLI_VALUELESS });
     const CLICommand SHOW_DETAILS_COMMAND = CLICommand(NONE, "", "showDetails", "Show detailed info about the parameters being used", { CLI_VALUELESS });
     const CLICommand ERROR_ON_WARNING_COMMAND = CLICommand(NONE, "", "errorOnWarning", "Treat warnings as errors when returning exit code", { CLI_VALUELESS });
@@ -187,11 +188,15 @@ namespace {
     };
 
 
-    // Enum for the particle generation type
-    enum class GenerationType {
-        ALL,
-        PRIMARIES_ONLY,
-        EXCLUDE_PRIMARIES
+    // struct for generation filter
+    struct GenerationFilter
+    {
+        const bool useFilter;
+        const int  minimumGeneration;
+        const int  maximumGeneration;
+
+        GenerationFilter(bool useFilter, int minGen, int maxGen)
+            : useFilter(useFilter), minimumGeneration(minGen), maximumGeneration(maxGen) {}
     };
 
 
@@ -212,7 +217,8 @@ namespace {
 
             const ProjectionType projectionType;
             const QuantityType   quantityType;
-            const GenerationType generationType;
+
+            const GenerationFilter  generationFilter;
 
             const float          tolerance;
             const int            imageWidth;
@@ -238,7 +244,7 @@ namespace {
                 printDetails(userOptions.contains(SHOW_DETAILS_COMMAND)),
                 projectionType(determineProjectionType(userOptions)),
                 quantityType(determineQuantityType(userOptions)),
-                generationType(determineGenerationType(userOptions)),
+                generationFilter(determineGenerationFilter(userOptions)),
                 tolerance(projectionType == ProjectionType::NONE ? userOptions.extractFloatOption(TOLERANCE_COMMAND, DEFAULT_TOLERANCE) * cm : 0.0f),
                 imageWidth(userOptions.extractIntOption(IMAGE_WIDTH_COMMAND, DEFAULT_IMAGE_SIDE)),
                 imageHeight(userOptions.extractIntOption(IMAGE_HEIGHT_COMMAND, DEFAULT_IMAGE_SIDE)),
@@ -293,11 +299,16 @@ namespace {
                     : quantityType == QuantityType::Y_DIRECTIONAL_COSINE ? "Y Directional Cosine"
                     : "Z Directional Cosine") << "\n";
                 // Show generation filter
-                ss << "  Particle selection: "
-                   << (generationType == GenerationType::ALL ? "All"
-                       : generationType == GenerationType::PRIMARIES_ONLY ? "Primaries only"
-                       : "Exclude primaries")
+                bool primariesOnly = generationFilter.useFilter && generationFilter.minimumGeneration == 1 && generationFilter.maximumGeneration == 1;
+                ss << "  Generation Filter: "
+                   << (!generationFilter.useFilter ? "Off"
+                       : primariesOnly ? "On (Primaries only)"
+                       : "On")
                    << "\n";
+                if (generationFilter.useFilter && !primariesOnly) {
+                    ss << "    Minimum Generation: " << generationFilter.minimumGeneration << "\n";
+                    ss << "    Maximum Generation: " << generationFilter.maximumGeneration << "\n";
+                }
                 ss << "  Max Particles to Read: " << (maxParticles == DEFAULT_MAX_PARTICLES ? "all" : std::to_string(maxParticles)) << "\n";
                 // Show normalization mode
                 ss << "  Normalization: by " << (normalizeByParticles ? "particles" : "histories") << "\n";
@@ -383,15 +394,34 @@ namespace {
                 }
             }
 
-            GenerationType determineGenerationType(const UserOptions & userOptions) const {
-                if (userOptions.contains(PRIMARIES_ONLY_COMMAND) && userOptions.contains(EXCLUDE_PRIMARIES_COMMAND)) {
-                    throw std::runtime_error("Cannot specify both --primariesOnly and --excludePrimaries.");
-                } else if (userOptions.contains(PRIMARIES_ONLY_COMMAND)) {
-                    return GenerationType::PRIMARIES_ONLY;
-                } else if (userOptions.contains(EXCLUDE_PRIMARIES_COMMAND)) {
-                    return GenerationType::EXCLUDE_PRIMARIES;
+            GenerationFilter determineGenerationFilter(const UserOptions & userOptions) const {
+                bool hasPrimariesOnlyCommand = userOptions.contains(PRIMARIES_ONLY_COMMAND);
+                bool hasExcludePrimariesCommand = userOptions.contains(EXCLUDE_PRIMARIES_COMMAND);
+                bool hasGenerationFilterCommand = userOptions.contains(GENERATION_FILTER_COMMAND);
+                int commandsUsed = (hasPrimariesOnlyCommand ? 1 : 0) + (hasExcludePrimariesCommand ? 1 : 0) + (hasGenerationFilterCommand ? 1 : 0);
+
+                if (commandsUsed > 1) {
+                    throw std::runtime_error("Cannot specify more than one of --primariesOnly, --excludePrimaries, or --generationFilter at the same time.");
+                } else if (hasPrimariesOnlyCommand) {
+                    return GenerationFilter(true, 1, 1);
+                } else if (hasExcludePrimariesCommand) {
+                    return GenerationFilter(true, 2, std::numeric_limits<int>::max());
                 } else {
-                    return GenerationType::ALL; // default to ALL
+                    // default to no filter
+                    bool useFilter = false;
+                    int minGen = 1;
+                    int maxGen = std::numeric_limits<int>::max();
+
+                    // check for generation filter command
+                    if (hasGenerationFilterCommand) {
+                        auto range = userOptions.extractValues(GENERATION_FILTER_COMMAND);
+                        useFilter = true;
+                        // indices guaranteed to be valid by the argument parser
+                        minGen = std::get<int>(range[0]);
+                        maxGen = std::get<int>(range[1]);
+                    }
+
+                    return GenerationFilter(false, minGen, maxGen);
                 }
             }
 
@@ -411,22 +441,22 @@ namespace {
                 // Override with specific min/max if provided
                 switch (plane) {
                     case XY:
-                        min1 = userOptions.contains(MIN_X_COMMAND) ? userOptions.extractFloatOption(MIN_X_COMMAND) * cm : min1;
-                        max1 = userOptions.contains(MAX_X_COMMAND) ? userOptions.extractFloatOption(MAX_X_COMMAND) * cm : max1;
-                        min2 = userOptions.contains(MIN_Y_COMMAND) ? userOptions.extractFloatOption(MIN_Y_COMMAND) * cm : min2;
-                        max2 = userOptions.contains(MAX_Y_COMMAND) ? userOptions.extractFloatOption(MAX_Y_COMMAND) * cm : max2;
+                        min1 = userOptions.contains(MINIMUM_X_COMMAND) ? userOptions.extractFloatOption(MINIMUM_X_COMMAND) * cm : min1;
+                        max1 = userOptions.contains(MAXIMUM_X_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_X_COMMAND) * cm : max1;
+                        min2 = userOptions.contains(MINIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Y_COMMAND) * cm : min2;
+                        max2 = userOptions.contains(MAXIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Y_COMMAND) * cm : max2;
                         break;
                     case XZ:
-                        min1 = userOptions.contains(MIN_X_COMMAND) ? userOptions.extractFloatOption(MIN_X_COMMAND) * cm : min1;
-                        max1 = userOptions.contains(MAX_X_COMMAND) ? userOptions.extractFloatOption(MAX_X_COMMAND) * cm : max1;
-                        min2 = userOptions.contains(MIN_Z_COMMAND) ? userOptions.extractFloatOption(MIN_Z_COMMAND) * cm : min2;
-                        max2 = userOptions.contains(MAX_Z_COMMAND) ? userOptions.extractFloatOption(MAX_Z_COMMAND) * cm : max2;
+                        min1 = userOptions.contains(MINIMUM_X_COMMAND) ? userOptions.extractFloatOption(MINIMUM_X_COMMAND) * cm : min1;
+                        max1 = userOptions.contains(MAXIMUM_X_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_X_COMMAND) * cm : max1;
+                        min2 = userOptions.contains(MINIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Z_COMMAND) * cm : min2;
+                        max2 = userOptions.contains(MAXIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Z_COMMAND) * cm : max2;
                         break;
                     case YZ:
-                        min1 = userOptions.contains(MIN_Y_COMMAND) ? userOptions.extractFloatOption(MIN_Y_COMMAND) * cm : min1;
-                        max1 = userOptions.contains(MAX_Y_COMMAND) ? userOptions.extractFloatOption(MAX_Y_COMMAND) * cm : max1;
-                        min2 = userOptions.contains(MIN_Z_COMMAND) ? userOptions.extractFloatOption(MIN_Z_COMMAND) * cm : min2;
-                        max2 = userOptions.contains(MAX_Z_COMMAND) ? userOptions.extractFloatOption(MAX_Z_COMMAND) * cm : max2;
+                        min1 = userOptions.contains(MINIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Y_COMMAND) * cm : min1;
+                        max1 = userOptions.contains(MAXIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Y_COMMAND) * cm : max1;
+                        min2 = userOptions.contains(MINIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Z_COMMAND) * cm : min2;
+                        max2 = userOptions.contains(MAXIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Z_COMMAND) * cm : max2;
                         break;
                 }
                 return {min1, max1, min2, max2};
@@ -460,6 +490,7 @@ namespace {
                 if (tolerance < 0) throw std::runtime_error("Tolerance cannot be a negative number.");
                 if (imageWidth <= 0) throw std::runtime_error("Image width must be a positive integer.");
                 if (imageHeight <= 0) throw std::runtime_error("Image height must be a positive integer.");
+                if (generationFilter.useFilter && (generationFilter.minimumGeneration < generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min < max and that min is at least 1.");
             }
     };
 
@@ -487,12 +518,12 @@ int main(int argc, char* argv[]) {
         PROJECTION_TYPE_COMMAND,
         IMAGE_WIDTH_COMMAND,
         IMAGE_HEIGHT_COMMAND,
-        MIN_X_COMMAND,
-        MAX_X_COMMAND,
-        MIN_Y_COMMAND,
-        MAX_Y_COMMAND,
-        MIN_Z_COMMAND,
-        MAX_Z_COMMAND,
+        MINIMUM_X_COMMAND,
+        MAXIMUM_X_COMMAND,
+        MINIMUM_Y_COMMAND,
+        MAXIMUM_Y_COMMAND,
+        MINIMUM_Z_COMMAND,
+        MAXIMUM_Z_COMMAND,
         SQUARE_COMMAND,
         TOLERANCE_COMMAND,
         MAX_PARTICLES_COMMAND,
@@ -500,6 +531,7 @@ int main(int argc, char* argv[]) {
         QUANTITY_TYPE_COMMAND,
         PRIMARIES_ONLY_COMMAND,
         EXCLUDE_PRIMARIES_COMMAND,
+        GENERATION_FILTER_COMMAND,
         NORMALIZE_BY_PARTICLES_COMMAND,
         SHOW_DETAILS_COMMAND,
         EGSLATCHFilterCommand
@@ -627,17 +659,13 @@ int main(int argc, char* argv[]) {
             validPixel = validPixel && (pixelX >= 0 && pixelX < config.imageWidth && pixelY >= 0 && pixelY < config.imageHeight);
 
             // Check if the particle is a included based on generation type
-            if (validPixel && config.generationType != GenerationType::ALL) {
-                if (particle.hasBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE)) {
-                    bool isPrimary = particle.getBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE) ? false : true;
-                    if (config.generationType == GenerationType::PRIMARIES_ONLY && !isPrimary) {
-                        validPixel = false;
-                    } else if (config.generationType == GenerationType::EXCLUDE_PRIMARIES && isPrimary) {
-                        validPixel = false;
-                    }
-                } else if (!generationDetectionFailed) {
-                    warningMessages.push_back("Could not determine particle generation (primary/secondary) from the phase space file. Generation-based filtering was not applied.");
-                    generationDetectionFailed = true;
+            if (validPixel && config.generationFilter.useFilter) {
+                if (particle.hasIntProperty(IntPropertyType::GENERATION)) {
+                    const int generation = particle.getIntProperty(IntPropertyType::GENERATION);
+                    validPixel = generation < config.generationFilter.minimumGeneration || generation > config.generationFilter.maximumGeneration;
+                } else {
+                    // Could not determine particle generation, so throw an error
+                    throw std::runtime_error("Could not determine particle generation (primary/secondary) from the phase space file.");
                 }
             }
 

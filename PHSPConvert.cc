@@ -103,7 +103,27 @@ namespace {
     const CLICommand FILTER_BY_PDG_COMMAND = CLICommand(NONE, "", "filterByPDG", "Only convert particles with the specified PDG code", { CLI_INT });
     const CLICommand MINIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "minEnergy", "Only convert particles with kinetic energy greater than or equal to this value in MeV", { CLI_FLOAT });
     const CLICommand MAXIMUM_ENERGY_COMMAND = CLICommand(NONE, "", "maxEnergy", "Only convert particles with kinetic energy less than or equal to this value in MeV", { CLI_FLOAT });
+    const CLICommand MAXIMUM_X_COMMAND = CLICommand(NONE, "", "maxX", "Maximum X position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MAXIMUM_Y_COMMAND = CLICommand(NONE, "", "maxY", "Maximum Y position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MAXIMUM_Z_COMMAND = CLICommand(NONE, "", "maxZ", "Maximum Z position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MINIMUM_X_COMMAND = CLICommand(NONE, "", "minX", "Minimum X position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MINIMUM_Y_COMMAND = CLICommand(NONE, "", "minY", "Minimum Y position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand MINIMUM_Z_COMMAND = CLICommand(NONE, "", "minZ", "Minimum Z position in cm for particles to be converted", { CLI_FLOAT });
+    const CLICommand PRIMARIES_ONLY_COMMAND = CLICommand(NONE, "", "primariesOnly", "Only process primary particles from the phase space file", { CLI_VALUELESS });
+    const CLICommand EXCLUDE_PRIMARIES_COMMAND = CLICommand(NONE, "", "excludePrimaries", "Exclude primary particles from processing", { CLI_VALUELESS });
+    const CLICommand GENERATION_FILTER_COMMAND = CLICommand(NONE, "", "generations", "Filter particles by generation range (min and max)", { CLI_INT, CLI_INT });
     const CLICommand ERROR_ON_WARNING_COMMAND = CLICommand(NONE, "", "errorOnWarning", "Treat warnings as errors when returning exit code", { CLI_VALUELESS });
+
+    // struct for generation filter
+    struct GenerationFilter
+    {
+        const bool useFilter;
+        const int  minimumGeneration;
+        const int  maximumGeneration;
+
+        GenerationFilter(bool useFilter, int minGen, int maxGen)
+            : useFilter(useFilter), minimumGeneration(minGen), maximumGeneration(maxGen) {}
+    };
 
     // App configuration state
     struct AppConfig {
@@ -121,8 +141,16 @@ namespace {
         const float         projectToZValue;
         const ParticleType  filterByParticle;
         const bool          filterByEnergy;
+        const bool          filterByPosition;
+        const GenerationFilter  generationFilter;
         const float         minimumEnergy;
         const float         maximumEnergy;
+        const float         maximumX;
+        const float         maximumY;
+        const float         maximumZ;
+        const float         minimumX;
+        const float         minimumY;
+        const float         minimumZ;
         const bool          errorOnWarning;
 
         // Constructor to initialize from user options
@@ -136,13 +164,23 @@ namespace {
             projectToX(userOptions.contains(PROJECT_TO_X_COMMAND)),
             projectToY(userOptions.contains(PROJECT_TO_Y_COMMAND)),
             projectToZ(userOptions.contains(PROJECT_TO_Z_COMMAND)),
-            projectToXValue(projectToX ? userOptions.extractFloatOption(PROJECT_TO_X_COMMAND, 0.0f) * cm : 0.0f),
-            projectToYValue(projectToY ? userOptions.extractFloatOption(PROJECT_TO_Y_COMMAND, 0.0f) * cm : 0.0f),
-            projectToZValue(projectToZ ? userOptions.extractFloatOption(PROJECT_TO_Z_COMMAND, 0.0f) * cm : 0.0f),
+            projectToXValue(projectToX ? userOptions.extractFloatOption(PROJECT_TO_X_COMMAND) * cm : 0.0f),
+            projectToYValue(projectToY ? userOptions.extractFloatOption(PROJECT_TO_Y_COMMAND) * cm : 0.0f),
+            projectToZValue(projectToZ ? userOptions.extractFloatOption(PROJECT_TO_Z_COMMAND) * cm : 0.0f),
             filterByParticle(determineParticleFilter(userOptions)),
             filterByEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) || userOptions.contains(MAXIMUM_ENERGY_COMMAND)),
-            minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MINIMUM_ENERGY_COMMAND, 0.0f) * MeV : 0.0f),
-            maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND, std::numeric_limits<float>::max()) * MeV : std::numeric_limits<float>::max()),
+            filterByPosition(userOptions.contains(MINIMUM_X_COMMAND) || userOptions.contains(MAXIMUM_X_COMMAND) ||
+                             userOptions.contains(MINIMUM_Y_COMMAND) || userOptions.contains(MAXIMUM_Y_COMMAND) ||
+                             userOptions.contains(MINIMUM_Z_COMMAND) || userOptions.contains(MAXIMUM_Z_COMMAND)),
+            generationFilter(determineGenerationFilter(userOptions)),
+            minimumEnergy(userOptions.contains(MINIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MINIMUM_ENERGY_COMMAND) * MeV : 0.0f),
+            maximumEnergy(userOptions.contains(MAXIMUM_ENERGY_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_ENERGY_COMMAND) * MeV : std::numeric_limits<float>::max()),
+            minimumX(userOptions.contains(MINIMUM_X_COMMAND) ? userOptions.extractFloatOption(MINIMUM_X_COMMAND) * cm : std::numeric_limits<float>::lowest()),
+            maximumX(userOptions.contains(MAXIMUM_X_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_X_COMMAND) * cm : std::numeric_limits<float>::max()),
+            minimumY(userOptions.contains(MINIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Y_COMMAND) * cm : std::numeric_limits<float>::lowest()),
+            maximumY(userOptions.contains(MAXIMUM_Y_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Y_COMMAND) * cm : std::numeric_limits<float>::max()),
+            minimumZ(userOptions.contains(MINIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MINIMUM_Z_COMMAND) * cm : std::numeric_limits<float>::lowest()),
+            maximumZ(userOptions.contains(MAXIMUM_Z_COMMAND) ? userOptions.extractFloatOption(MAXIMUM_Z_COMMAND) * cm : std::numeric_limits<float>::max()),
             errorOnWarning(userOptions.contains(ERROR_ON_WARNING_COMMAND))
         {
             // Validate the configuration
@@ -150,6 +188,10 @@ namespace {
         }
 
         bool useProjection() const { return projectToX || projectToY || projectToZ; }
+        bool isFilteringByEnergy() const { return filterByEnergy; }
+        bool isFilteringByPosition() const { return filterByPosition; }
+        bool isFilteringByParticle() const { return filterByParticle != ParticleType::Unsupported; }
+        bool isFilteringByGeneration() const { return generationFilter.useFilter; }
 
     private:
         ParticleType determineParticleFilter(const UserOptions& userOptions) const {
@@ -162,6 +204,37 @@ namespace {
                 return getParticleTypeFromPDGID(static_cast<std::int32_t>(pdgCode));
             }
             return ParticleType::Unsupported;
+        }
+
+        GenerationFilter determineGenerationFilter(const UserOptions & userOptions) const {
+            bool hasPrimariesOnlyCommand = userOptions.contains(PRIMARIES_ONLY_COMMAND);
+            bool hasExcludePrimariesCommand = userOptions.contains(EXCLUDE_PRIMARIES_COMMAND);
+            bool hasGenerationFilterCommand = userOptions.contains(GENERATION_FILTER_COMMAND);
+            int commandsUsed = (hasPrimariesOnlyCommand ? 1 : 0) + (hasExcludePrimariesCommand ? 1 : 0) + (hasGenerationFilterCommand ? 1 : 0);
+
+            if (commandsUsed > 1) {
+                throw std::runtime_error("Cannot specify more than one of --primariesOnly, --excludePrimaries, or --generationFilter at the same time.");
+            } else if (hasPrimariesOnlyCommand) {
+                return GenerationFilter(true, 1, 1);
+            } else if (hasExcludePrimariesCommand) {
+                return GenerationFilter(true, 2, std::numeric_limits<int>::max());
+            } else {
+                // default to no filter
+                bool useFilter = false;
+                int minGen = 1;
+                int maxGen = std::numeric_limits<int>::max();
+
+                // check for generation filter command
+                if (hasGenerationFilterCommand) {
+                    auto range = userOptions.extractValues(GENERATION_FILTER_COMMAND);
+                    useFilter = true;
+                    // indices guaranteed to be valid by the argument parser
+                    minGen = std::get<int>(range[0]);
+                    maxGen = std::get<int>(range[1]);
+                }
+
+                return GenerationFilter(false, minGen, maxGen);
+            }
         }
 
         void validate(const UserOptions& userOptions) const {
@@ -177,16 +250,30 @@ namespace {
             {
                 throw std::runtime_error("Minimum energy cannot be greater than maximum energy for energy filter.");
             }
+            if (filterByPosition && (minimumX > maximumX))
+            {
+                throw std::runtime_error("Minimum X position cannot be greater than maximum X position for position filter.");
+            }            
+            if (filterByPosition && (minimumY > maximumY))
+            {
+                throw std::runtime_error("Minimum Y position cannot be greater than maximum Y position for position filter.");
+            }
+            if (filterByPosition && (minimumZ > maximumZ))
+            {
+                throw std::runtime_error("Minimum Z position cannot be greater than maximum Z position for position filter.");
+            }
             if ((userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(ELECTRONS_ONLY_COMMAND))
                 || (userOptions.contains(PHOTONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND))
                 || (userOptions.contains(ELECTRONS_ONLY_COMMAND) && userOptions.contains(FILTER_BY_PDG_COMMAND)))
             {
                 throw std::runtime_error("Conflicting particle filter options specified.");
             }
+            if (generationFilter.useFilter && (generationFilter.minimumGeneration < generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min < max and that min is at least 1.");
         }
     };
 
     // Function to apply filters to a particle based on the application configuration
+    // return true if the particle passes all filters, false otherwise
     bool applyFilters(const Particle & particle, const AppConfig & config)
     {
         // Apply particle type filter if specified
@@ -196,12 +283,37 @@ namespace {
 
         // Apply energy filters
         if (config.filterByEnergy) {
-            float energy = particle.getKineticEnergy();
+            const float energy = particle.getKineticEnergy();
             if (energy < config.minimumEnergy || energy > config.maximumEnergy) {
                 return false;
             }
         }
-        
+
+        // Apply position filters
+        if (config.filterByPosition) {
+            const float x = particle.getX();
+            const float y = particle.getY();
+            const float z = particle.getZ();
+            if (x < config.minimumX || x > config.maximumX ||
+                y < config.minimumY || y > config.maximumY ||
+                z < config.minimumZ || z > config.maximumZ) {
+                return false;
+            }
+        }
+
+        // Apply generation filter
+        if (config.generationFilter.useFilter) {
+            if (particle.hasIntProperty(IntPropertyType::GENERATION)) {
+                const int generation = particle.getIntProperty(IntPropertyType::GENERATION);
+                if (generation < config.generationFilter.minimumGeneration || generation > config.generationFilter.maximumGeneration) {
+                    return false;
+                }
+            } else {
+                // Particle does not have a generation property, filter it by default
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -234,6 +346,9 @@ int main(int argc, char* argv[]) {
         FILTER_BY_PDG_COMMAND,
         MINIMUM_ENERGY_COMMAND,
         MAXIMUM_ENERGY_COMMAND,
+        MAXIMUM_X_COMMAND,
+        MAXIMUM_Y_COMMAND,
+        MAXIMUM_Z_COMMAND,
         ERROR_ON_WARNING_COMMAND
     });
     
@@ -300,11 +415,11 @@ int main(int argc, char* argv[]) {
             while (reader->hasMoreParticles() && (!readPartialFile || reader->getParticlesRead() < particlesToRead)) {
                 Particle particle = reader->getNextParticle();
 
-                // Apply filters
-                bool particleRejected = !applyFilters(particle, config);
+                // Initialize the particle rejection flag
+                bool particleRejected = false;
 
                 // Handle particle projection if requested
-                if (!particleRejected && config.useProjection()) {
+                if (config.useProjection()) {
                     // Project the particle if projection is enabled
                     // If the projection fails (e.g. particle direction is parallel to the projection plane) then skip writing this particle
                     // If we don't write the particle and it is a new history then we need to adjust the history count
@@ -318,6 +433,9 @@ int main(int argc, char* argv[]) {
                         particlesRejectedByProjection++;
                     }
                 }
+
+                // Apply filters post projection
+                if (!particleRejected) particleRejected = !applyFilters(particle, config);
 
                 // Either write or reject the particle
                 if (particleRejected) {
