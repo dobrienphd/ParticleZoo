@@ -557,8 +557,6 @@ int main(int argc, char* argv[]) {
         config.details(reader->getPHSPFormat());
     }
 
-    bool generationDetectionFailed = false;
-
     // Error handling for both reader and writer
     try {
         // Start the process
