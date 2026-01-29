@@ -8,23 +8,24 @@ namespace ParticleZoo::Penelope
 {
 
     /**
-     * @brief Applies ILB1 value to a particle and sets secondary particle flag
+     * @brief Applies ILB1 value to a particle and sets secondary particle flag if ILB1 > 1
      * 
      * ILB1 represents the generation of the particle in the PENELOPE simulation:
+     * - 0: Unknown
      * - 1: Primary particle (from original source)
      * - 2 or higher: Secondary particle (created during simulation)
      * 
      * This function also sets the IS_SECONDARY_PARTICLE boolean property accordingly.
      * 
      * @param particle The particle to modify
-     * @param ilb1 The ILB1 value indicating particle generation (must be >= 1)
-     * @throws std::runtime_error if ilb1 value is invalid (<1)
+     * @param ilb1 The ILB1 value indicating particle generation (must be >= 0)
+     * @throws std::runtime_error if ilb1 value is invalid (<0)
      */
     inline void ApplyILB1ToParticle(Particle & particle, const int ilb1)
     {
-        if (ilb1 > 1) {
+        if (ilb1 > 0) {
             particle.setIntProperty(IntPropertyType::GENERATION, ilb1);
-        } else {
+        } else if (ilb1 < 0) {
             throw std::runtime_error("Invalid ILB1 value: " + std::to_string(ilb1));
         }
         particle.setIntProperty(IntPropertyType::PENELOPE_ILB1, ilb1);
