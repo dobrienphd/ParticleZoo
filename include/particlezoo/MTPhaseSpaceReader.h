@@ -1,0 +1,170 @@
+
+#pragma once
+
+#include "particlezoo/PhaseSpaceFileReader.h"
+
+#include <vector>
+#include <memory>
+#include <string>
+#include <cstdint>
+#include <limits>
+
+namespace ParticleZoo {
+
+    /**
+     * @brief Multi-threaded phase space file reader for parallel particle processing.
+     * 
+     * MTPhaseSpaceReader provides thread-safe parallel reading of phase space files by
+     * creating multiple independent PhaseSpaceFileReader instances and partitioning the
+     * histories across threads. Each thread maintains its own reader positioned at a
+     * specific section of the phase space file.
+     * 
+     * The important property of this class is that it distributes histories evenly across
+     * threads, it does not necessarily distribute particles evenly. This is for use-cases
+     * where histories are the fundamental unit of work. If load balancing by particle count
+     * is desired, consider using a different approach.
+     * 
+     * The reader automatically handles:
+     * - History partitioning across threads with proper boundary alignment
+     * - Empty history gap distribution for files with empty histories
+     * - Thread-safe particle retrieval without locking (each thread has its own reader)
+     * 
+     * @note Each thread must use its assigned thread index when calling methods.
+     * @note Incremental history counts are derived from represented histories only and do not reflect empty histories counts directly recorded in the phase space file if present.
+     * @note Particle order within a history is preserved, but histories are processed
+     *       in parallel across threads.
+     */
+    class MTPhaseSpaceReader {
+
+        enum HasMoreParticlesResult {
+            HAS_MORE_PARTICLES,
+            NO_MORE_PARTICLES,
+            NEEDS_CHECKING
+        };
+
+        public:
+            /**
+             * @brief Constructs a multi-threaded phase space reader.
+             * 
+             * Creates multiple PhaseSpaceFileReader instances (one per thread) and positions
+             * each at its designated starting history. The constructor partitions the total
+             * represented histories evenly across threads, with remainder histories distributed
+             * to the first N threads.
+             * 
+             * @param filename Path to the phase space file to read
+             * @param options User options for configuring the reader (format-specific settings)
+             * @param numThreads Number of parallel threads that will read from this file
+             * @param totalHistoriesToRead Maximum number of original histories to read
+             *                             (defaults to reading entire file)
+             * 
+             * @throws std::runtime_error If the file cannot be opened or contains zero histories
+             * @throws std::runtime_error If a PhaseSpaceFileReader cannot be created
+             */
+            MTPhaseSpaceReader(const std::string& filename, const UserOptions& options = {}, size_t numThreads = 1, std::uint64_t totalHistoriesToRead = std::numeric_limits<std::uint64_t>::max());
+            
+            /**
+             * @brief Destructor that closes all underlying readers.
+             */
+            ~MTPhaseSpaceReader();
+
+            /**
+             * @brief Retrieves the next particle for a specific thread.
+             * 
+             * Reads and returns the next particle from the phase space file for the given
+             * thread. Updates internal counters for history tracking and automatically
+             * distributes empty history gaps when present.
+             * 
+             * @param threadIndex The index of the calling thread (0 to numThreads-1)
+             * @return The next particle for this thread
+             * 
+             * @throws std::out_of_range If threadIndex is invalid
+             * @throws std::runtime_error If no more particles are available for this thread
+             * 
+             * @note Must call hasMoreParticles() first to verify particles are available
+             * @note Sets the INCREMENTAL_HISTORY_NUMBER property on particles
+             */
+            Particle getNextParticle(size_t threadIndex);
+            
+            /**
+             * @brief Checks if more particles are available for a specific thread.
+             * 
+             * Determines whether the thread has reached its partition boundary or the end
+             * of the file. Uses caching to avoid repeated checks on consecutive calls.
+             * 
+             * @param threadIndex The index of the calling thread (0 to numThreads-1)
+             * @return true if more particles are available, false otherwise
+             * 
+             * @throws std::out_of_range If threadIndex is invalid
+             * 
+             * @note Always call this before getNextParticle() to avoid exceptions
+             */
+            bool     hasMoreParticles(size_t threadIndex);
+            
+            /**
+             * @brief Gets the total number of histories processed by a specific thread.
+             * 
+             * Returns the cumulative count of histories (including empty histories)
+             * that have been processed by this thread. This represents the contribution
+             * to the total original history count.
+             * 
+             * @param threadIndex The index of the thread (0 to numThreads-1)
+             * @return Total number of original histories processed (including empty ones)
+             * 
+             * @throws std::out_of_range If threadIndex is invalid
+             */
+            std::uint64_t getHistoriesRead(size_t threadIndex) const;
+
+            /**
+             * @brief Gets the total number of particles in the phase space file.
+             * 
+             * @return Total particle count in the file
+             */
+            std::uint64_t getNumberOfParticles() const { return numberOfParticlesInPhsp_; }
+            
+            /**
+             * @brief Gets the number of original histories in the phase space file.
+             * 
+             * Returns the total number of histories that are in the phase space file, including
+             * those that have no particles (empty histories).
+             * 
+             * @return Number of original histories (including empty ones)
+             */
+            std::uint64_t getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
+            
+            /**
+             * @brief Gets the number of represented histories in the file.
+             * 
+             * Returns the count of histories that actually produced particles and are
+             * represented in the phase space file. This is always less than or equal to
+             * the number of original histories.
+             * 
+             * @return Number of histories with at least one particle
+             */
+            std::uint64_t getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
+
+            /**
+             * @brief Closes all underlying phase space file readers.
+             * 
+             * Should be called when done reading to free file handles and resources.
+             * Automatically called by the destructor.
+             */
+            void     close();
+
+        private:
+            std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
+
+            bool hasGapsBetweenHistories_;
+            std::uint64_t totalHistoriesToRead_;
+            std::uint64_t numberOfOriginalHistories_;
+            std::uint64_t numberOfParticlesInPhsp_;
+            std::uint64_t numberOfRepresentedHistories_;
+            std::uint64_t emptyHistoriesBetweenEachHistory_;
+            std::uint64_t perHistoryErrorContribution_;
+            std::vector<std::uint64_t> emptyHistoryErrors_;
+            std::vector<std::uint64_t> startingHistorys_;
+            std::vector<std::uint64_t> historiesRead_;
+            std::vector<std::uint64_t> totalHistoriesRead_;
+            std::vector<HasMoreParticlesResult> hasMoreParticlesCache_;
+    };
+
+}
