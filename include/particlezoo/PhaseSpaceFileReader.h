@@ -101,6 +101,18 @@ namespace ParticleZoo
             virtual std::uint64_t getNumberOfOriginalHistories() const = 0;
 
             /**
+             * @brief Get the number of histories actually represented in this phase space.
+             * 
+             * This is a virtual method that can be implemented by derived classes.
+             * The method for determining represented history count varies by format.
+             * If not implemented, this method throws an exception.
+             * 
+             * @return std::uint64_t The number of represented histories
+             * @throws std::runtime_error if this information is not available in the file format
+             */
+            virtual std::uint64_t getNumberOfRepresentedHistories() const;
+
+            /**
              * @brief Get the number of Monte Carlo histories that have been read so far.
              * If the end of the file has been reached, this will return the total number of original histories
              * unless more histories than expected have already been read - in which case it returns the actual count.
@@ -605,6 +617,10 @@ namespace ParticleZoo
 
     inline void PhaseSpaceFileReader::setCommentMarkers(const std::vector<std::string> & commentMarkers) {
         asciiCommentMarkers_ = commentMarkers;
+    }
+
+    inline std::uint64_t PhaseSpaceFileReader::getNumberOfRepresentedHistories() const {
+        throw std::runtime_error("getNumberOfRepresentedHistories() is not supported for this file format.");
     }
 
     inline std::size_t PhaseSpaceFileReader::getParticleRecordLength() const {
