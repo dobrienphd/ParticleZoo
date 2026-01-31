@@ -7,8 +7,8 @@
 
 namespace ParticleZoo {
 
-    MTPhaseSpaceReader::MTPhaseSpaceReader(const std::string& filename, const UserOptions& options, size_t numThreads, std::uint64_t totalHistoriesToRead)
-    : hasGapsBetweenHistories_(false), emptyHistoriesBetweenEachHistory_(0), perHistoryErrorContribution_(0), totalHistoriesToRead_(totalHistoriesToRead)
+    MTPhaseSpaceReader::MTPhaseSpaceReader(const std::string& filename, const UserOptions& options, size_t numThreads)
+    : hasGapsBetweenHistories_(false), emptyHistoriesBetweenEachHistory_(0), perHistoryErrorContribution_(0)
     {
         // Create PhaseSpaceFileReader instances for each thread
         readers_.reserve(numThreads);

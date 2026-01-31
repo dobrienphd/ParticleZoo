@@ -57,13 +57,11 @@ namespace ParticleZoo {
              * @param filename Path to the phase space file to read
              * @param options User options for configuring the reader (format-specific settings)
              * @param numThreads Number of parallel threads that will read from this file
-             * @param totalHistoriesToRead Maximum number of original histories to read
-             *                             (defaults to reading entire file)
              * 
              * @throws std::runtime_error If the file cannot be opened or contains zero histories
              * @throws std::runtime_error If a PhaseSpaceFileReader cannot be created
              */
-            MTPhaseSpaceReader(const std::string& filename, const UserOptions& options = {}, size_t numThreads = 1, std::uint64_t totalHistoriesToRead = std::numeric_limits<std::uint64_t>::max());
+            MTPhaseSpaceReader(const std::string& filename, const UserOptions& options = {}, size_t numThreads = 1);
             
             /**
              * @brief Destructor that closes all underlying readers.
