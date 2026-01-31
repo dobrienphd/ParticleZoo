@@ -22,7 +22,10 @@ namespace ParticleZoo {
      * The important property of this class is that it distributes histories evenly across
      * threads, it does not necessarily distribute particles evenly. This is for use-cases
      * where histories are the fundamental unit of work. If load balancing by particle count
-     * is desired, consider using a different approach.
+     * is desired, consider using a different approach. Although on average load balancing
+     * by history should effectively balance particle counts as well, there is significant
+     * overhead associated with dynamically distributing histories to threads so a dedicated
+     * particle-based load balancing mechanism would be preferable in that scenario.
      * 
      * The reader automatically handles:
      * - History partitioning across threads with proper boundary alignment
@@ -66,6 +69,22 @@ namespace ParticleZoo {
              * @brief Destructor that closes all underlying readers.
              */
             ~MTPhaseSpaceReader();
+
+            /**
+             * @brief Peeks at the next particle for a specific thread without consuming it.
+             * 
+             * Allows inspection of the next particle that would be returned by getNextParticle()
+             * without advancing the reader's position. Useful for checking history boundaries.
+             * 
+             * @param threadIndex The index of the calling thread (0 to numThreads-1)
+             * @return The next particle for this thread
+             * 
+             * @throws std::out_of_range If threadIndex is invalid
+             * @throws std::runtime_error If no more particles are available for this thread
+             * 
+             * @note Must call hasMoreParticles() first to verify particles are available
+             */
+            Particle peekNextParticle(size_t threadIndex);
 
             /**
              * @brief Retrieves the next particle for a specific thread.

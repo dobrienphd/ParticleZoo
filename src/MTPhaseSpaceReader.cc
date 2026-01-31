@@ -195,6 +195,19 @@ namespace ParticleZoo {
         return particle;
     }
 
+    Particle MTPhaseSpaceReader::peekNextParticle(size_t threadIndex) {
+        // Validate thread index
+        if (threadIndex >= readers_.size()) {
+            throw std::out_of_range("Thread index out of range in peekNextParticle()");
+        }
+        if (!hasMoreParticles(threadIndex)) {
+            throw std::runtime_error("No more particles to read in peekNextParticle() for thread index " + std::to_string(threadIndex));
+        }
+
+        // Peek at the next particle from the appropriate reader
+        return readers_[threadIndex]->peekNextParticle();
+    }
+
     std::uint64_t MTPhaseSpaceReader::getHistoriesRead(size_t threadIndex) const {
         // Validate thread index
         if (threadIndex >= readers_.size()) {
