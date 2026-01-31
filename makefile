@@ -96,7 +96,8 @@ LIB_NAME := libparticlezoo.a
 LIB_SRCS := \
         src/PhaseSpaceFileReader.cc \
         src/PhaseSpaceFileWriter.cc \
-        src/MTPhaseSpaceReader.cc \
+        src/ParticleBalancedParallelReader.cc \
+        src/HistoryBalancedParallelReader.cc \
         src/utilities/formats.cc \
         src/utilities/argParse.cc \
         src/egs/egsphspFile.cc \

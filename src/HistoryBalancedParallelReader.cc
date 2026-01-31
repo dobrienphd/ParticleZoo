@@ -1,5 +1,5 @@
 
-#include "particlezoo/MTPhaseSpaceReader.h"
+#include "particlezoo/parallel/HistoryBalancedParallelReader.h"
 
 #include "particlezoo/utilities/formats.h"
 
@@ -7,9 +7,13 @@
 
 namespace ParticleZoo {
 
-    MTPhaseSpaceReader::MTPhaseSpaceReader(const std::string& filename, const UserOptions& options, size_t numThreads)
+    HistoryBalancedParallelReader::HistoryBalancedParallelReader(const std::string& filename, const UserOptions& options, size_t numThreads)
     : hasGapsBetweenHistories_(false), emptyHistoriesBetweenEachHistory_(0), perHistoryErrorContribution_(0)
     {
+        if (numThreads < 1) {
+            throw std::invalid_argument("Number of threads must be at least 1 in HistoryBalancedParallelReader");
+        }
+
         // Create PhaseSpaceFileReader instances for each thread
         readers_.reserve(numThreads);
         for (size_t i = 0; i < numThreads; ++i) {
@@ -118,7 +122,7 @@ namespace ParticleZoo {
         }
     }
 
-    bool MTPhaseSpaceReader::hasMoreParticles(size_t threadIndex) {
+    bool HistoryBalancedParallelReader::hasMoreParticles(size_t threadIndex) {
         // Validate thread index
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in hasMoreParticles()");
@@ -154,7 +158,7 @@ namespace ParticleZoo {
         return hasMoreParticles;
     }
 
-    Particle MTPhaseSpaceReader::getNextParticle(size_t threadIndex) {
+    Particle HistoryBalancedParallelReader::getNextParticle(size_t threadIndex) {
         // Validate thread index
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in getNextParticle()");
@@ -195,7 +199,7 @@ namespace ParticleZoo {
         return particle;
     }
 
-    Particle MTPhaseSpaceReader::peekNextParticle(size_t threadIndex) {
+    Particle HistoryBalancedParallelReader::peekNextParticle(size_t threadIndex) {
         // Validate thread index
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in peekNextParticle()");
@@ -208,7 +212,7 @@ namespace ParticleZoo {
         return readers_[threadIndex]->peekNextParticle();
     }
 
-    std::uint64_t MTPhaseSpaceReader::getHistoriesRead(size_t threadIndex) const {
+    std::uint64_t HistoryBalancedParallelReader::getHistoriesRead(size_t threadIndex) const {
         // Validate thread index
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in getHistoriesRead()");
@@ -216,13 +220,13 @@ namespace ParticleZoo {
         return totalHistoriesRead_[threadIndex];
     }
 
-    void MTPhaseSpaceReader::close() {
+    void HistoryBalancedParallelReader::close() {
         for (auto& reader : readers_) {
             reader->close();
         }
     }
 
-    MTPhaseSpaceReader::~MTPhaseSpaceReader() {
+    HistoryBalancedParallelReader::~HistoryBalancedParallelReader() {
         close();
     }
 
