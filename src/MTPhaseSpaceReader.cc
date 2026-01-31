@@ -91,15 +91,23 @@ namespace ParticleZoo {
         for (size_t i = 0; i < numThreads; ++i) {
             threads.emplace_back([this, i]() {
                 std::uint64_t targetHistory = startingHistorys_[i];
+                // Thread 0 starts at the beginning, no positioning needed
+                if (targetHistory == 0) {
+                    return;
+                }
                 std::uint64_t currentHistory = 0;
-                while (readers_[i]->hasMoreParticles() && currentHistory < targetHistory) {
+                // Skip to the first particle of history #targetHistory (0-indexed)
+                // We need to consume all particles from histories 0 through targetHistory-1
+                while (readers_[i]->hasMoreParticles()) {
                     const Particle particle = readers_[i]->peekNextParticle();
                     if (particle.isNewHistory()) {
+                        if (currentHistory == targetHistory) {
+                            // We've reached the start of the target history, stop here
+                            break;
+                        }
                         currentHistory++;
                     }
-                    if (currentHistory < targetHistory) {
-                        readers_[i]->getNextParticle(); // Advance only if we haven't reached the target history
-                    }
+                    readers_[i]->getNextParticle(); // Consume this particle
                 }
             });
         }
@@ -132,7 +140,7 @@ namespace ParticleZoo {
                                           : numberOfRepresentedHistories_;
 
             // Check if we have completed all histories for this thread
-            if (historiesRead_[threadIndex] == targetHistories) {
+            if (historiesRead_[threadIndex] >= targetHistories) {
                 // Check if the next particle would start a new history
                 const Particle nextParticle = readers_[threadIndex]->peekNextParticle();
                 // If the next particle starts a new history, we have no more particles for this thread
