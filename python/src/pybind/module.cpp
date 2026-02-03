@@ -134,6 +134,8 @@ PYBIND11_MODULE(_pz, m) {
                "PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transition that created the particle")
         .value("PENELOPE_ILB5", IntPropertyType::PENELOPE_ILB5,
                "PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle")
+        .value("GENERATION", IntPropertyType::GENERATION,
+               "Generation of the particle (1 for primary, 2 for secondary, etc.)")
         .value("CUSTOM", IntPropertyType::CUSTOM,
                "Custom integer property type, can be used for any user-defined purpose");
 
@@ -158,8 +160,6 @@ PYBIND11_MODULE(_pz, m) {
                "Invalid property type")
         .value("IS_MULTIPLE_CROSSER", BoolPropertyType::IS_MULTIPLE_CROSSER,
                "Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)")
-        .value("IS_SECONDARY_PARTICLE", BoolPropertyType::IS_SECONDARY_PARTICLE,
-               "Flag indicating that the particle is a secondary")
         .value("CUSTOM", BoolPropertyType::CUSTOM,
                "Custom boolean property type, can be used for any user-defined purpose");
 
@@ -473,14 +473,14 @@ PYBIND11_MODULE(_pz, m) {
     m.def("apply_latch_to_particle", &ParticleZoo::EGSphspFile::ApplyLATCHToParticle,
           py::arg("particle"), py::arg("latch"), py::arg("latch_option"),
           "Apply EGS LATCH value to a particle. Sets the EGS_LATCH integer property, "
-          "IS_MULTIPLE_CROSSER boolean property (from bit 32), and IS_SECONDARY_PARTICLE "
-          "boolean property (from bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
+          "IS_MULTIPLE_CROSSER boolean property (from bit 32), and GENERATION "
+          "integer property (from bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
 
     m.def("extract_latch_from_particle", &ParticleZoo::EGSphspFile::ExtractLATCHFromParticle,
           py::arg("particle"), py::arg("latch_option"),
           "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it directly. "
           "Otherwise, constructs LATCH from particle type (bits 29-30), IS_MULTIPLE_CROSSER flag (bit 32), "
-          "and IS_SECONDARY_PARTICLE flag (bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
+          "and GENERATION flag (bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
 
     m.def("does_particle_pass_latch_filter", &ParticleZoo::EGSphspFile::DoesParticlePassLATCHFilter,
           py::arg("particle"), py::arg("latch_filter"),
@@ -493,7 +493,7 @@ PYBIND11_MODULE(_pz, m) {
     m.def("apply_ilb1_to_particle", &ParticleZoo::Penelope::ApplyILB1ToParticle,
           py::arg("particle"), py::arg("ilb1"),
           "Apply PENELOPE ILB1 value to a particle. ILB1 represents particle generation: "
-          "1 for primary particles, 2+ for secondary particles. Also sets IS_SECONDARY_PARTICLE flag. "
+          "1 for primary particles, 2+ for secondary particles. Also sets GENERATION flag. "
           "Raises RuntimeError if ilb1 < 1.");
 
     m.def("apply_ilb2_to_particle", &ParticleZoo::Penelope::ApplyILB2ToParticle,
@@ -527,7 +527,7 @@ PYBIND11_MODULE(_pz, m) {
     m.def("extract_ilb1_from_particle", &ParticleZoo::Penelope::ExtractILB1FromParticle,
           py::arg("particle"),
           "Extract PENELOPE ILB1 value from a particle. Returns PENELOPE_ILB1 property if set, "
-          "otherwise infers from IS_SECONDARY_PARTICLE flag (2 if secondary, 1 if primary, 0 if neither).");
+          "otherwise infers from GENERATION flag.");
 
     m.def("extract_ilb2_from_particle", &ParticleZoo::Penelope::ExtractILB2FromParticle,
           py::arg("particle"),
@@ -549,7 +549,7 @@ PYBIND11_MODULE(_pz, m) {
           py::arg("particle"),
           "Extract all five PENELOPE ILB values from a particle as a list. "
           "Returns [ILB1, ILB2, ILB3, ILB4, ILB5] extracted from particle properties. "
-          "Missing properties return 0 (except ILB1 which may infer from IS_SECONDARY_PARTICLE).");
+          "Missing properties return 0 (except ILB1 which may infer from GENERATION).");
 
     // ===== Units - expose as module constants =====
     
