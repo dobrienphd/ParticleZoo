@@ -30,19 +30,25 @@ namespace ParticleZoo::EGSphspFile
         bool isMultiPasser = ((LATCH >> 31) & 1) == 1;
         particle.setBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER, isMultiPasser);
 
+        // Attempt to get primary/secondary status from LATCH bits
         switch (latchOption) {
             case EGSLATCHOPTION::LATCH_OPTION_1:
                 // Non-Inherited LATCH Setting
                 // No information on secondary status is stored in this option
                 break;
-            case EGSLATCHOPTION::LATCH_OPTION_2:
+            case EGSLATCHOPTION::LATCH_OPTION_2: // same as LATCH_OPTION_3
             case EGSLATCHOPTION::LATCH_OPTION_3:
                 // Comprehensive LATCH Settings
                 // Particle is secondary if bits 24-28 are non-zero, otherwise primary
                 {
-                    int contentsOfBits24to28 = (LATCH >> 24) & 0x1F;
-                    bool isSecondary = contentsOfBits24to28 != 0;
-                    particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, isSecondary);
+                    // Proceed only if the particle generation hasn't been set by another property (since this is an imperfect method)
+                    if (!particle.hasIntProperty(IntPropertyType::GENERATION)) {
+                        // Extract the contents of bits 24-28 to determine if the particle is secondary. These bits indicate the region secondary particles are created, and are set to zero for primary particles
+                        int contentsOfBits24to28 = (LATCH >> 24) & 0x1F;
+                        // we don't know if the secondary is a first-generation secondary or higher, so we just set the generation to 2 if any secondary bits are set since it is definitely not a primary particle
+                        const int generation = contentsOfBits24to28 != 0 ? 2 : 1;
+                        particle.setIntProperty(IntPropertyType::GENERATION, generation);
+                    }
                 }
                 break;
             default:
@@ -93,10 +99,13 @@ namespace ParticleZoo::EGSphspFile
                 // Set bits 24-28 based on secondary status
                 // Normally these bits would encode the location where the particle has been or interacted
                 // but since we don't have that information here we just set this 5-bit field to 0 for primary and 1 for secondary
-                if (particle.hasBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE) && particle.getBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE)) {
-                    LATCH |= (1 << 24); // Set bit 24 to indicate secondary
-                } else {
-                    LATCH &= ~(0x1F << 24); // Clear bits 24-28 to indicate primary
+                {
+                    const bool isPrimary = particle.hasIntProperty(IntPropertyType::GENERATION) && particle.getIntProperty(IntPropertyType::GENERATION) == 1;
+                    if (isPrimary) {
+                        LATCH &= ~(0x1F << 24); // Clear bits 24-28 to indicate primary
+                    } else {
+                        LATCH |= (1 << 24); // Set bit 24 to indicate secondary
+                    }
                 }
                 break;
             default:

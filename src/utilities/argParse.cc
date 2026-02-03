@@ -199,7 +199,7 @@ namespace ParticleZoo {
                         values.push_back(true);
                     } else {
                         if (++i >= argc) {
-                            std::cerr << "Option --" << optName << " requires an argument" << std::endl;
+                            std::cerr << "Option --" << optName << " requires an additional argument" << std::endl;
                             PrintUsage(usageMessage);
                         }
                         try {
@@ -249,7 +249,7 @@ namespace ParticleZoo {
                         values.push_back(true);
                     } else {
                         if (++i >= argc) {
-                            std::cerr << "Option -" << optName << " requires an argument" << std::endl;
+                            std::cerr << "Option -" << optName << " requires an additional argument" << std::endl;
                             PrintUsage(usageMessage);
                         }
                         try {
