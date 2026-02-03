@@ -12,9 +12,14 @@ jobs:
     - name: Clone ParticleZoo repository
       uses: actions/checkout@v4
       
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+      
     - name: Install ROOT framework
       run: sudo snap install root-framework
-      
+
     - name: Build and install ParticleZoo library without ROOT support
       run: |
         ./configure --no-root
@@ -45,6 +50,19 @@ jobs:
         PHSPSplit --version
         PHSPConvert -f
 
+    - name: Install Python bindings
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        make install-python
+
+    - name: Run Python bindings smoke test
+      run: |
+        source .venv/bin/activate
+        cd python/examples
+        python write_phase_space.py test.egsphsp
+        python read_phase_space.py test.egsphsp
+      
   build-macos:
     runs-on: macos-latest
 
@@ -52,6 +70,11 @@ jobs:
     - name: Clone ParticleZoo repository
       uses: actions/checkout@v4
       
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
     - name: Install ROOT framework
       run: brew install root
       
@@ -85,6 +108,19 @@ jobs:
         PHSPSplit --version
         PHSPConvert -f
 
+    - name: Install Python bindings
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        make install-python
+
+    - name: Run Python bindings smoke test
+      run: |
+        source .venv/bin/activate
+        cd python/examples
+        python write_phase_space.py test.egsphsp
+        python read_phase_space.py test.egsphsp
+
   build-windows:
     runs-on: windows-latest
 
@@ -94,6 +130,11 @@ jobs:
       
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
 
     - name: Cache ROOT framework
       id: cache-root
@@ -140,3 +181,18 @@ jobs:
         PHSPConvert --version
         PHSPSplit --version
         PHSPConvert -f
+
+    - name: Install Python bindings
+      run: |
+        python -m venv .venv
+        .venv\Scripts\Activate.ps1
+        python -m pip install python/
+      shell: pwsh
+
+    - name: Run Python bindings smoke test
+      run: |
+        .venv\Scripts\Activate.ps1
+        cd python/examples
+        python write_phase_space.py test.egsphsp
+        python read_phase_space.py test.egsphsp
+      shell: pwsh

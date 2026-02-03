@@ -52,20 +52,30 @@ sed -i "s/^PROJECT_NUMBER.*=.*/PROJECT_NUMBER         = $VERSION/" Doxyfile
 # Update fancyfoot text in custom_doxygen.sty with the current version
 sed -i "s/ParticleZoo Reference Manual v[0-9.]*[^}]*/ParticleZoo Reference Manual $VERSION/g" docs/scripts/custom_doxygen.sty
 
+# Generate Python API documentation
+echo "Generating Python API documentation..."
+python3 docs/scripts/gen_python_api.py
+if [ $? -ne 0 ]; then
+  echo "Warning: Python API generation had issues, continuing anyway..."
+fi
+
 # Clean up old docs (no errors if they don't exist)
 rm -f docs/*.pdf
 rm -rf docs/latex
 rm -rf docs/html
 
 # Generate the docs
-doxygen Doxyfile && make -C docs/latex clean all && cp docs/latex/refman.pdf "docs/ParticleZoo Reference Manual $VERSION.pdf"
-
-# Clean up intermediate files
-rm -f docs/README.md docs/License
-rm -rf docs/latex
-
-# Return to the scripts directory
-cd docs/scripts
-
-echo "----------------------------------------"
-echo "Documentation generated successfully: docs/ParticleZoo Reference Manual $VERSION.pdf"
+doxygen Doxyfile && make -C docs/latex LATEX_CMD="pdflatex -interaction=nonstopmode" clean all
+if [ $? -eq 0 ]; then
+    cp docs/latex/refman.pdf "docs/ParticleZoo Reference Manual $VERSION.pdf"
+    # Clean up intermediate files
+    rm -f docs/README.md docs/License
+    rm -rf docs/latex
+    rm docs/scripts/python_appendix.tex
+    echo "----------------------------------------"
+    echo "Documentation generated successfully: docs/ParticleZoo Reference Manual $VERSION.pdf"
+else
+    echo "----------------------------------------"
+    echo "ERROR: PDF compilation failed. Log preserved in docs/latex/refman.log"
+    exit 1
+fi
