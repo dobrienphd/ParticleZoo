@@ -58,6 +58,7 @@ namespace ParticleZoo {
     enum class BoolPropertyType {
         INVALID,                ///< Invalid property type
         IS_MULTIPLE_CROSSER,    ///< Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)
+        IS_SECONDARY_PARTICLE [[deprecated("IS_SECONDARY_PARTICLE is deprecated since v1.1.0. Use IntPropertyType::GENERATION instead.")]],  ///< Flag indicating that the particle is a secondary. @deprecated Since v1.1.0. Use IntPropertyType::GENERATION instead.
         CUSTOM                  ///< Custom boolean property type, can be used for any user-defined purpose
     };
 

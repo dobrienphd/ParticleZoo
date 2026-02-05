@@ -48,6 +48,7 @@ namespace ParticleZoo::EGSphspFile
                         // we don't know if the secondary is a first-generation secondary or higher, so we just set the generation to 2 if any secondary bits are set since it is definitely not a primary particle
                         const int generation = contentsOfBits24to28 != 0 ? 2 : 1;
                         particle.setIntProperty(IntPropertyType::GENERATION, generation);
+                        particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, generation > 1);
                     }
                 }
                 break;

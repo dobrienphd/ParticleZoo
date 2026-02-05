@@ -25,6 +25,7 @@ namespace ParticleZoo::Penelope
     {
         if (ilb1 > 0) {
             particle.setIntProperty(IntPropertyType::GENERATION, ilb1);
+            particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, ilb1 > 1);
         } else if (ilb1 < 0) {
             throw std::runtime_error("Invalid ILB1 value: " + std::to_string(ilb1));
         }

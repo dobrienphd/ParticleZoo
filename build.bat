@@ -196,10 +196,10 @@ set LIB_NAME=libparticlezoo.lib
 
 if /I "%BUILD_TYPE%"=="debug" (
     echo Debug build.
-    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX %MACRO_DEFINE%
+    set CFLAGS=/EHsc /std:c++20 /Od /Ob0 /Zi /W4 /WX /wd4996 %MACRO_DEFINE%
 ) else (
     echo Release build.
-    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX %MACRO_DEFINE%
+    set CFLAGS=/EHsc /std:c++20 /O2 /Ob2 /W4 /WX /wd4996 %MACRO_DEFINE%
 )
 
 REM Add multi-processor compilation if jobs specified (default: let MSVC pick if just /MP)
