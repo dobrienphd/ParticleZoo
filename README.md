@@ -629,9 +629,6 @@ print("Conversion complete!")
 - *"Unknown format"* → Use `--inputFormat` to explicitly specify format
 - *"File not found"* → Check file paths and permissions
 
-**Performance Issues:**
-- Large files processing slowly → Consider using `--maxParticles` for testing
-
 ### Getting Help
 
 For additional support:
