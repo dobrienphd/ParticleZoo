@@ -12,10 +12,13 @@ ParticleZoo serves as a universal translator and processor for particle phase sp
 - **Unified API**: Single interface to work with multiple phase space formats
 - **Format Transparency**: Automatic format detection with explicit override options
 - **High Performance**: Efficient binary I/O with configurable buffering
+- **Parallel Processing**: Built-in support for multi-threaded reading with history or particle-balanced partitioning
+- **Random Access**: Seek to specific particles within phase space files
 - **Extensible Architecture**: Plugin-style registry system for adding new formats
-- **Unit Consistency**: Built-in unit system ensures proper dimensional handling
+- **Unit Consistency**: Comprehensive unit system ensures proper dimensional handling
 - **Memory Efficient**: Streaming interfaces for processing large files
 - **Cross-Platform**: Windows, Linux and macOS support with standard build tools
+- **Python Bindings**: Optional Python package for scripting and rapid prototyping
 
 ## Supported Formats
 
@@ -43,6 +46,10 @@ Additional formats can be added through the extensible registry system without m
 
 **`ByteBuffer`**: High-performance binary I/O buffer for efficient reading of large files with configurable buffering strategies.
 
+**`HistoryBalancedParallelReader`**: Multi-threaded reader that partitions phase space files by history count for parallel processing. Each thread receives an approximately equal share of histories.
+
+**`ParticleBalancedParallelReader`**: Multi-threaded reader that partitions phase space files by particle count for parallel processing. Each thread receives an approximately equal share of particles (with history boundaries respected).
+
 ### Data Model
 
 The `Particle` class provides access to:
@@ -51,19 +58,26 @@ The `Particle` class provides access to:
 - **Momentum**: Direction cosines and kinetic energy
 - **Particle properties**: PDG particle codes, statistical weight
 - **History tracking**: Original history numbers and incremental counters
+- **Generation tracking**: Primary/secondary status and generation number (where available)
 - **Format-specific data**: Extensible property system for specialized information
 
 ### Unit System
 
-ParticleZoo includes a comprehensive unit system that ensures dimensional consistency across different formats:
+ParticleZoo includes a comprehensive unit system that ensures dimensional consistency across different formats. The unit system covers length, area, volume, energy, mass, time, frequency, force, pressure, charge, density, dose, and angle:
 
 ```cpp
-// Length units: mm, cm, m
+// Length units: nm, um, mm, cm, m, km, in, ft
 float x_in_cm = particle.getX() / cm;
 float y_in_mm = particle.getY() / mm;
 
-// Energy units: eV, keV, MeV, GeV
+// Energy units: eV, keV, MeV, GeV, TeV, J
 float energy_MeV = particle.getKineticEnergy() / MeV;
+
+// Dose units: Gy, cGy, rad, Sv, mSv, rem
+float dose_cGy = absorbed_dose / cGy;
+
+// Angle units: radian, deg
+float angle_deg = angle / deg;
 ```
 
 ## Building and Installation
@@ -245,6 +259,11 @@ float dx = p.getDirectionalCosineX();
 float dy = p.getDirectionalCosineY();
 float dz = p.getDirectionalCosineZ();
 
+// Generation information
+bool isPrimary = p.isPrimary();
+if (p.hasIntProperty(IntPropertyType::GENERATION)) {
+    int generation = p.getIntProperty(IntPropertyType::GENERATION);
+}
 ```
 
 ### Format-Specific Features
@@ -284,7 +303,7 @@ ParticleZoo includes several command-line utilities that demonstrate the library
 
 ### PHSPConvert - Format Conversion
 
-Converts phase space files between different formats:
+Converts phase space files between different formats with optional filtering and transformations:
 
 ```bash
 # Auto-detect formats from file extensions
@@ -296,8 +315,27 @@ PHSPConvert --inputFormat EGS --outputFormat IAEA input.file output.file
 # Limit particle count
 PHSPConvert --maxParticles 1000000 input.IAEAphsp output.phsp
 
-# Optional: project particles to a plane during conversion
+# Project particles to a plane during conversion
 PHSPConvert --projectToZ 100.0 input.phsp output.IAEAphsp
+
+# Filter by particle type
+PHSPConvert --photonsOnly input.egsphsp photons_only.IAEAphsp
+PHSPConvert --electronsOnly input.egsphsp electrons_only.IAEAphsp
+PHSPConvert --filterByPDG 2212 input.phsp protons_only.phsp
+
+# Filter by energy range (in MeV)
+PHSPConvert --minEnergy 1.0 --maxEnergy 10.0 input.phsp filtered.phsp
+
+# Filter by position (in cm)
+PHSPConvert --minX -5.0 --maxX 5.0 --minY -5.0 --maxY 5.0 input.phsp central.phsp
+
+# Filter by radial distance from central axis (in cm)
+PHSPConvert --maxRadius 10.0 input.phsp within_radius.phsp
+
+# Filter by generation (primary, secondary, etc.)
+PHSPConvert --primariesOnly input.phsp primaries.phsp
+PHSPConvert --excludePrimaries input.phsp secondaries.phsp
+PHSPConvert --generations 1 2 input.phsp first_two_generations.phsp
 ```
 
 ### PHSPCombine - File Merging
@@ -317,19 +355,33 @@ PHSPCombine --preserveConstants --outputFile result.IAEAphsp input1.IAEAphsp inp
 
 ### PHSPImage - Visualization and Third Party Analysis
 
-Creates 2D particle fluence or energy fluence images from phase space data. Can output either a detailed TIFF image with raw fluence data stored in 32-bit floats (default) which can be analyzed directly in third party tools like ImageJ, or in a simple bitmap BMP image with automatic constrast for easy visualization:
+Creates 2D particle fluence or energy fluence images from phase space data. Can output either a detailed TIFF image with raw fluence data stored in 32-bit floats (default) which can be analyzed directly in third party tools like ImageJ, or a simple bitmap BMP image with automatic contrast for easy visualization:
 
 ```bash
 # Generate a flattened XY plane image (default)
 PHSPImage beam.egsphsp fluence_map.tiff
 
-# Generate project the particles to a specific XY plane (e.g. 100 cm or isocenter)
+# Project particles to a specific XY plane (e.g. 100 cm or isocenter)
 PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 
 # Custom plane and energy weighting, particles are not relocated, only particles located at
 # Y = 5 cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
 # with the --tolerance parameter)
 PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
+
+# Score different quantities (count, energy, xDir, yDir, zDir)
+PHSPImage --score energy input.phsp energy_fluence.tiff
+
+# Filter by generation
+PHSPImage --primariesOnly input.phsp primaries_fluence.tiff
+PHSPImage --generations 2 3 input.phsp secondaries_fluence.tiff
+
+# Custom image dimensions and spatial boundaries
+PHSPImage --imageWidth 2048 --imageHeight 2048 --square 20.0 input.phsp high_res.tiff
+PHSPImage --minX -10 --maxX 10 --minY -10 --maxY 10 input.phsp custom_bounds.tiff
+
+# EGS LATCH filtering (for EGS format files)
+PHSPImage --EGS-latch-filter 0x00000001 input.egsphsp latch_filtered.tiff
 ```
 
 ### PHSPSplit - File Splitting
@@ -400,7 +452,24 @@ PHSPConvert --inputFormat ROOT --ROOT-format OpenGATE simulation.root converted.
 
 ### Custom Branch Mapping
 
-For ROOT files with non-standard branch names:
+For ROOT files with non-standard branch names, you can configure custom branch mappings using the `BranchInfo` structure. Each mapping specifies the branch name and its unit conversion factor:
+
+```cpp
+#include <particlezoo/ROOT/ROOTphsp.h>
+
+using namespace ParticleZoo;
+
+// Create reader with custom mappings via UserOptions
+UserOptions options;
+options[ROOT::ROOTTreeNameCommand] = { std::string("MyTree") };
+options[ROOT::ROOTEnergyCommand] = { std::string("E_kin") };
+options[ROOT::ROOTPositionXCommand] = { std::string("pos_x") };
+// ... additional mappings as needed
+
+auto reader = FormatRegistry::CreateReader("ROOT", "custom_file.root", options);
+```
+
+The command-line tools also support custom branch mapping via options:
 
 ```bash
 PHSPConvert --inputFormat ROOT \
@@ -423,6 +492,72 @@ Available branch mapping options:
 - `--ROOT-pdg-code <branch>` - Particle type identifier
 - `--ROOT-history-number <branch>` - History counter
 
+### Random Access
+
+Readers support random access to particles within phase space files:
+
+```cpp
+auto reader = FormatRegistry::CreateReader("simulation.IAEAphsp");
+
+// Move to a specific particle index (zero-based)
+reader->moveToParticle(1000000);
+
+// Continue reading from that position
+while (reader->hasMoreParticles()) {
+    Particle p = reader->getNextParticle();
+    // ...
+}
+```
+
+### Parallel Processing
+
+For large-scale processing, use the parallel readers to distribute work across multiple threads:
+
+```cpp
+#include <particlezoo/parallel/HistoryBalancedParallelReader.h>
+
+// Create a parallel reader with 8 threads
+HistoryBalancedParallelReader parallelReader("large_file.IAEAphsp", {}, 8);
+
+// Each thread processes its partition independently
+#pragma omp parallel for
+for (size_t threadId = 0; threadId < 8; threadId++) {
+    while (parallelReader.hasMoreParticles(threadId)) {
+        Particle p = parallelReader.getNextParticle(threadId);
+        // Process particle...
+    }
+}
+```
+
+## Python Bindings
+
+ParticleZoo includes optional Python bindings for scripting and rapid prototyping. See the [python/README.md](python/README.md) for installation instructions.
+
+```python
+import particlezoo as pz
+
+# Create a particle programmatically
+p = pz.Particle(pz.ParticleType.Electron, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+print(f"Created particle with energy: {p.kinetic_energy} MeV")
+
+# Read particles from one format and write to another
+reader = pz.IAEAReader("/path/to/input.IAEAphsp")
+writer = pz.EGSWriter("/path/to/output.egsphsp")
+
+for i, particle in enumerate(reader):
+    # Optionally modify the particle
+    # particle.weight *= 2.0
+    
+    # Write to output file
+    writer.write(particle)
+    
+    if i % 100000 == 0:
+        print(f"Processed {i} particles...")
+
+writer.close()
+print(f"Conversion complete!")
+```
+
 ## Performance Considerations
 
 ### Memory Usage
@@ -436,6 +571,7 @@ Available branch mapping options:
 - Use binary formats when possible for faster I/O
 - Consider particle limits (`--maxParticles`) for testing and prototyping
 - Enable compiler optimizations (`make release`) for production use
+- Use parallel readers for multi-threaded processing of large files
 - ROOT format may be slower due to tree structure overhead
 
 ## Troubleshooting
@@ -465,4 +601,4 @@ For additional support:
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
 
-Copyright (c) 2025 Daniel O'Brien
+Copyright (c) 2025-2026 Daniel O'Brien
