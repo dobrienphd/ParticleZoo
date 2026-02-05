@@ -520,13 +520,13 @@ while (reader->hasMoreParticles()) {
 For large-scale processing, use the parallel readers to distribute work across multiple threads:
 
 ```cpp
-#include <particlezoo/parallel/HistoryBalancedParallelReader.h>
+#include <particlezoo/parallel/ParticleBalancedParallelReader.h>
 #include <thread>
 #include <vector>
 
 // Create a parallel reader with 8 threads
 const size_t numThreads = 8;
-HistoryBalancedParallelReader parallelReader("large_file.IAEAphsp", {}, numThreads);
+ParticleBalancedParallelReader parallelReader("large_file.IAEAphsp", {}, numThreads);
 
 // Each thread processes its partition independently
 std::vector<std::thread> threads;
