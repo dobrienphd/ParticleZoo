@@ -542,21 +542,21 @@ p = pz.Particle(pz.ParticleType.Electron, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)
 print(f"Created particle with energy: {p.kinetic_energy} MeV")
 
 # Read particles from one format and write to another
-reader = pz.IAEAReader("/path/to/input.IAEAphsp")
-writer = pz.EGSWriter("/path/to/output.egsphsp")
+reader = pz.create_reader("/path/to/input.IAEAphsp")
+writer = pz.create_writer("/path/to/output.egsphsp")
 
 for i, particle in enumerate(reader):
     # Optionally modify the particle
     # particle.weight *= 2.0
     
     # Write to output file
-    writer.write(particle)
+    writer.write_particle(particle)
     
     if i % 100000 == 0:
         print(f"Processed {i} particles...")
 
 writer.close()
-print(f"Conversion complete!")
+print("Conversion complete!")
 ```
 
 ## Performance Considerations
