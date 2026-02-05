@@ -20,22 +20,62 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 
 ## Installation
 
-### From Source (Editable Install)
+### Using the Makefile (Linux/macOS)
 
-Create and activate a virtual environment:
+From the repository root, use the provided makefile targets:
+
+```bash
+# Standard installation (uses virtual env if active, otherwise user site-packages)
+make install-python
+
+# Development/editable installation (changes to source are reflected immediately)
+make install-python-dev
+
+# Uninstall
+make uninstall-python
+```
+
+If no virtual environment is active, the makefile will prompt before installing to user site-packages (`~/.local`).
+
+### Windows Installation
+
+On Windows, use pip directly from a command prompt or PowerShell:
+
+```powershell
+# Navigate to repository root
+cd path\to\particlezoo
+
+# Optional: Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install dependencies and the package
+python -m pip install -U pip setuptools wheel pybind11
+python -m pip install python        # Standard install
+# or
+python -m pip install -e python     # Editable/development install
+```
+
+### Using a Virtual Environment (Linux/macOS)
+
+For isolated development, create and activate a virtual environment first:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Linux/macOS
-# or: .venv\Scripts\activate  # Windows
+source .venv/bin/activate
 
-python -m pip install -U pip setuptools wheel pybind11
+# Then install using the makefile
+make install-python      # or make install-python-dev for editable mode
 ```
 
-Install the package in editable mode from the repository root or python directory:
+### Direct pip Installation (All Platforms)
+
+Alternatively, install directly with pip from the repository root:
 
 ```bash
-python -m pip install -e python
+python -m pip install -U pip setuptools wheel pybind11
+python -m pip install python        # Standard install
+python -m pip install -e python     # Editable install
 ```
 
 The extension compiles its own copy of the C++ sources; it does not require installing the static library first.

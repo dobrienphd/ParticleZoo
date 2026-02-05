@@ -110,6 +110,11 @@ make release  # Explicitly build release version
 # Install (optional)
 make install  # defaults to /usr/local for the install PREFIX
 make install PREFIX=/usr/local
+
+# Python bindings (optional)
+make install-python      # Standard installation
+make install-python-dev  # Editable/development installation
+make uninstall-python    # Remove Python bindings
 ```
 
 #### Windows
@@ -542,7 +547,32 @@ for (auto& t : threads) {
 
 ## Python Bindings
 
-ParticleZoo includes optional Python bindings for scripting and rapid prototyping. See the [python/README.md](python/README.md) for installation instructions.
+ParticleZoo includes optional Python bindings for scripting and rapid prototyping.
+
+### Installation
+
+#### Linux/macOS (using Makefile)
+
+```bash
+# Standard installation (uses virtual env if active, otherwise user site-packages)
+make install-python
+
+# Development/editable installation
+make install-python-dev
+
+# Uninstall
+make uninstall-python
+```
+
+#### Windows (using pip)
+
+```powershell
+# From the repository root
+python -m pip install python        # Standard install
+python -m pip install -e python     # Editable install
+```
+
+See the [python/README.md](python/README.md) for detailed installation options and full API documentation.
 
 ```python
 import particlezoo as pz
