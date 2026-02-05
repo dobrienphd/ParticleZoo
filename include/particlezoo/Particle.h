@@ -354,11 +354,11 @@ namespace ParticleZoo {
             bool isPrimary() const;
 
             /**
-             * @brief Set whether this particle is a primary particle.
+             * @brief Set the generation of the particle.
              * 
-             * @param primary True if the particle is primary, false if secondary or later generation
+             * @param generation The generation number (1 for primary, 2+ for secondary)
              */
-            void setPrimary(bool primary);
+            void setGeneration(std::int32_t generation);
 
             /**
              * @brief Convenience function to get the number of incremental histories regardless of whether the property is set. If the property is not set, it returns 1 if the particle is marked as a new history, otherwise 0.
@@ -860,6 +860,10 @@ namespace ParticleZoo {
             return getIntProperty(IntPropertyType::GENERATION) == 1;
         }
         return false; // If the generation property is not available, return false by default
+    }
+
+    inline void Particle::setGeneration(std::int32_t generation) {
+        setIntProperty(IntPropertyType::GENERATION, generation);
     }
 
 } // namespace ParticleZoo
