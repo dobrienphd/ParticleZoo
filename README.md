@@ -93,8 +93,7 @@ float angle_deg = angle / deg;
     - Windows: Windows Command Prompt or PowerShell (uses `build.bat`)
 - **Optional Dependencies**:
     - CERN ROOT (for ROOT format support)
-        - Linux/macOS: requires `root-config` in PATH
-        - Windows: not supported by build.bat script, requires manual compilation
+        - Requires `root-config` in PATH on all platforms
 
 ### Build Process
 
@@ -153,7 +152,7 @@ The build system creates the following artifacts:
     - Executables: `$PREFIX/bin/PHSPConvert`, etc.
 - Windows (with `build.bat install`):
     - Headers: `%PREFIX%\include\particlezoo\`
-    - Static Library: `%PREFIX%\lib\particlezoo.lib`
+    - Static Library: `%PREFIX%\lib\libparticlezoo.lib`
     - Executables and DLL: `%PREFIX%\bin\PHSPConvert.exe`, etc.
 
 ### Configuration Options
@@ -165,7 +164,9 @@ The `configure` script (Linux/macOS) accepts the following options:
 
 The `build.bat` script (Windows) accepts the following options:
 
-- `--prefix=PATH` - Installation prefix (default: `%LOCALAPPDATA%`)
+- `--prefix=PATH` - Installation prefix (default: `%LOCALAPPDATA%\particlezoo`)
+- `--no-root` - Disable ROOT support even if available
+- `-j N` or `--jobs=N` - Number of parallel compilation jobs
 
 
 ## Using the Library
