@@ -516,17 +516,27 @@ For large-scale processing, use the parallel readers to distribute work across m
 
 ```cpp
 #include <particlezoo/parallel/HistoryBalancedParallelReader.h>
+#include <thread>
+#include <vector>
 
 // Create a parallel reader with 8 threads
-HistoryBalancedParallelReader parallelReader("large_file.IAEAphsp", {}, 8);
+const size_t numThreads = 8;
+HistoryBalancedParallelReader parallelReader("large_file.IAEAphsp", {}, numThreads);
 
 // Each thread processes its partition independently
-#pragma omp parallel for
-for (size_t threadId = 0; threadId < 8; threadId++) {
-    while (parallelReader.hasMoreParticles(threadId)) {
-        Particle p = parallelReader.getNextParticle(threadId);
-        // Process particle...
-    }
+std::vector<std::thread> threads;
+for (size_t threadId = 0; threadId < numThreads; threadId++) {
+    threads.emplace_back([&parallelReader, threadId]() {
+        while (parallelReader.hasMoreParticles(threadId)) {
+            Particle p = parallelReader.getNextParticle(threadId);
+            // Process particle...
+        }
+    });
+}
+
+// Wait for all threads to complete
+for (auto& t : threads) {
+    t.join();
 }
 ```
 
