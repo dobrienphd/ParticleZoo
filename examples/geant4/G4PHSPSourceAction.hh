@@ -1,3 +1,30 @@
+/*
+ * Example Geant4 Primary Generator Action using ParticleZoo phase space files.
+ * Distributed as part of ParticleZoo. https://www.github.com/dobrienphd/ParticleZoo
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2025 Daniel O'Brien
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #pragma once
 
 #include "G4VUserPrimaryGeneratorAction.hh"
@@ -12,7 +39,7 @@ namespace ParticleZoo
 {
 
     /**
-     * @class G4PrimaryGeneratorAction
+     * @class G4PHSPSourceAction
      * @brief Primary generator action for ParticleZoo phase space files.
      * 
      * This class reads particles from a ParticleZoo phase space file and
@@ -25,9 +52,9 @@ namespace ParticleZoo
      * 
      * Usage:
      * 1. Create a shared ParticleBalancedParallelReader in the master thread
-     * 2. Pass the shared reader to each worker thread's G4PrimaryGeneratorAction along with the thread index
+     * 2. Pass the shared reader to each worker thread's G4PHSPSourceAction along with the thread index
     */
-    class G4PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
+    class G4PHSPSourceAction : public G4VUserPrimaryGeneratorAction
     {
         public:
             /**
@@ -36,8 +63,8 @@ namespace ParticleZoo
              *                       The reader must be configured with the appropriate number of threads.
              * @param threadIndex Index of the worker thread (0-based).
              */
-            G4PrimaryGeneratorAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex = 0);
-            ~G4PrimaryGeneratorAction() override;
+            G4PHSPSourceAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex = 0);
+            ~G4PHSPSourceAction() override;
 
             /**
              * @brief Generate primary vertices for the given event.
@@ -78,20 +105,20 @@ namespace ParticleZoo
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-    inline void G4PrimaryGeneratorAction::SetTranslation(const G4ThreeVector & translation)
+    inline void G4PHSPSourceAction::SetTranslation(const G4ThreeVector & translation)
     {
         globalTranslation = translation;
-        G4cout << "ParticleZoo::G4PrimaryGeneratorAction: Set global translation to "
+        G4cout << "ParticleZoo::G4PHSPSourceAction: Set global translation to "
                << globalTranslation << G4endl;
     }
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-    inline void G4PrimaryGeneratorAction::SetRecycleNumber(std::uint32_t n)
+    inline void G4PHSPSourceAction::SetRecycleNumber(std::uint32_t n)
     {
         recycleNumber = n;
         recycleWeightFactor = 1.0 / static_cast<G4double>(recycleNumber + 1);
-        G4cout << "ParticleZoo::G4PrimaryGeneratorAction: Set recycle number to "
+        G4cout << "ParticleZoo::G4PHSPSourceAction: Set recycle number to "
                << recycleNumber << ", weight factor: " << recycleWeightFactor << G4endl;
     }
 

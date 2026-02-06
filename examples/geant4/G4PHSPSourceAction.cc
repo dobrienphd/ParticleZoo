@@ -1,5 +1,32 @@
 
-#include "ParticleZooPrimaryGeneratorAction.hh"
+/*
+ * Example Geant4 Primary Generator Action using ParticleZoo phase space files.
+ * Distributed as part of ParticleZoo. https://www.github.com/dobrienphd/ParticleZoo
+ * 
+ * MIT License
+ * 
+ * Copyright (c) 2025 Daniel O'Brien
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include "G4PHSPSourceAction.hh"
 
 #include "G4GlobalConfig.hh"
 #include "G4Event.hh"
@@ -9,7 +36,7 @@ namespace ParticleZoo
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-    G4PrimaryGeneratorAction::G4PrimaryGeneratorAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex)
+    G4PHSPSourceAction::G4PHSPSourceAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex)
     : parallelReader(parallelReader),
       threadIndex(threadIndex),
       globalTranslation(G4ThreeVector(0,0,0)),
@@ -18,19 +45,19 @@ namespace ParticleZoo
       historiesToWait(0),
       historiesWaited(0)
     {
-        G4cout << "ParticleZoo::G4PrimaryGeneratorAction: Initialized for thread index " << threadIndex << G4endl;
+        G4cout << "ParticleZoo::G4PHSPSourceAction: Initialized for thread index " << threadIndex << G4endl;
     }
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-    G4PrimaryGeneratorAction::~G4PrimaryGeneratorAction()
+    G4PHSPSourceAction::~G4PHSPSourceAction()
     {
         // Note: parallelReader is shared and will be closed when the last reference is released
     }
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-    void G4PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
+    void G4PHSPSourceAction::GeneratePrimaries(G4Event* anEvent)
     {
         // Ensure the reader is valid
         if (!parallelReader) return;
