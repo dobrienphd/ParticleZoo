@@ -331,7 +331,7 @@ For building command-line tools with custom argument parsing:
 ```python
 # Parse command-line style arguments
 options = pz.ArgParser.parse_args(
-    ["--inputFormat", "IAEA", "input.phsp"],
+    ["-Z", "100", "input.phsp"],
     usage_message="Usage: mytool [options] <file>",
     min_positional_args=1
 )
@@ -594,7 +594,7 @@ fixed.constant_z = 100.0 * pz.cm
 
 writer = pz.create_writer("output.IAEAphsp", fixed_values=fixed)
 for particle in reader:
-    particle.z = 100.0 * pz.cm  # Ensure consistency
+    # particle will be written with z = 100 cm
     writer.write_particle(particle)
 
 writer.close()

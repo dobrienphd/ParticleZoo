@@ -648,19 +648,12 @@ print("Conversion complete!")
 
 ## Performance Considerations
 
-### Memory Usage
-
-- ParticleZoo uses streaming I/O to minimize memory footprint
-- Configurable buffer sizes for optimal performance vs. memory trade-offs
-- Large files can be processed with constant memory usage
-
 ### Optimization Tips
 
 - Use binary formats when possible for faster I/O
 - Consider particle limits (`--maxParticles`) for testing and prototyping
-- Enable compiler optimizations (`make release`) for production use
+- Enable compiler optimizations (`make` or `make release`) for production use (do not use `make debug`)
 - Use parallel readers for multi-threaded processing of large files
-- ROOT format may be slower due to tree structure overhead
 
 ## Troubleshooting
 
@@ -679,8 +672,9 @@ print("Conversion complete!")
 ### Getting Help
 
 For additional support:
-1. Use `--formats` option to verify supported formats at runtime
-2. Try explicit format specification with `--inputFormat`/`--outputFormat`
+1. Use `--help` option to see a list of available commands
+2. Use `--formats` option to verify supported formats at runtime
+3. Raise an issue on GitHub or post questions in the GitHub discussions
 
 ## License
 
