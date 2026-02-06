@@ -91,9 +91,7 @@ namespace ParticleZoo
      *    G4RotationMatrix combined = gantryRotation * collimatorRotation;
      *    action->SetRotation(combined, isocenter);
      *    @endcode
-     * 
-     * Note: The shared ParticleBalancedParallelReader must outlive all G4PHSPSourceAction instances.
-    */
+     */
     class G4PHSPSourceAction : public G4VUserPrimaryGeneratorAction
     {
         public:

@@ -404,7 +404,25 @@ PHSPSplit -n 5 --outputFormat IAEA input.egsphsp
 
 ## Examples
 
-The `examples/` directory contains reference implementations showing how to integrate ParticleZoo into external simulation frameworks.
+The `examples/` directory contains reference implementations showing how to integrate ParticleZoo into external simulation frameworks and scripting workflows.
+
+### Python Scripts (`examples/python/`)
+
+Ready-to-run Python scripts demonstrating core ParticleZoo functionality:
+
+- **`read_phase_space.py`** — Lists supported formats and reads particles from any phase space file. Supports all command-line options (format overrides, particle limits, ROOT branch mappings, etc.).
+- **`write_phase_space.py`** — Creates a synthetic phase space file by generating sample particles programmatically. Demonstrates writer creation, particle construction, and format-specific options.
+
+```bash
+# List supported formats
+python examples/python/read_phase_space.py --formats-only
+
+# Read a phase space file
+python examples/python/read_phase_space.py beam.IAEAphsp --limit 10
+
+# Write a synthetic phase space file
+python examples/python/write_phase_space.py output.egsphsp
+```
 
 ### Geant4 Phase Space Source (`examples/geant4/`)
 

@@ -59,7 +59,7 @@ jobs:
     - name: Run Python bindings smoke test
       run: |
         source .venv/bin/activate
-        cd python/examples
+        cd examples/python
         python write_phase_space.py test.egsphsp
         python read_phase_space.py test.egsphsp
       
@@ -117,7 +117,7 @@ jobs:
     - name: Run Python bindings smoke test
       run: |
         source .venv/bin/activate
-        cd python/examples
+        cd examples/python
         python write_phase_space.py test.egsphsp
         python read_phase_space.py test.egsphsp
 
@@ -192,7 +192,7 @@ jobs:
     - name: Run Python bindings smoke test
       run: |
         .venv\Scripts\Activate.ps1
-        cd python/examples
+        cd examples/python
         python write_phase_space.py test.egsphsp
         python read_phase_space.py test.egsphsp
       shell: pwsh
