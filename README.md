@@ -193,9 +193,6 @@ Here's a simple example showing how to read from one format and write to another
 using namespace ParticleZoo;
 
 int main() {
-    // Register standard formats
-    FormatRegistry::RegisterStandardFormats();
-    
     // Create readers and writers - format auto-detected from extension
     auto reader = FormatRegistry::CreateReader("input.IAEAphsp");
     auto writer = FormatRegistry::CreateWriter("output.egsphsp");
