@@ -402,6 +402,35 @@ PHSPSplit --splitNumber 10 input.egsphsp
 PHSPSplit -n 5 --outputFormat IAEA input.egsphsp
 ```
 
+## Examples
+
+The `examples/` directory contains reference implementations showing how to integrate ParticleZoo into external simulation frameworks.
+
+### Geant4 Phase Space Source (`examples/geant4/`)
+
+`G4PHSPSourceAction` is a ready-to-use `G4VUserPrimaryGeneratorAction` that reads particles from any ParticleZoo-supported phase space file and injects them as primary vertices into a Geant4 simulation. Key features include:
+
+- **Multi-threaded support** via a shared `ParticleBalancedParallelReader`, with each Geant4 worker thread processing its own partition of the file
+- **Incremental history handling** to correctly reproduce the original history structure
+- **Particle recycling** with automatic weight adjustment
+- **Spatial transformations** — apply global translations and rotations (with configurable center of rotation) to model gantry angles, collimator rotations, etc.
+
+Typical setup in your `ActionInitialization`:
+
+```cpp
+// Master thread: create a shared parallel reader
+auto reader = std::make_shared<ParticleZoo::ParticleBalancedParallelReader>(
+    "beam.IAEAphsp", UserOptions{}, numberOfThreads);
+
+// Worker threads: create one G4PHSPSourceAction per thread
+void MyActionInitialization::Build() const {
+    auto action = new ParticleZoo::G4PHSPSourceAction(reader, G4Threading::G4GetThreadId());
+    action->SetTranslation(G4ThreeVector(0, 0, -100*cm));
+    action->SetRecycleNumber(5);
+    SetUserAction(action);
+}
+```
+
 ## Extending the Library
 
 ### Adding New Formats
