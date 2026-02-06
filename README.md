@@ -1,4 +1,9 @@
 # ParticleZoo
+
+<p align="center">
+  <img src="docs/assets/particlezoo.png" alt="ParticleZoo Logo" width="400"/>
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 A high-performance C++20 library for reading, writing, and manipulating particle phase space files across multiple Monte Carlo simulation ecosystems. ParticleZoo provides a unified API that abstracts away format-specific details, enabling seamless interoperability between different simulation codes and workflows.
