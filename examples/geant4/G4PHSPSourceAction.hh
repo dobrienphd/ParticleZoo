@@ -40,7 +40,7 @@ namespace ParticleZoo
 
     /**
      * @class G4PHSPSourceAction
-     * @brief Primary generator action for ParticleZoo phase space files.
+     * @brief Primary generator action for phase space files using ParticleZoo.
      * 
      * This class reads particles from a ParticleZoo phase space file and
      * generates primary vertices for Geant4 events.
