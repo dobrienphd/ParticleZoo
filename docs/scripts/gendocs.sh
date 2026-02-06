@@ -38,7 +38,7 @@ VERSION=$(gawk '
     }
 } 
 END {
-    version = "v" major "." minor "." patch
+    version = "v" major "." minor
     if (caveat != "" && caveat != " ") version = version " " caveat
     print version
 }' include/particlezoo/utilities/version.h)
