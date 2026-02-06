@@ -1,4 +1,3 @@
-
 /*
  * Example Geant4 Primary Generator Action using ParticleZoo phase space files.
  * Distributed as part of ParticleZoo. https://www.github.com/dobrienphd/ParticleZoo
@@ -39,7 +38,12 @@ namespace ParticleZoo
     G4PHSPSourceAction::G4PHSPSourceAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex)
     : parallelReader(parallelReader),
       threadIndex(threadIndex),
+      applyTranslation(false),
       globalTranslation(G4ThreeVector(0,0,0)),
+      applyRotation(false),
+      globalRotation(),
+      applyCenterOfRotation(false),
+      rotationCenter(G4ThreeVector(0,0,0)),
       recycleNumber(0),
       recycleWeightFactor(1.0),
       historiesToWait(0),
@@ -107,9 +111,33 @@ namespace ParticleZoo
                 G4double directionY = static_cast<G4double>(particle.getDirectionalCosineY());
                 G4double directionZ = static_cast<G4double>(particle.getDirectionalCosineZ());
 
-                // Apply global translation
                 G4ThreeVector position(particleX, particleY, particleZ);
-                position += this->globalTranslation;
+
+                // Apply global rotation
+                if (applyRotation) {
+                    G4ThreeVector dir(directionX, directionY, directionZ);
+                    if (applyCenterOfRotation) {
+                        // Translate to rotation center
+                        position -= rotationCenter;
+                        // Rotate position and direction
+                        position = globalRotation * position;
+                        dir = globalRotation * dir;
+                        // Translate back
+                        position += rotationCenter;
+                    } else {
+                        // Rotate position and direction directly
+                        position = globalRotation * position;
+                        dir = globalRotation * dir;
+                    }
+                    directionX = dir.x();
+                    directionY = dir.y();
+                    directionZ = dir.z();
+                }
+
+                // Apply global translation
+                if (applyTranslation) {
+                   position += globalTranslation;
+                }
 
                 // Create primary vertex and particle
                 G4PrimaryVertex* vertex = new G4PrimaryVertex(position, 0.0);

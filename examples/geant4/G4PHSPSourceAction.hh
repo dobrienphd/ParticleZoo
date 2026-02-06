@@ -30,6 +30,7 @@
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "G4Event.hh"
 #include "G4ThreeVector.hh"
+#include "G4RotationMatrix.hh"
 
 #include <memory>
 #include <string>
@@ -51,8 +52,47 @@ namespace ParticleZoo
      * - Particles can be recycled multiple times with adjusted weights
      * 
      * Usage:
-     * 1. Create a shared ParticleBalancedParallelReader in the master thread
-     * 2. Pass the shared reader to each worker thread's G4PHSPSourceAction along with the thread index
+     * 1. In your ActionInitialization class constructor (master thread), create a shared
+     *    ParticleBalancedParallelReader:
+     *    @code
+     *    auto reader = std::make_shared<ParticleZoo::ParticleBalancedParallelReader>(
+     *        "path/to/phasespace.phsp", numberOfThreads);
+     *    @endcode
+     * 
+     * 2. Store the shared reader as a member variable in your ActionInitialization class
+     *    so it persists for the lifetime of the application.
+     * 
+     * 3. In the Build() method of your ActionInitialization class, create a G4PHSPSourceAction
+     *    instance for each worker thread, passing the shared reader and the thread index:
+     *    @code
+     *    void MyActionInitialization::Build() const override {
+     *        SetUserAction(new G4PHSPSourceAction(parallelReader, G4Threading::G4GetThreadId()));
+     *    }
+     *    @endcode
+     * 
+     * 4. Optionally configure settings such as translation and recycling before running:
+     *    @code
+     *    auto action = new G4PHSPSourceAction(parallelReader, threadIndex);
+     *    action->SetTranslation(G4ThreeVector(0, 0, -10*cm));
+     *    action->SetRecycleNumber(5);
+     *    SetUserAction(action);
+     *    @endcode
+     * 
+     * 5. To apply combined rotations (e.g., collimator and gantry), compose them into
+     *    a single G4RotationMatrix via multiplication. The rightmost rotation is applied first:
+     *    @code
+     *    G4RotationMatrix collimatorRotation;
+     *    collimatorRotation.rotateZ(collimatorAngle);
+     * 
+     *    G4RotationMatrix gantryRotation;
+     *    gantryRotation.rotateY(gantryAngle);
+     * 
+     *    // Combined: collimator first, then gantry
+     *    G4RotationMatrix combined = gantryRotation * collimatorRotation;
+     *    action->SetRotation(combined, isocenter);
+     *    @endcode
+     * 
+     * Note: The shared ParticleBalancedParallelReader must outlive all G4PHSPSourceAction instances.
     */
     class G4PHSPSourceAction : public G4VUserPrimaryGeneratorAction
     {
@@ -79,6 +119,19 @@ namespace ParticleZoo
             void SetTranslation(const G4ThreeVector & translation);
 
             /**
+             * @brief Set the global rotation to apply to all particle directions.
+             * @param rotation The rotation matrix.
+             */
+            void SetRotation(const G4RotationMatrix & rotation);
+
+            /**
+             * @brief Set the global rotation to apply to all particle directions with a center of rotation.
+             * @param rotation The rotation matrix.
+             * @param center The center of rotation.
+             */
+            void SetRotation(const G4RotationMatrix & rotation, const G4ThreeVector& center);
+
+            /**
              * @brief Set the number of times to recycle each particle.
              * @param n Number of times to recycle each particle.
              */
@@ -92,7 +145,14 @@ namespace ParticleZoo
             std::size_t threadIndex;
 
             // Global translation to apply to all particle positions
+            bool applyTranslation;
             G4ThreeVector globalTranslation;
+
+            // Global rotation to apply to all particles
+            bool applyRotation;
+            G4RotationMatrix globalRotation;
+            bool applyCenterOfRotation;
+            G4ThreeVector rotationCenter;
 
             // Recycling parameters
             std::uint32_t recycleNumber;
@@ -108,8 +168,31 @@ namespace ParticleZoo
     inline void G4PHSPSourceAction::SetTranslation(const G4ThreeVector & translation)
     {
         globalTranslation = translation;
+        applyTranslation = true;
         G4cout << "ParticleZoo::G4PHSPSourceAction: Set global translation to "
                << globalTranslation << G4endl;
+    }
+
+    //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+    inline void G4PHSPSourceAction::SetRotation(const G4RotationMatrix & rotation)
+    {
+        globalRotation = rotation;
+        applyRotation = true;
+        applyCenterOfRotation = false;
+        G4cout << "ParticleZoo::G4PHSPSourceAction: Set global rotation." << G4endl;
+    }
+
+    //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+    inline void G4PHSPSourceAction::SetRotation(const G4RotationMatrix & rotation, const G4ThreeVector & center)
+    {
+        globalRotation = rotation;
+        applyRotation = true;
+        applyCenterOfRotation = true;
+        rotationCenter = center;
+        G4cout << "ParticleZoo::G4PHSPSourceAction: Set global rotation with center of rotation at "
+               << rotationCenter << G4endl;
     }
 
     //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
