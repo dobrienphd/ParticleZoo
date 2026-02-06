@@ -75,7 +75,7 @@ namespace ParticleZoo {
          * Indicates the current development status of this version. Only used to indicate 
          * pre-release or special build states.
          */
-        static constexpr const char* CAVEAT         = "BETA";
+        static constexpr const char* CAVEAT         = "";
 
         /**
          * @brief Generate a complete version string for display.
