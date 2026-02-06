@@ -6,7 +6,7 @@
 
 #include <memory>
 #include <string>
-#include <particlezoo/PhaseSpaceFileReader.h>
+#include <particlezoo/parallel/ParticleBalancedParallelReader.h>
 
 namespace ParticleZoo
 {
@@ -20,20 +20,23 @@ namespace ParticleZoo
      * 
      * Features:
      * - Handles incremental histories
-     * - Supports multithreading by dividing the particle set among threads (i.e. can be used in multithreaded Geant4 applications)
-     * - Supports partitioning for applications that run multiple instances of Geant4 to split the workload
+     * - Supports multithreading via shared ParticleBalancedParallelReader
      * - Particles can be recycled multiple times with adjusted weights
+     * 
+     * Usage:
+     * 1. Create a shared ParticleBalancedParallelReader in the master thread
+     * 2. Pass the shared reader to each worker thread's G4PrimaryGeneratorAction along with the thread index
     */
     class G4PrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
     {
         public:
             /**
              * @brief Constructor.
-             * @param phaseSpaceFilePath Path to the ParticleZoo phase space file.
-             * @param partitionId The partition ID for this instance (used for splitting workload across multiple application instances, default is 0).
-             * @param numberOfPartitions The total number of partitions (used for splitting workload across multiple application instances, default is 1).
+             * @param parallelReader Shared pointer to a ParticleBalancedParallelReader created in the master thread.
+             *                       The reader must be configured with the appropriate number of threads.
+             * @param threadIndex Index of the worker thread (0-based).
              */
-            G4PrimaryGeneratorAction(const std::string & phaseSpaceFilePath, const std::uint32_t partitionId = 0, const std::uint32_t numberOfPartitions = 1);
+            G4PrimaryGeneratorAction(std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader, std::size_t threadIndex = 0);
             ~G4PrimaryGeneratorAction() override;
 
             /**
@@ -55,21 +58,14 @@ namespace ParticleZoo
             void SetRecycleNumber(std::uint32_t n);
 
         private:
-            // Phase space file reader
-            std::unique_ptr<ParticleZoo::PhaseSpaceFileReader> phaseSpaceReader;
+            // Shared parallel phase space file reader
+            std::shared_ptr<ParticleZoo::ParticleBalancedParallelReader> parallelReader;
+
+            // Thread index for this worker (0-based, aligned with Geant4 worker thread IDs)
+            std::size_t threadIndex;
 
             // Global translation to apply to all particle positions
             G4ThreeVector globalTranslation;
-
-            // Particle range for this generator action
-            std::uint64_t startIndex;
-            std::uint64_t endIndex;
-
-            // Phase-space partitioning information for multiple instances
-            // for applications that don't use Geant4 multithreading but
-            // want to split the workload across multiple G4 runs.
-            std::uint32_t partitionId;
-            std::uint32_t numberOfPartitions;
 
             // Recycling parameters
             std::uint32_t recycleNumber;
