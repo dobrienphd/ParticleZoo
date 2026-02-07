@@ -828,8 +828,8 @@ namespace ParticleZoo::IAEAphspFile
     
     inline std::size_t IAEAHeader::getRecordLength() const { return recordLength_; }
     inline ByteOrder IAEAHeader::getByteOrder() const { return byteOrder_; }
-    inline unsigned int IAEAHeader::getNumberOfExtraFloats() const { return extraFloatData_.size(); }
-    inline unsigned int IAEAHeader::getNumberOfExtraLongs() const { return extraLongData_.size(); }
+    inline unsigned int IAEAHeader::getNumberOfExtraFloats() const { return static_cast<unsigned int>(extraFloatData_.size()); }
+    inline unsigned int IAEAHeader::getNumberOfExtraLongs() const { return static_cast<unsigned int>(extraLongData_.size()); }
     inline std::uint64_t IAEAHeader::getOriginalHistories() const { return originalHistories_; }
     inline std::uint64_t IAEAHeader::getNumberOfParticles() const { return numberOfParticles_; }
     inline float IAEAHeader::getMinX() const { return minX_; }

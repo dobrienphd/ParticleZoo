@@ -67,6 +67,8 @@ namespace ParticleZoo {
         T xOffset_;
         T yOffset_;
 
+        bool isEmpty_;
+
         std::vector<T> data_;  // Store raw grayscale values instead of Pixel<T>
     };
 
@@ -82,6 +84,7 @@ namespace ParticleZoo {
           yPixelsPerUnitLength_(yPixelsPerUnitLength),
           xOffset_(xOffset),
           yOffset_(yOffset),
+          isEmpty_(true),
           data_(static_cast<size_t>(w) * static_cast<size_t>(h), T{})
     {
         if (w <= 0 || h <= 0) throw std::runtime_error("Invalid dimensions");
@@ -100,6 +103,7 @@ namespace ParticleZoo {
         data_[idx] = value;
         if (value > maxValue_) maxValue_ = value;
         if (value < minValue_) minValue_ = value;
+        isEmpty_ = false;
     }
 
     template<typename T>
@@ -138,8 +142,8 @@ namespace ParticleZoo {
     template<typename T>
     inline void TiffImage<T>::save(const std::string& path) const {
         // Validate dynamic range
-        if (!(maxValue_ > minValue_)) {
-            throw std::runtime_error("Invalid dynamic range for TIFF: maxValue <= minValue");
+        if (!(maxValue_ >= minValue_) && !isEmpty_) {
+            throw std::runtime_error("Invalid dynamic range for TIFF: maxValue < minValue");
         }
 
         // Convert calibration to centimeters because ResolutionUnit=3 (centimeter)

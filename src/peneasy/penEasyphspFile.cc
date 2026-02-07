@@ -8,9 +8,11 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <array>
 
 #include "particlezoo/Particle.h"
 #include "particlezoo/ByteBuffer.h"
+#include "particlezoo/penelope/ILBArray.h"
 
 namespace ParticleZoo::penEasyphspFile
 {
@@ -62,15 +64,8 @@ namespace ParticleZoo::penEasyphspFile
             dn = 1;
         }
 
-        int ilb[5];
-        for (int i = 0; i < 5; i++) {
-            if (particle.hasIntProperty(PROPERTY_PENELOPE_ILB[i])) {
-                ilb[i] = (int) particle.getIntProperty(PROPERTY_PENELOPE_ILB[i]);
-            } else {
-                ilb[i] = 0; // Default value if property is not set
-            }
-        }
-
+        std::array<int, 5> ilb = Penelope::ExtractILBArrayFromParticle(particle);
+        
         // Create a std::string with the maximum required capacity.
         std::string formatted;
         formatted.resize(MAX_ASCII_LINE_LENGTH);
@@ -193,7 +188,7 @@ namespace ParticleZoo::penEasyphspFile
         int kpar;
         float e, x, y, z, u, v, w, weight;
         int dn;
-        int ilb[5];
+        std::array<int,5> ilb;
 
         // Use std::istringstream to parse the line
         std::istringstream iss(line);
@@ -231,11 +226,7 @@ namespace ParticleZoo::penEasyphspFile
 
         particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, dn);
 
-        for (int i = 0; i < 5; i++) {
-            if (ilb[i] != 0) {
-                particle.setIntProperty(IntPropertyType(PROPERTY_PENELOPE_ILB[i]), ilb[i]);
-            }
-        }
+        Penelope::ApplyILBArrayToParticle(particle, ilb);
 
         return particle;
     }

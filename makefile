@@ -96,6 +96,8 @@ LIB_NAME := libparticlezoo.a
 LIB_SRCS := \
         src/PhaseSpaceFileReader.cc \
         src/PhaseSpaceFileWriter.cc \
+        src/parallel/ParticleBalancedParallelReader.cc \
+        src/parallel/HistoryBalancedParallelReader.cc \
         src/utilities/formats.cc \
         src/utilities/argParse.cc \
         src/egs/egsphspFile.cc \
@@ -119,10 +121,10 @@ LIB_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(LIB_SRCS))
 LIB_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(LIB_SRCS))
 
 # Release flags
-CXXFLAGS_RELEASE := $(CXXFLAGS) -O3 -march=native $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
+CXXFLAGS_RELEASE := $(CXXFLAGS) -O3 -march=native -Wno-deprecated-declarations $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # Debug flags
-CXXFLAGS_DEBUG := $(CXXFLAGS) -O0 -g $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
+CXXFLAGS_DEBUG := $(CXXFLAGS) -O0 -g -Wno-deprecated-declarations $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
 # detect Windows vs. Unix
 ifeq ($(OS),Windows_NT)
@@ -149,7 +151,7 @@ SPLIT_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPSplit$(BINEXT)
 .PHONY: release debug \
         gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib \
         gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib \
-        clean install install-debug
+        clean install install-debug install-python install-python-dev uninstall-python
 
 # Default (release)
 release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib
@@ -274,3 +276,51 @@ uninstall:
 	@rm -f $(LIBDIR)/$(LIB_NAME)
 	@rm -rf $(PREFIX)/include/particlezoo
 	@echo " done."
+
+
+# Python installation targets
+
+install-python:
+	@if [ -n "$$VIRTUAL_ENV" ]; then \
+		printf "Installing Python bindings to virtual environment..."; \
+		cd python && pip install .; \
+		echo " done."; \
+	else \
+		printf "Installing Python bindings to virtual environment..."; \
+		echo "WARNING: No virtual environment detected. Installing instead to user site-packages (~/.local)."; \
+		echo "This uses --break-system-packages to bypass externally-managed-environment protection."; \
+		printf "Continue? [y/N] " && read ans && [ $${ans:-N} = y ] || { echo "Canceled."; exit 1; }; \
+		printf "Installing Python bindings to user site-packages..."; \
+		cd python && pip install --user --break-system-packages .; \
+		echo " done."; \
+	fi
+
+install-python-dev:
+	@if [ -n "$$VIRTUAL_ENV" ]; then \
+		printf "Installing Python bindings in development mode..."; \
+		cd python && pip install -e .; \
+		echo " done."; \
+	else \
+		echo "Installing Python bindings in development mode..."; \
+		echo "WARNING: No virtual environment detected. Installing to user site-packages (~/.local)."; \
+		echo "This uses --break-system-packages to bypass externally-managed-environment protection."; \
+		printf "Continue? [y/N] " && read ans && [ $${ans:-N} = y ] || { echo "Canceled."; exit 1; }; \
+		printf "Installing Python bindings in development mode..."; \
+		cd python && pip install --user --break-system-packages -e .; \
+		echo " done."; \
+	fi
+
+uninstall-python:
+	@printf "Attempting to uninstall particlezoo..."
+	@if pip uninstall -y particlezoo 2>/dev/null; then \
+		echo " done."; \
+	else \
+		echo " failed."; \
+		echo "WARNING: Standard uninstall failed. May need --break-system-packages flag."; \
+		printf "Try with --break-system-packages? [y/N] " && read ans; \
+		if [ "$${ans:-N}" = "y" ]; then \
+			pip uninstall --break-system-packages -y particlezoo && echo "Done." || echo "Failed."; \
+		else \
+			echo "Canceled."; \
+		fi; \
+	fi

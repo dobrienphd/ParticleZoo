@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <unordered_map>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <vector>
 #include <variant>
 #include <array>
+#include <optional>
 
 namespace ParticleZoo {
 
@@ -19,7 +21,7 @@ namespace ParticleZoo {
      * A variant type that can hold different types of values that can be passed
      * as command line arguments: floating point numbers, integers, strings, or booleans.
      */
-    using CLIValue = std::variant<float,int,std::string,bool>;
+    using CLIValue = std::variant<float,unsigned int,int,std::string,bool>;
 
     /**
      * @brief Enumeration for command line argument types.
@@ -29,6 +31,7 @@ namespace ParticleZoo {
      */
     enum CLIArgType { 
         CLI_FLOAT,      ///< Floating point number argument
+        CLI_UINT,       ///< Unsigned integer number argument
         CLI_INT,        ///< Integer number argument  
         CLI_STRING,     ///< String argument
         CLI_BOOL,       ///< Boolean flag argument
@@ -159,21 +162,135 @@ namespace std {
 namespace ParticleZoo {
 
     /**
-     * @brief Type alias for user options map.
-     * 
-     * Maps CLICommand objects to vectors of CLIValue objects, representing
-     * the parsed command line arguments. Each command can have multiple values
-     * if it accepts multiple arguments.
-     */
-    using UserOptions = std::unordered_map<CLICommand, std::vector<CLIValue>>;
-
-    /**
      * @brief Special command representing positional arguments.
      * 
      * This predefined command is used internally to handle positional arguments
      * (arguments without flags) passed on the command line.
      */
     const CLICommand CLI_POSITIONALS { BOTH, "", "positionals", "", { CLI_STRING } };
+
+    /**
+     * @brief Type alias for user options map.
+     * 
+     * Maps CLICommand objects to vectors of CLIValue objects, representing
+     * the parsed command line arguments. Each command can have multiple values
+     * if it accepts multiple arguments.
+     */
+    class UserOptions : public std::unordered_map<CLICommand, std::vector<CLIValue>> {
+        public:
+            UserOptions() = default;
+
+            UserOptions(std::initializer_list<std::pair<const CLICommand, std::vector<CLIValue>>> init)
+            : std::unordered_map<CLICommand, std::vector<CLIValue>>(init) {}
+
+            ~UserOptions() = default;
+
+            /**
+             * @brief Extract all values associated with a command.
+             * @param cmd The command to extract values for
+             * @return A vector of CLIValue objects, or an empty vector if the command is not found
+             */
+            std::vector<CLIValue> extractValues(const CLICommand& cmd) const {
+                auto it = this->find(cmd);
+                if (it == this->end()) return {};
+                return it->second;
+            }
+
+            /**
+             * @brief Extract a positional argument by index.
+             * @param index The zero-based index of the positional argument
+             * @return The positional argument as a string, or empty string if not found
+             */
+            std::string extractPositional(size_t index) const {
+                auto it = this->find(CLI_POSITIONALS);
+                if (it == this->end()) return "";
+                const auto& positionals = it->second;
+                if (index >= positionals.size()) return "";
+                return std::get<std::string>(positionals[index]);
+            }
+
+            /**
+             * @brief Extract a string option value from a command.
+             * @param cmd The command to extract the value from
+             * @return The string value, or empty string if not found or wrong type
+             */
+            std::string extractStringOption(const CLICommand& cmd, int index = 0) const {
+                auto it = this->find(cmd);
+                if (it == this->end() || it->second.empty()) return "";
+                if (auto* str = std::get_if<std::string>(&it->second[index])) {
+                    return *str;
+                }
+                return "";
+            }
+
+            /**
+             * @brief Extract an integer option value from a command.
+             */
+            int extractIntOption(const CLICommand& cmd, std::optional<int> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = !(it == this->end() || it->second.empty());
+                if (validCommand) {
+                    if (auto* val = std::get_if<int>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract integer option for command.");
+            }
+
+            /**
+             * @brief Extract an unsigned integer option value from a command.
+             */
+            unsigned int extractUIntOption(const CLICommand& cmd, std::optional<unsigned int> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = !(it == this->end() || it->second.empty());
+                if (validCommand) {
+                    if (auto* val = std::get_if<unsigned int>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract unsigned integer option for command.");
+            }
+            
+            /**
+             * @brief Extract a float option value from a command.
+             */
+            float extractFloatOption(const CLICommand& cmd, std::optional<float> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = !(it == this->end() || it->second.empty());
+                if (validCommand) {
+                    if (auto* val = std::get_if<float>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract float option for command.");
+            }
+            
+            /**
+             * @brief Extract a boolean option value from a command.
+             */
+            bool extractBoolOption(const CLICommand& cmd, std::optional<bool> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = !(it == this->end() || it->second.empty());
+                if (validCommand) {
+                    if (auto* val = std::get_if<bool>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract boolean option for command.");
+            }
+    };
 
     /**
      * @brief Singleton class for parsing command line arguments.
@@ -271,7 +388,18 @@ namespace ParticleZoo {
              * @param usageMessage The main usage message to display
              * @param exitCode The exit code to use when terminating the program (default: 1)
              */
-            static void PrintUsage(std::string usageMessage, int exitCode = 1);
+            static void PrintUsage(const std::string_view & usageMessage, const int exitCode = 1);
+
+            /**
+             * @brief Prints usage information for the command line interface.
+             * 
+             * Displays the usage message along with all registered commands and their
+             * descriptions. Exits the program with the specified exit code.
+             * 
+             * @param usageMessage The main usage message to display
+             * @param exitCode The exit code to use when terminating the program (default: 1)
+             */            
+            static void PrintUsage(const std::string & usageMessage, const int exitCode = 1);
 
             /**
              * @brief Parses command line arguments based on registered commands.
@@ -287,6 +415,22 @@ namespace ParticleZoo {
              * @return const UserOptions A map of parsed commands and their values
              * @throws Calls PrintUsage() and exits on parsing errors
              */
+            static const UserOptions ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs = 0);
+       
+            /**
+             * @brief Parses command line arguments based on registered commands.
+             * 
+             * Processes the command line arguments according to the registered command
+             * definitions. Validates argument types and counts, handles both short and
+             * long command forms, and extracts positional arguments.
+             * 
+             * @param argc The number of command line arguments
+             * @param argv The array of command line argument strings
+             * @param usageMessage The usage message to display on error
+             * @param minimumPositionalArgs The minimum number of positional arguments required (default: 0)
+             * @return const UserOptions A map of parsed commands and their values
+             * @throws Calls PrintUsage() and exits on parsing errors
+             */     
             static const UserOptions ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs = 0);
     };
 

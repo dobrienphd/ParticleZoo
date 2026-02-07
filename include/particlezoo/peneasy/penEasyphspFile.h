@@ -34,8 +34,8 @@ namespace ParticleZoo
             IntPropertyType::PENELOPE_ILB1,    ///< PENELOPE ILB array value 1, corresponds to the generation of the particle (1 for primary, 2 for secondary, etc.)
             IntPropertyType::PENELOPE_ILB2,    ///< PENELOPE ILB array value 2, corresponds to the particle type of the particle's parent (applies only if ILB1 > 1)
             IntPropertyType::PENELOPE_ILB3,    ///< PENELOPE ILB array value 3, corresponds to the interaction type that created the particle (applies only if ILB1 > 1)
-            IntPropertyType::PENELOPE_ILB4,    ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
-            IntPropertyType::PENELOPE_ILB5     ///< Fifth interaction label
+            IntPropertyType::PENELOPE_ILB4,    ///< PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transistion that created the particle
+            IntPropertyType::PENELOPE_ILB5     ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
         };
 
         /**

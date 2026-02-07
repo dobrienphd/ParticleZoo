@@ -232,6 +232,17 @@ namespace ParticleZoo {
              */
             std::span<const byte> readBytes(std::size_t len);
 
+            /**
+             * @brief Peek at a span of bytes from the buffer without advancing the offset.
+             * 
+             * Returns a view of the requested bytes without copying. Does not modify
+             * the current offset.
+             * 
+             * @param len The number of bytes to peek at
+             * @return std::span<const byte> A span view of the requested bytes
+             * @throws std::runtime_error if insufficient data is available
+             */
+            std::span<const byte> peekBytes(std::size_t len);
 
             /**
              * @brief Write a primitive type T to the buffer with automatic byte order conversion.
@@ -512,13 +523,20 @@ namespace ParticleZoo {
         return result;
     }
     
-
     inline std::span<const byte> ByteBuffer::readBytes(std::size_t len) {
         if (offset_ + len > length_) {
             throw std::runtime_error("Not enough data in buffer.");
         }
         std::span<const byte> data(buffer_.data() + offset_, len);
         offset_ += len;
+        return data;
+    }
+
+    inline std::span<const byte> ByteBuffer::peekBytes(std::size_t len) {
+        if (offset_ + len > length_) {
+            throw std::runtime_error("Not enough data in buffer.");
+        }
+        std::span<const byte> data(buffer_.data() + offset_, len);
         return data;
     }
 

@@ -73,14 +73,13 @@ int main(int argc, char* argv[]) {
     using namespace ParticleZoo;
     int errorCode = 0;
     uint64_t particlesSoFar = 0;
-    bool preserveConstants = false;
 
     // Custom command line arguments
-    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_INT });
+    const CLICommand MAX_PARTICLES_COMMAND = CLICommand(NONE, "", "maxParticles", "Maximum number of particles to process (default: unlimited)", { CLI_UINT });
     const CLICommand INPUT_FORMAT_COMMAND = CLICommand(NONE, "", "inputFormat", "Force input file format (default: auto-detect from extension)", { CLI_STRING });
     const CLICommand OUTPUT_FORMAT_COMMAND = CLICommand(NONE, "", "outputFormat", "Force output file format (default: auto-detect from extension)", { CLI_STRING });
     const CLICommand OUTPUT_FILE_COMMAND = CLICommand(NONE, "", "outputFile", "Output file path", { CLI_STRING });
-    const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_VALUELESS });
+    const CLICommand PRESERVE_CONSTANTS_COMMAND = CLICommand(NONE, "", "preserveConstants", "Preserve constant values from input files if present", { CLI_BOOL }, { true });
     ArgParser::RegisterCommand(MAX_PARTICLES_COMMAND);
     ArgParser::RegisterCommand(INPUT_FORMAT_COMMAND);
     ArgParser::RegisterCommand(OUTPUT_FORMAT_COMMAND);
@@ -104,20 +103,18 @@ int main(int argc, char* argv[]) {
     auto userOptions = ArgParser::ParseArgs(argc, argv, usageMessage, 1);
 
     // Validate parameters
-    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? std::get<int>(userOptions.at(MAX_PARTICLES_COMMAND)[0]) : std::numeric_limits<uint64_t>::max();
+    std::uint64_t maxParticles = userOptions.contains(MAX_PARTICLES_COMMAND) ? (std::uint64_t)userOptions.extractUIntOption(MAX_PARTICLES_COMMAND) : std::numeric_limits<uint64_t>::max();
     std::string inputFormat = userOptions.contains(INPUT_FORMAT_COMMAND) ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0])) : "";
     std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
     std::string outputFile = userOptions.contains(OUTPUT_FILE_COMMAND) ? (userOptions.at(OUTPUT_FILE_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FILE_COMMAND)[0])) : "";
     std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{};
+    bool preserveConstants = userOptions.contains(PRESERVE_CONSTANTS_COMMAND) ? std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) : false;
     std::vector<std::string> inputFiles(positionals.size());
     for (size_t i = 0; i < positionals.size(); i++) {
         inputFiles[i] = std::get<std::string>(positionals[i]);
     }
     if (inputFiles.empty()) throw std::runtime_error("No input files provided.");
     if (outputFile == "") throw std::runtime_error("No output file specified.");
-    if (userOptions.contains(PRESERVE_CONSTANTS_COMMAND)) {
-        preserveConstants = true;
-    }
 
     FixedValues fixedValues; // start with default fixed values
     if (preserveConstants) {

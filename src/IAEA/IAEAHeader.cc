@@ -112,10 +112,10 @@ namespace ParticleZoo::IAEAphspFile
 
     unsigned int IAEAHeader::calculateMinimumRecordLength() const
     {
-        unsigned int minimumRecordLength = 1 + 4 + 4 * ((xIsStored_ ? 1 : 0) + (yIsStored_ ? 1 : 0) + (zIsStored_ ? 1 : 0) +
+        std::size_t minimumRecordLength = 1 + 4 + 4 * ((xIsStored_ ? 1 : 0) + (yIsStored_ ? 1 : 0) + (zIsStored_ ? 1 : 0) +
         (uIsStored_ ? 1 : 0) + (vIsStored_ ? 1 : 0) +
         (weightIsStored_ ? 1 : 0) + extraFloatData_.size() + extraLongData_.size());
-        return minimumRecordLength;
+        return static_cast<unsigned int>(minimumRecordLength);
     }
 
     bool IAEAHeader::checksumIsValid() const

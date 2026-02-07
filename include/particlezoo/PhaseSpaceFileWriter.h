@@ -18,6 +18,9 @@ namespace ParticleZoo
     extern CLICommand ConstantPyCommand;
     extern CLICommand ConstantPzCommand;
     extern CLICommand ConstantWeightCommand;
+    extern CLICommand FlipXDirectionCommand;
+    extern CLICommand FlipYDirectionCommand;
+    extern CLICommand FlipZDirectionCommand;
 
     /**
      * @brief Base class for writing phase space files
@@ -544,6 +547,9 @@ namespace ParticleZoo
             int writeParticleDepth_; // to track nested calls to writeParticle
 
             FixedValues fixedValues_;
+            bool flipXDirection_;
+            bool flipYDirection_;
+            bool flipZDirection_;
     };
 
 

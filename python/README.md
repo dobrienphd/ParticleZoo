@@ -1,0 +1,620 @@
+# Python Bindings for ParticleZoo
+
+Python bindings for the ParticleZoo C++20 library, enabling reading, writing, and manipulation of particle phase space files from various Monte Carlo simulation codes.
+
+## Features
+
+- **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, penEasy, and ROOT formats
+- **Automatic Format Detection**: File format is inferred from extension, with explicit override options
+- **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`
+- **Full Particle Access**: Get and set all particle properties (position, momentum, energy, weight, etc.)
+- **Random Access**: Seek to specific particles within files
+- **Unit System**: Comprehensive physical units for dimensional consistency
+- **Format-Specific Features**: Access EGS LATCH bits, PENELOPE ILB arrays, and other format-specific data
+
+## Prerequisites
+
+- Python 3.8+
+- A C++20 compiler (GCC 10+, Clang 13+, or MSVC 2019+)
+- pybind11 (installed automatically by pip)
+
+## Installation
+
+### Using the Makefile (Linux/macOS)
+
+From the repository root, use the provided makefile targets:
+
+```bash
+# Standard installation (uses virtual env if active, otherwise user site-packages)
+make install-python
+
+# Development/editable installation (changes to source are reflected immediately)
+make install-python-dev
+
+# Uninstall
+make uninstall-python
+```
+
+If no virtual environment is active, the makefile will prompt before installing to user site-packages (`~/.local`).
+
+### Windows Installation
+
+On Windows, use pip directly from a command prompt or PowerShell:
+
+```powershell
+# Navigate to repository root
+cd path\to\particlezoo
+
+# Optional: Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# Install dependencies and the package
+python -m pip install -U pip setuptools wheel pybind11
+python -m pip install python        # Standard install
+# or
+python -m pip install -e python     # Editable/development install
+```
+
+### Using a Virtual Environment (Linux/macOS)
+
+For isolated development, create and activate a virtual environment first:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+
+# Then install using the makefile
+make install-python      # or make install-python-dev for editable mode
+```
+
+### Direct pip Installation (All Platforms)
+
+Alternatively, install directly with pip from the repository root:
+
+```bash
+python -m pip install -U pip setuptools wheel pybind11
+python -m pip install python        # Standard install
+python -m pip install -e python     # Editable install
+```
+
+The extension compiles its own copy of the C++ sources; it does not require installing the static library first.
+
+## Quick Start
+
+```python
+import particlezoo as pz
+
+# Create a particle programmatically
+p = pz.Particle(pz.ParticleType.Electron, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+print(f"Particle type: {pz.get_particle_type_name(p.type)}")
+print(f"Energy: {p.kinetic_energy} MeV")
+
+# Read particles from a file
+reader = pz.create_reader("/path/to/input.IAEAphsp")
+print(f"File contains {reader.get_number_of_particles()} particles")
+
+for i, particle in enumerate(reader):
+    if i >= 10:
+        break
+    print(f"Particle {i}: E={particle.kinetic_energy:.3f} MeV at ({particle.x:.2f}, {particle.y:.2f}, {particle.z:.2f})")
+
+reader.close()
+```
+
+## API Reference
+
+### Factory Functions
+
+#### `create_reader(filename, options=UserOptions())`
+Create a phase space file reader with automatic format detection based on file extension.
+
+```python
+reader = pz.create_reader("simulation.egsphsp")
+```
+
+#### `create_reader_for_format(format_name, filename, options=UserOptions())`
+Create a reader for a specific format (bypasses auto-detection).
+
+```python
+reader = pz.create_reader_for_format("IAEA", "data.phsp")
+```
+
+#### `create_writer(filename, options=UserOptions(), fixed_values=FixedValues())`
+Create a phase space file writer with automatic format detection.
+
+```python
+writer = pz.create_writer("output.IAEAphsp")
+```
+
+#### `create_writer_for_format(format_name, filename, options=UserOptions(), fixed_values=FixedValues())`
+Create a writer for a specific format.
+
+```python
+writer = pz.create_writer_for_format("EGS", "output.egsphsp")
+```
+
+### Particle Class
+
+The `Particle` class represents a particle in phase space.
+
+#### Constructor
+
+```python
+# Default constructor (unsupported type, zero energy)
+p = pz.Particle()
+
+# Full constructor
+p = pz.Particle(
+    type=pz.ParticleType.Photon,  # Particle type
+    kineticEnergy=6.0,             # Kinetic energy (internal units)
+    x=0.0, y=0.0, z=0.0,          # Position
+    px=0.0, py=0.0, pz=1.0,       # Direction cosines (auto-normalized)
+    isNewHistory=True,             # Starts new MC history?
+    weight=1.0                     # Statistical weight
+)
+
+# Create from PDG code
+p = pz.particle_from_pdg(pdg=11, kineticEnergy=6.0, x=0, y=0, z=0, px=0, py=0, pz=1)
+```
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `ParticleType` | Particle type (electron, photon, etc.) |
+| `kinetic_energy` | `float` | Kinetic energy |
+| `x`, `y`, `z` | `float` | Position coordinates |
+| `px`, `py`, `pz` | `float` | Direction cosines (momentum unit vector) |
+| `weight` | `float` | Statistical weight |
+| `is_new_history` | `bool` | Whether this particle starts a new Monte Carlo history |
+| `is_primary` | `bool` | Whether this particle is a primary particle (not generated by another particle). Setting to `True` sets generation to 1, `False` sets generation to 2. |
+
+#### Methods
+
+```python
+# Get PDG code
+pdg_code = p.get_pdg_code()  # Returns PDG ID (e.g., 11 for electron)
+
+# Set particle generation (1=primary, 2+=secondary)
+p.set_generation(1)  # Mark as primary
+p.set_generation(2)  # Mark as secondary
+
+# Project particle trajectory to a coordinate
+success = p.project_to_z(100.0)  # Project to Z=100
+success = p.project_to_x(0.0)    # Project to X=0
+success = p.project_to_y(0.0)    # Project to Y=0
+
+# History tracking
+histories = p.get_incremental_histories()
+p.set_incremental_histories(5)
+
+# Integer properties (EGS_LATCH, GENERATION, PENELOPE_ILB*, etc.)
+if p.has_int_property(pz.IntPropertyType.GENERATION):
+    gen = p.get_int_property(pz.IntPropertyType.GENERATION)
+p.set_int_property(pz.IntPropertyType.CUSTOM, 42)
+
+# Float properties (XLAST, YLAST, ZLAST, etc.)
+if p.has_float_property(pz.FloatPropertyType.XLAST):
+    xlast = p.get_float_property(pz.FloatPropertyType.XLAST)
+p.set_float_property(pz.FloatPropertyType.CUSTOM, 3.14)
+
+# Boolean properties (IS_MULTIPLE_CROSSER, etc.)
+if p.has_bool_property(pz.BoolPropertyType.IS_MULTIPLE_CROSSER):
+    is_crosser = p.get_bool_property(pz.BoolPropertyType.IS_MULTIPLE_CROSSER)
+p.set_bool_property(pz.BoolPropertyType.CUSTOM, True)
+
+# String properties
+p.set_string_property("custom_label")
+strings = p.get_custom_string_properties()  # Returns list of custom strings
+
+# Property counts
+num_int = p.get_number_of_int_properties()
+num_float = p.get_number_of_float_properties()
+num_bool = p.get_number_of_bool_properties()
+
+# Reserve memory for properties (optimization)
+p.reserve_int_properties(10)
+p.reserve_float_properties(5)
+p.reserve_bool_properties(3)
+
+# Get all custom properties
+custom_ints = p.get_custom_int_properties()      # Returns list of int32
+custom_floats = p.get_custom_float_properties()  # Returns list of float
+custom_bools = p.get_custom_bool_properties()    # Returns list of bool
+```
+
+### PhaseSpaceFileReader Class
+
+Reader for phase space files. Supports iteration protocol.
+
+```python
+reader = pz.create_reader("input.IAEAphsp")
+
+# File information
+print(f"Particles: {reader.get_number_of_particles()}")
+print(f"Histories: {reader.get_number_of_original_histories()}")
+print(f"Format: {reader.get_phsp_format()}")
+print(f"File size: {reader.get_file_size()} bytes")
+
+# Check for constant values
+if reader.is_z_constant():
+    print(f"Z is constant at {reader.get_constant_z()}")
+
+# Read particles
+while reader.has_more_particles():
+    p = reader.get_next_particle()
+    # process particle...
+
+# Or use iteration
+for particle in reader:
+    # process particle...
+
+# Random access
+reader.move_to_particle(1000000)  # Jump to particle at index 1,000,000
+
+# Statistics
+print(f"Particles read: {reader.get_particles_read()}")
+print(f"Histories read: {reader.get_histories_read()}")
+
+reader.close()
+```
+
+### PhaseSpaceFileWriter Class
+
+Writer for phase space files.
+
+```python
+writer = pz.create_writer("output.egsphsp")
+
+# Write particles
+for particle in source_reader:
+    writer.write_particle(particle)
+
+# Add empty histories (simulations that produced no particles)
+writer.add_additional_histories(100)
+
+# Statistics
+print(f"Particles written: {writer.get_particles_written()}")
+print(f"Histories written: {writer.get_histories_written()}")
+print(f"Max supported: {writer.get_maximum_supported_particles()}")
+
+writer.close()  # Flushes buffers and finalizes file
+```
+
+### FixedValues Class
+
+Define constant values for all particles (reduces file size for some formats).
+
+```python
+fixed = pz.FixedValues()
+fixed.z_is_constant = True
+fixed.constant_z = 100.0 * pz.cm
+
+writer = pz.create_writer("output.IAEAphsp", fixed_values=fixed)
+```
+
+Available fixed value pairs:
+- `x_is_constant` / `constant_x`
+- `y_is_constant` / `constant_y`
+- `z_is_constant` / `constant_z`
+- `px_is_constant` / `constant_px`
+- `py_is_constant` / `constant_py`
+- `pz_is_constant` / `constant_pz`
+- `weight_is_constant` / `constant_weight`
+
+### FormatRegistry Class
+
+Query available formats.
+
+```python
+# List all supported formats
+for fmt in pz.FormatRegistry.supported_formats():
+    print(f"{fmt.name}: {fmt.description} ({fmt.file_extension})")
+    if fmt.file_extension_can_have_suffix:
+        print("  (supports numbered suffixes)")
+
+# Find formats for an extension
+formats = pz.FormatRegistry.formats_for_extension(".phsp")
+
+# Get extension for a format
+ext = pz.FormatRegistry.extension_for_format("IAEA")  # Returns ".IAEAphsp"
+
+# Manually register formats (usually not needed - done automatically)
+pz.FormatRegistry.register_standard_formats()
+```
+
+### UserOptions and ArgParser Classes
+
+For building command-line tools with custom argument parsing:
+
+```python
+# Parse command-line style arguments
+options = pz.ArgParser.parse_args(
+    ["-Z", "100", "input.phsp"],
+    usage_message="Usage: mytool [options] <file>",
+    min_positional_args=1
+)
+
+# Create empty options for manual configuration
+options = pz.UserOptions()
+
+# Pass options to reader/writer
+reader = pz.create_reader("file.phsp", options)
+```
+
+### Property Type Enums
+
+#### IntPropertyType
+- `INVALID` - Invalid/unset
+- `INCREMENTAL_HISTORY_NUMBER` - Number of new histories since last particle
+- `EGS_LATCH` - EGS LATCH variable
+- `PENELOPE_ILB1` through `PENELOPE_ILB5` - PENELOPE ILB array values
+- `GENERATION` - Particle generation (1=primary, 2+=secondary)
+- `CUSTOM` - User-defined
+
+#### FloatPropertyType
+- `INVALID` - Invalid/unset
+- `XLAST`, `YLAST`, `ZLAST` - EGS last interaction position
+- `CUSTOM` - User-defined
+
+#### BoolPropertyType
+- `INVALID` - Invalid/unset
+- `IS_MULTIPLE_CROSSER` - Particle crossed scoring plane multiple times
+- `CUSTOM` - User-defined
+
+### ParticleType Enum
+
+All standard particle types are available:
+
+```python
+pz.ParticleType.Photon
+pz.ParticleType.Electron
+pz.ParticleType.Positron
+pz.ParticleType.Proton
+pz.ParticleType.Neutron
+# ... and many more
+
+# Get all particle types as a dictionary
+all_types = pz.all_particle_types()
+
+# Convert between PDG codes and ParticleType
+ptype = pz.get_particle_type_from_pdgid(11)  # Returns ParticleType.Electron
+pdg = pz.get_pdgid(pz.ParticleType.Photon)   # Returns 22
+name = pz.get_particle_type_name(pz.ParticleType.Electron)  # Returns "electron"
+```
+
+### EGS LATCH Functions
+
+Functions for working with EGS LATCH bit fields:
+
+```python
+# Apply LATCH to a particle
+pz.apply_latch_to_particle(particle, latch_value, pz.EGSLATCHOPTION.LATCH_OPTION_2)
+
+# Extract LATCH from a particle
+latch = pz.extract_latch_from_particle(particle, pz.EGSLATCHOPTION.LATCH_OPTION_2)
+
+# Filter by LATCH bitmask
+if pz.does_particle_pass_latch_filter(particle, 0x00000001):
+    # Particle passes filter
+    pass
+```
+
+LATCH options:
+- `EGSLATCHOPTION.LATCH_OPTION_1` - Non-inherited setting
+- `EGSLATCHOPTION.LATCH_OPTION_2` - Comprehensive setting (default)
+- `EGSLATCHOPTION.LATCH_OPTION_3` - Comprehensive setting with interaction tracking
+
+### PENELOPE ILB Functions
+
+Functions for working with PENELOPE ILB arrays:
+
+```python
+# Apply individual ILB values
+pz.apply_ilb1_to_particle(particle, 1)  # Generation (1=primary)
+pz.apply_ilb2_to_particle(particle, 0)  # Parent type
+pz.apply_ilb3_to_particle(particle, 0)  # Interaction type
+pz.apply_ilb4_to_particle(particle, 0)  # Atomic transition
+pz.apply_ilb5_to_particle(particle, 0)  # User-defined
+
+# Apply all ILB values at once
+pz.apply_ilb_array_to_particle(particle, [1, 0, 0, 0, 0])
+
+# Extract ILB values
+ilb1 = pz.extract_ilb1_from_particle(particle)
+ilb_array = pz.extract_ilb_array_from_particle(particle)  # Returns [ILB1, ILB2, ILB3, ILB4, ILB5]
+```
+
+### Unit System
+
+Physical units are exposed as module constants. Internal units are cm, MeV, g, s.
+
+```python
+# Base units
+pz.cm, pz.MeV, pz.g, pz.s, pz.mol, pz.K, pz.A, pz.cd
+
+# Length
+pz.nm, pz.um, pz.mm, pz.cm, pz.m, pz.km, pz.inch, pz.ft, pz.angstrom
+
+# Area
+pz.nm2, pz.um2, pz.mm2, pz.cm2, pz.m2, pz.km2, pz.in2, pz.ft2, pz.angstrom2
+
+# Volume
+pz.nm3, pz.um3, pz.mm3, pz.cm3, pz.m3, pz.km3, pz.L, pz.mL, pz.uL, pz.in3, pz.ft3, pz.angstrom3
+
+# Energy
+pz.eV, pz.keV, pz.MeV, pz.GeV, pz.TeV, pz.J
+
+# Mass
+pz.ug, pz.mg, pz.g, pz.kg, pz.lb
+
+# Time
+pz.s, pz.minute, pz.hour, pz.day, pz.year
+
+# Frequency
+pz.Hz, pz.kHz, pz.MHz, pz.GHz, pz.THz
+
+# Force
+pz.N, pz.dyn, pz.lbf
+
+# Pressure
+pz.Pa, pz.kPa, pz.MPa, pz.GPa, pz.atm, pz.bar, pz.mbar, pz.torr, pz.mmHg, pz.psi
+
+# Charge
+pz.C, pz.mC, pz.uC, pz.nC, pz.pC
+
+# Density
+pz.g_per_cm3, pz.kg_per_m3
+
+# Dose
+pz.Gy, pz.cGy, pz.rad, pz.Sv, pz.cSv, pz.mSv, pz.rem
+
+# Angle
+pz.radian, pz.deg, pz.PI
+```
+
+#### Usage Examples
+
+```python
+# Convert energy from internal units to keV
+energy_keV = particle.kinetic_energy / pz.keV
+
+# Set position in mm
+particle.x = 10.0 * pz.mm
+
+# Create fixed Z at 1 meter
+fixed = pz.FixedValues()
+fixed.z_is_constant = True
+fixed.constant_z = 1.0 * pz.m
+```
+
+## Complete Examples
+
+### Format Conversion
+
+```python
+import particlezoo as pz
+
+# Convert IAEA to EGS format
+reader = pz.create_reader("input.IAEAphsp")
+writer = pz.create_writer("output.egsphsp")
+
+for particle in reader:
+    writer.write_particle(particle)
+
+print(f"Converted {writer.get_particles_written()} particles")
+writer.close()
+reader.close()
+```
+
+### Filtering Particles
+
+```python
+import particlezoo as pz
+
+reader = pz.create_reader("beam.phsp")
+writer = pz.create_writer("photons_only.phsp")
+
+photon_count = 0
+for particle in reader:
+    if particle.type == pz.ParticleType.Photon:
+        if 1.0 * pz.MeV <= particle.kinetic_energy <= 10.0 * pz.MeV:
+            writer.write_particle(particle)
+            photon_count += 1
+
+print(f"Wrote {photon_count} photons in 1-10 MeV range")
+writer.close()
+reader.close()
+```
+
+### Analyzing Phase Space
+
+```python
+import particlezoo as pz
+
+reader = pz.create_reader("simulation.IAEAphsp")
+
+total_energy = 0.0
+particle_counts = {}
+
+for particle in reader:
+    total_energy += particle.kinetic_energy * particle.weight
+    
+    ptype = pz.get_particle_type_name(particle.type)
+    particle_counts[ptype] = particle_counts.get(ptype, 0) + 1
+
+print(f"Total weighted energy: {total_energy / pz.MeV:.2f} MeV")
+print("Particle counts:")
+for ptype, count in sorted(particle_counts.items()):
+    print(f"  {ptype}: {count}")
+
+reader.close()
+```
+
+### Creating Particles Programmatically
+
+```python
+import particlezoo as pz
+import math
+
+writer = pz.create_writer("synthetic.IAEAphsp")
+
+# Create a pencil beam of electrons
+for i in range(1000):
+    p = pz.Particle(
+        type=pz.ParticleType.Electron,
+        kineticEnergy=6.0 * pz.MeV,
+        x=0.0, y=0.0, z=0.0,
+        px=0.0, py=0.0, pz=1.0,
+        isNewHistory=True,
+        weight=1.0
+    )
+    writer.write_particle(p)
+
+writer.close()
+print(f"Created {writer.get_particles_written()} particles")
+```
+
+### Working with Fixed Values
+
+```python
+import particlezoo as pz
+
+# Read a file and check for constant values
+reader = pz.create_reader("planar_source.IAEAphsp")
+
+if reader.is_z_constant():
+    print(f"All particles at Z = {reader.get_constant_z() / pz.cm:.2f} cm")
+
+# Write with fixed Z value
+fixed = pz.FixedValues()
+fixed.z_is_constant = True
+fixed.constant_z = 100.0 * pz.cm
+
+writer = pz.create_writer("output.IAEAphsp", fixed_values=fixed)
+for particle in reader:
+    # particle will be written with z = 100 cm
+    writer.write_particle(particle)
+
+writer.close()
+reader.close()
+```
+
+## Supported Formats
+
+| Format | Extension | Description |
+|--------|-----------|-------------|
+| EGS | `.egsphsp`, `.egsphsp1`, etc. | EGSnrc MODE0/MODE2 format |
+| IAEA | `.IAEAphsp` | IAEA standard format with header |
+| TOPAS | `.phsp` | TOPAS Binary, ASCII, Limited |
+| penEasy | `.dat` | PENELOPE/penEasy ASCII format |
+| ROOT | `.root` | CERN ROOT trees (if compiled with ROOT support) |
+
+## Notes
+
+- All positions are in internal units
+- All energies are in internal units
+- Direction cosines are automatically normalized
+- The extension compiles against the C++ sources directly
+- Thread safety: Each reader/writer should be used from a single thread

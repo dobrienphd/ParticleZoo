@@ -3,6 +3,8 @@
 
 #include <filesystem>
 
+#include "particlezoo/penelope/ILBArray.h"
+
 namespace ParticleZoo::IAEAphspFile
 {
 
@@ -59,7 +61,7 @@ namespace ParticleZoo::IAEAphspFile
     }
 
     Reader::Reader(const std::string & filename, const UserOptions & options)
-        : PhaseSpaceFileReader("IAEA", filename, options), header_(initializeHeader(options, filename))
+        : PhaseSpaceFileReader("IAEA", filename, options), header_(initializeHeader(options, filename)), EGSlatchOption_(EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_2)
     {
         if (!header_.xIsStored()) setConstantX(header_.getConstantX());
         if (!header_.yIsStored()) setConstantY(header_.getConstantY());
@@ -68,10 +70,27 @@ namespace ParticleZoo::IAEAphspFile
         if (!header_.vIsStored()) setConstantPy(header_.getConstantV());
         if (!header_.wIsStored()) setConstantPz(header_.getConstantW());
         if (!header_.weightIsStored()) setConstantWeight(header_.getConstantWeight());
+
+        if (options.contains(EGSphspFile::EGSLATCHOptionCommand)) {
+            int latchOptionInt = options.extractIntOption(EGSphspFile::EGSLATCHOptionCommand, 2);
+            switch (latchOptionInt) {
+                case 1:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_1;
+                    break;
+                case 2:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_2;
+                    break;
+                case 3:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_3;
+                    break;
+                default:
+                    throw std::runtime_error("Invalid EGS LATCH option specified. Valid options are 1, 2, or 3.");
+            }
+        }
     }
 
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() {
-        return { IAEAIgnoreChecksumCommand };
+        return { IAEAIgnoreChecksumCommand, EGSphspFile::EGSLATCHOptionCommand };
     }
 
     Particle Reader::readBinaryParticle(ByteBuffer & buffer)
@@ -136,14 +155,35 @@ namespace ParticleZoo::IAEAphspFile
             std::int32_t extraLong = buffer.read<std::int32_t>();
             IAEAHeader::EXTRA_LONG_TYPE IAEAextraLongType = header_.getExtraLongType(i);
 
-            if (!isNewHistory && IAEAextraLongType == IAEAHeader::EXTRA_LONG_TYPE::INCREMENTAL_HISTORY_NUMBER && extraLong > 0) {
-                // This indicates the start of a new history, despite the kinetic energy not being negative (can help recover a malformed file)
-                isNewHistory = true;
-                particle.setNewHistory(true);
+            switch (IAEAextraLongType) {
+                case IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB1:
+                    Penelope::ApplyILB1ToParticle(particle, extraLong);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB2:
+                    Penelope::ApplyILB2ToParticle(particle, extraLong);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB3:
+                    Penelope::ApplyILB3ToParticle(particle, extraLong);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB4:
+                    Penelope::ApplyILB4ToParticle(particle, extraLong);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::PENELOPE_ILB5:
+                    Penelope::ApplyILB5ToParticle(particle, extraLong);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::EGS_LATCH:
+                    EGSphspFile::ApplyLATCHToParticle(particle, extraLong, EGSlatchOption_);
+                    break;
+                case IAEAHeader::EXTRA_LONG_TYPE::INCREMENTAL_HISTORY_NUMBER:
+                    if (extraLong > 0 && !isNewHistory) {
+                        isNewHistory = true;
+                        particle.setNewHistory(true);
+                    }
+                default:
+                    IntPropertyType extraLongType = IAEAHeader::translateExtraLongType(IAEAextraLongType);
+                    particle.setIntProperty(extraLongType, extraLong);
+                    break;
             }
-
-            IntPropertyType extraLongType = IAEAHeader::translateExtraLongType(IAEAextraLongType);
-            particle.setIntProperty(extraLongType, extraLong);
         }
 
         return particle;
@@ -249,8 +289,27 @@ namespace ParticleZoo::IAEAphspFile
                 }
             }
             return header;
-          }())
+          }()),
+          EGSlatchOption_(EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_2)
     {
+        // Determine EGS LATCH option
+        if (userOptions.contains(EGSphspFile::EGSLATCHOptionCommand)) {
+            int latchOptionInt = userOptions.extractIntOption(EGSphspFile::EGSLATCHOptionCommand);
+            switch (latchOptionInt) {
+                case 1:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_1;
+                    break;
+                case 2:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_2;
+                    break;
+                case 3:
+                    EGSlatchOption_ = EGSphspFile::EGSLATCHOPTION::LATCH_OPTION_3;
+                    break;
+                default:
+                    throw std::runtime_error("Invalid EGS LATCH option specified. Valid options are 1, 2, or 3.");
+            }
+        }
+
         // update constants in the header
         fixedValuesHaveChanged();
     }
@@ -270,7 +329,8 @@ namespace ParticleZoo::IAEAphspFile
             IAEAAddPENELOPEILB1Command,
             IAEAAddXLASTCommand,
             IAEAAddYLASTCommand,
-            IAEAAddZLASTCommand
+            IAEAAddZLASTCommand,
+            EGSphspFile::EGSLATCHOptionCommand
         };
     }
 
@@ -344,25 +404,42 @@ namespace ParticleZoo::IAEAphspFile
             std::int32_t extraLongValue;
             IAEAHeader::EXTRA_LONG_TYPE IAEALongType = header_.getExtraLongType(i);
             IntPropertyType longType = IAEAHeader::translateExtraLongType(IAEALongType);
-            if (longType == IntPropertyType::CUSTOM)
-            {
-                if (customLongIndex >= customLongProperties.size()) {
-                    extraLongValue = 0;
-                } else {
-                    extraLongValue = customLongProperties[customLongIndex++];
-                }
-            } else {
-                if (particle.hasIntProperty(longType)) {
-                    extraLongValue = particle.getIntProperty(longType);
-                } else {
-                    if (longType == IntPropertyType::INCREMENTAL_HISTORY_NUMBER) {
-                        // Special case for INCREMENTAL_HISTORY_NUMBER, which should be set based on the isNewHistory flag if it is not defined
-                        extraLongValue = particle.isNewHistory() ? 1 : 0; // Incremental history number starts at 1 for new histories
+            switch (longType) {
+                case IntPropertyType::PENELOPE_ILB1:
+                    extraLongValue = Penelope::ExtractILB1FromParticle(particle);
+                    break;
+                case IntPropertyType::PENELOPE_ILB2:
+                    extraLongValue = Penelope::ExtractILB2FromParticle(particle);
+                    break;
+                case IntPropertyType::PENELOPE_ILB3:
+                    extraLongValue = Penelope::ExtractILB3FromParticle(particle);
+                    break;
+                case IntPropertyType::PENELOPE_ILB4:
+                    extraLongValue = Penelope::ExtractILB4FromParticle(particle);
+                    break;
+                case IntPropertyType::PENELOPE_ILB5:
+                    extraLongValue = Penelope::ExtractILB5FromParticle(particle);
+                    break;
+                case IntPropertyType::EGS_LATCH:
+                    extraLongValue = EGSphspFile::ExtractLATCHFromParticle(particle, EGSlatchOption_);
+                    break;
+                case IntPropertyType::INCREMENTAL_HISTORY_NUMBER:
+                    extraLongValue = particle.getIncrementalHistories();
+                    break;
+                case IntPropertyType::CUSTOM:
+                    if (customLongIndex >= customLongProperties.size()) {
+                        extraLongValue = 0;
                     } else {
-                        // For other types, use the default value of zero
+                        extraLongValue = customLongProperties[customLongIndex++];
+                    }
+                    break;
+                default:
+                    if (particle.hasIntProperty(longType)) {
+                        extraLongValue = particle.getIntProperty(longType);
+                    } else {
                         extraLongValue = 0;
                     }
-                }
+                    break;
             }
             buffer.write<std::int32_t>(extraLongValue);
         }

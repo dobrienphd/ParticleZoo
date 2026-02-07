@@ -10,12 +10,20 @@ namespace ParticleZoo
     CLICommand ConstantPyCommand{ WRITER, "Py", "constantPy", "Set all particles to be written with this constant value for the Y directional cosine", { CLI_FLOAT } };
     CLICommand ConstantPzCommand{ WRITER, "Pz", "constantPz", "Set all particles to be written with this constant value for the Z directional cosine", { CLI_FLOAT } };
     CLICommand ConstantWeightCommand{ WRITER, "W", "constantWeight", "Set all particles to be written with this constant value for the weight", { CLI_FLOAT } };
+    CLICommand FlipXDirectionCommand{ WRITER, "", "flipX", "Flip the X direction of all particles", {} };
+    CLICommand FlipYDirectionCommand{ WRITER, "", "flipY", "Flip the Y direction of all particles", {} };
+    CLICommand FlipZDirectionCommand{ WRITER, "", "flipZ", "Flip the Z direction of all particles", {} };
+
 
     std::vector<CLICommand> PhaseSpaceFileWriter::getCLICommands() {
-        return { ConstantXCommand, ConstantYCommand, ConstantZCommand,
+        return {
+                 ConstantXCommand, ConstantYCommand, ConstantZCommand,
                  ConstantPxCommand, ConstantPyCommand, ConstantPzCommand,
-                 ConstantWeightCommand };
+                 ConstantWeightCommand,
+                 FlipXDirectionCommand, FlipYDirectionCommand, FlipZDirectionCommand
+               };
     }
+
 
     PhaseSpaceFileWriter::PhaseSpaceFileWriter(const std::string & phspFormat, const std::string & fileName, const UserOptions & userOptions, FormatType formatType, const FixedValues fixedValues, unsigned int bufferSize)
     : phspFormat_(phspFormat),
@@ -70,11 +78,22 @@ namespace ParticleZoo
             CLIValue constantWeightValue = userOptions.at(ConstantWeightCommand).front();
             setConstantWeight(std::get<float>(constantWeightValue));
         }
+        if (userOptions_.contains(FlipXDirectionCommand)) {
+            flipXDirection_ = true;
+        }
+        if (userOptions_.contains(FlipYDirectionCommand)) {
+            flipYDirection_ = true;
+        }
+        if (userOptions_.contains(FlipZDirectionCommand)) {
+            flipZDirection_ = true;
+        }
     }
+
 
     PhaseSpaceFileWriter::~PhaseSpaceFileWriter() {
         close();
     }
+
 
     void PhaseSpaceFileWriter::close() {
         historiesWritten_ += historiesToAccountFor_;
@@ -86,6 +105,7 @@ namespace ParticleZoo
             file_.close();
         }
     }
+
 
     void PhaseSpaceFileWriter::writeHeaderToFile() {
         if (formatType_ == FormatType::NONE) {
@@ -135,6 +155,7 @@ namespace ParticleZoo
         file_.seekp(currentPos);
     }
 
+
     void PhaseSpaceFileWriter::writeParticle(Particle particle) {
         if (getParticlesWritten() >= getMaximumSupportedParticles()) {
             throw std::runtime_error("Maximum number of particles reached for this writer (" + std::to_string(getMaximumSupportedParticles()) + ").");
@@ -175,6 +196,10 @@ namespace ParticleZoo
                     throw std::runtime_error("Particle direction is not normalized.");
                 }
             }
+
+            if (flipXDirection_) particle.setDirectionalCosineX(-particle.getDirectionalCosineX());
+            if (flipYDirection_) particle.setDirectionalCosineY(-particle.getDirectionalCosineY());
+            if (flipZDirection_) particle.setDirectionalCosineZ(-particle.getDirectionalCosineZ());
 
             switch (formatType_) {
 
@@ -243,6 +268,7 @@ namespace ParticleZoo
             historiesWritten_ += particle.getIncrementalHistories();
         }
     }
+
 
     void PhaseSpaceFileWriter::writeNextBlock() {
         if (formatType_ == FormatType::NONE) return;

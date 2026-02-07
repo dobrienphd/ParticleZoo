@@ -240,14 +240,13 @@ namespace ParticleZoo
     }
 
     Particle PhaseSpaceFileReader::getNextParticle(bool countParticleInStatistics) {
+        if (!hasMoreParticles()) {
+            throw std::runtime_error("No more particles to read.");
+        }
         Particle particle = [&]() {
             switch (formatType_) {
                 case (FormatType::BINARY): // Binary format
-                    {
-                        if (!hasMoreParticles()) {
-                            throw std::runtime_error("No more particles to read.");
-                        }
-                        
+                    {                        
                         if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
                         // Read the next block of data if necessary
                         if (buffer_.length() == 0 || buffer_.remainingToRead() < particleRecordLength_) {
@@ -264,11 +263,8 @@ namespace ParticleZoo
                     break;
                 case (FormatType::ASCII): // ASCII format
                     {
-                        if (!hasMoreParticles()) {
-                            throw std::runtime_error("No more particles to read.");
-                        }
                         try {
-                            bufferNextASCIILine();
+                            if (asciiLineBuffer_.empty()) bufferNextASCIILine();
                             std::string line = std::move(asciiLineBuffer_.front());
                             asciiLineBuffer_.pop_front();
                             return readASCIIParticle(line);
@@ -310,6 +306,50 @@ namespace ParticleZoo
         }
         particlesRead_++;
 
+        return particle;
+    }
+
+    Particle PhaseSpaceFileReader::peekNextParticle() {
+        if (!hasMoreParticles()) {
+            throw std::runtime_error("No more particles to read.");
+        }
+        Particle particle = [&]() {
+            switch (formatType_) {
+                case (FormatType::BINARY): // Binary format
+                    {                        
+                        if (particleRecordLength_ == 0) particleRecordLength_ = getParticleRecordLength();
+                        // Read the next block of data if necessary
+                        if (buffer_.length() == 0 || buffer_.remainingToRead() < particleRecordLength_) {
+                            readNextBlock();
+                        }
+
+                        // Get a view of the next particle record in the buffer without advancing the read position
+                        std::span<const ParticleZoo::byte> recordView = buffer_.peekBytes(particleRecordLength_);
+                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
+                        
+                        // Read the next particle from the buffer
+                        return readBinaryParticle(particleData);
+                    }
+                    break;
+                case (FormatType::ASCII): // ASCII format
+                    {
+                        try {
+                            if (asciiLineBuffer_.empty()) bufferNextASCIILine();
+                            std::string line = asciiLineBuffer_.front(); // Peek without popping
+                            return readASCIIParticle(line);
+                        } catch (const std::runtime_error &e) {
+                            throw std::runtime_error("Error reading line from file: " + std::string(e.what()));
+                        }
+                    }
+                    break;
+                default: // NONE format
+                    {
+                        // For NONE format, all I/O needs to be implemented manually by the subclass.
+                        return peekParticleManually();
+                    }
+                    break;
+            }
+        }();
         return particle;
     }
 

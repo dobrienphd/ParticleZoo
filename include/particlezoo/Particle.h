@@ -31,6 +31,7 @@ namespace ParticleZoo {
         PENELOPE_ILB3,                  ///< PENELOPE ILB array value 3, corresponds to the interaction type that created the particle (applies only if ILB1 > 1)
         PENELOPE_ILB4,                  ///< PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transistion that created the particle
         PENELOPE_ILB5,                  ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
+        GENERATION,                     ///< Generation of the particle (1 for primary, 2 for secondary, etc.)
         CUSTOM                          ///< Custom integer property type, can be used for any user-defined purpose
     };
 
@@ -57,7 +58,7 @@ namespace ParticleZoo {
     enum class BoolPropertyType {
         INVALID,                ///< Invalid property type
         IS_MULTIPLE_CROSSER,    ///< Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)
-        IS_SECONDARY_PARTICLE,  ///< Flag indicating that the particle is a secondary
+        IS_SECONDARY_PARTICLE [[deprecated("IS_SECONDARY_PARTICLE is deprecated since v1.1.0. Use IntPropertyType::GENERATION instead.")]],  ///< Flag indicating that the particle is a secondary. @deprecated Since v1.1.0. Use IntPropertyType::GENERATION instead.
         CUSTOM                  ///< Custom boolean property type, can be used for any user-defined purpose
     };
 
@@ -70,20 +71,20 @@ namespace ParticleZoo {
      */
     struct FixedValues
     {
-        bool xIsConstant{0};        ///< True if X coordinate is constant for all particles
-        bool yIsConstant{0};        ///< True if Y coordinate is constant for all particles
-        bool zIsConstant{0};        ///< True if Z coordinate is constant for all particles
-        bool pxIsConstant{0};       ///< True if X directional cosine is constant for all particles
-        bool pyIsConstant{0};       ///< True if Y directional cosine is constant for all particles
-        bool pzIsConstant{0};       ///< True if Z directional cosine is constant for all particles
-        bool weightIsConstant{0};   ///< True if statistical weight is constant for all particles
-        float constantX{0};         ///< Constant X coordinate value (when xIsConstant is true)
-        float constantY{0};         ///< Constant Y coordinate value (when yIsConstant is true)
-        float constantZ{0};         ///< Constant Z coordinate value (when zIsConstant is true)
-        float constantPx{0};        ///< Constant X directional cosine value (when pxIsConstant is true)
-        float constantPy{0};        ///< Constant Y directional cosine value (when pyIsConstant is true)
-        float constantPz{0};        ///< Constant Z directional cosine value (when pzIsConstant is true)
-        float constantWeight{1};    ///< Constant statistical weight value (when weightIsConstant is true)
+        bool xIsConstant{false};        ///< True if X coordinate is constant for all particles
+        bool yIsConstant{false};        ///< True if Y coordinate is constant for all particles
+        bool zIsConstant{false};        ///< True if Z coordinate is constant for all particles
+        bool pxIsConstant{false};       ///< True if X directional cosine is constant for all particles
+        bool pyIsConstant{false};       ///< True if Y directional cosine is constant for all particles
+        bool pzIsConstant{false};       ///< True if Z directional cosine is constant for all particles
+        bool weightIsConstant{false};   ///< True if statistical weight is constant for all particles
+        float constantX{0};             ///< Constant X coordinate value (when xIsConstant is true)
+        float constantY{0};             ///< Constant Y coordinate value (when yIsConstant is true)
+        float constantZ{0};             ///< Constant Z coordinate value (when zIsConstant is true)
+        float constantPx{0};            ///< Constant X directional cosine value (when pxIsConstant is true)
+        float constantPy{0};            ///< Constant Y directional cosine value (when pyIsConstant is true)
+        float constantPz{0};            ///< Constant Z directional cosine value (when pzIsConstant is true)
+        float constantWeight{1};        ///< Constant statistical weight value (when weightIsConstant is true)
 
         /**
          * @brief Equality comparison operator for FixedValues.
@@ -168,7 +169,28 @@ namespace ParticleZoo {
              * @param isNewHistory Whether this particle starts a new Monte Carlo history (default: true)
              * @param weight The statistical weight of the particle (default: 1.0)
              */
-            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0);
+            Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float directionalCosineX, float directionalCosineY, float directionalCosineZ, bool isNewHistory = true, float weight = 1.0f);
+
+            /**
+             * @brief Construct a Particle with specified properties.
+             * 
+             * Creates a particle with the given position, momentum direction, energy, and other properties.
+             * The directional cosines are automatically normalized to ensure they represent a unit vector.
+             * 
+             * This overload accepts double precision inputs and converts them to float internally.
+             * 
+             * @param type The particle type (electron, photon, proton, etc.)
+             * @param kineticEnergy The kinetic energy of the particle
+             * @param x The X coordinate position
+             * @param y The Y coordinate position  
+             * @param z The Z coordinate position
+             * @param directionalCosineX The X component of the momentum unit vector
+             * @param directionalCosineY The Y component of the momentum unit vector
+             * @param directionalCosineZ The Z component of the momentum unit vector
+             * @param isNewHistory Whether this particle starts a new Monte Carlo history (default: true)
+             * @param weight The statistical weight of the particle (default: 1.0)
+             */
+            Particle(ParticleType type, double kineticEnergy, double x, double y, double z, double directionalCosineX, double directionalCosineY, double directionalCosineZ, bool isNewHistory = true, double weight = 1.0);
 
             // Getters and setters for basic particle properties
 
@@ -248,6 +270,13 @@ namespace ParticleZoo {
              * @return ParticleType The type of particle (electron, photon, proton, etc.)
              */
             ParticleType getType() const;
+
+            /**
+             * @brief Get the PDG identification code of the particle.
+             * 
+             * @return std::int32_t The PDG code corresponding to the particle type
+             */
+            std::int32_t getPDGCode() const;
             
             /**
              * @brief Get the kinetic energy of the particle.
@@ -312,6 +341,24 @@ namespace ParticleZoo {
              * @return false if this particle continues an existing history
              */
             bool  isNewHistory() const;
+
+            /**
+             * @brief Check if this particle is a primary particle.
+             * 
+             * A primary particle is defined as a particle that is not generated by any other particle, i.e., it is the first particle in a given history.
+             * 
+             * @note Be aware that if a format does not provide explicit information about primary/secondary status, then **no** particles will report as primary from files of that format by default.
+             * @return true if this particle is a primary particle
+             * @return false if this particle is a secondary particle or later generation, or if the primary/secondary status is not available
+             */
+            bool isPrimary() const;
+
+            /**
+             * @brief Set the generation of the particle.
+             * 
+             * @param generation The generation number (1 for primary, 2+ for secondary)
+             */
+            void setGeneration(std::int32_t generation);
 
             /**
              * @brief Convenience function to get the number of incremental histories regardless of whether the property is set. If the property is not set, it returns 1 if the particle is marked as a new history, otherwise 0.
@@ -546,6 +593,23 @@ namespace ParticleZoo {
 
     /* Implementation of Particle class methods */
 
+    inline Particle::Particle(ParticleType type, double kineticEnergy, double x, double y, double z, double px, double py, double pz, bool isNewHistory, double weight)
+    :   type_(type),
+        kineticEnergy_(static_cast<float>(kineticEnergy)),
+        x_(static_cast<float>(x)),
+        y_(static_cast<float>(y)),
+        z_(static_cast<float>(z)),
+        px_(static_cast<float>(px)),
+        py_(static_cast<float>(py)),
+        pz_(static_cast<float>(pz)),
+        isNewHistory_(isNewHistory),
+        weight_(static_cast<float>(weight)),
+        properties_
+        ()
+    {
+        // Normalize the directional cosines
+        normalizeDirectionalCosines();
+    }
 
     inline Particle::Particle(ParticleType type, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory, float weight)
     : type_(type), kineticEnergy_(kineticEnergy), x_(x), y_(y), z_(z), px_(px), py_(py), pz_(pz), isNewHistory_(isNewHistory), weight_(weight), properties_()
@@ -574,6 +638,7 @@ namespace ParticleZoo {
     }
 
     inline ParticleType Particle::getType() const { return type_; }
+    inline std::int32_t Particle::getPDGCode() const { return getPDGIDFromParticleType(type_); }
     inline float Particle::getKineticEnergy() const { return kineticEnergy_; }
     inline float Particle::getX() const { return x_; }
     inline float Particle::getY() const { return y_; }
@@ -594,9 +659,9 @@ namespace ParticleZoo {
         }
     }
 
-    inline int Particle::getNumberOfBoolProperties() const { return properties_.boolProperties.size(); }
-    inline int Particle::getNumberOfFloatProperties() const { return properties_.floatProperties.size(); }
-    inline int Particle::getNumberOfIntProperties() const { return properties_.intProperties.size(); }
+    inline int Particle::getNumberOfBoolProperties() const { return static_cast<int>(properties_.boolProperties.size()); }
+    inline int Particle::getNumberOfFloatProperties() const { return static_cast<int>(properties_.floatProperties.size()); }
+    inline int Particle::getNumberOfIntProperties() const { return static_cast<int>(properties_.intProperties.size()); }
 
     inline const std::vector<bool>& Particle::getCustomBoolProperties() const { return properties_.customBoolProperties; }
     inline const std::vector<float>& Particle::getCustomFloatProperties() const { return properties_.customFloatProperties; }
@@ -706,7 +771,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.boolProperties.push_back(value);
                 properties_.boolPropertyTypes.push_back(type);
-                properties_.boolPropertyTypeIndices[type] = properties_.boolProperties.size() - 1;
+                properties_.boolPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.boolProperties.size() - 1);
             } else {
                 properties_.boolProperties[index] = value;
             }
@@ -722,7 +787,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.floatProperties.push_back(value);
                 properties_.floatPropertyTypes.push_back(type);
-                properties_.floatPropertyTypeIndices[type] = properties_.floatProperties.size() - 1;
+                properties_.floatPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.floatProperties.size() - 1);
             } else {
                 properties_.floatProperties[index] = value;
             }
@@ -738,7 +803,7 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.intProperties.push_back(value);
                 properties_.intPropertyTypes.push_back(type);
-                properties_.intPropertyTypeIndices[type] = properties_.intProperties.size() - 1;
+                properties_.intPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.intProperties.size() - 1);
             } else {
                 properties_.intProperties[index] = value;
             }
@@ -788,6 +853,17 @@ namespace ParticleZoo {
         x_ += px_ * t;
         y_ += py_ * t;
         return true;
+    }
+
+    inline bool Particle::isPrimary() const {
+        if (hasIntProperty(IntPropertyType::GENERATION)) {
+            return getIntProperty(IntPropertyType::GENERATION) == 1;
+        }
+        return false; // If the generation property is not available, return false by default
+    }
+
+    inline void Particle::setGeneration(std::int32_t generation) {
+        setIntProperty(IntPropertyType::GENERATION, generation);
     }
 
 } // namespace ParticleZoo

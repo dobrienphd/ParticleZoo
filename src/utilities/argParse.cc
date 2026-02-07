@@ -72,6 +72,17 @@ namespace ParticleZoo {
     /// @return A map of parsed user options.
     const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string & usageMessage, std::size_t minimumPositionalArgs)
     {
+        return ParseArgs(argc, argv, std::string_view(usageMessage), minimumPositionalArgs);
+    }
+
+    /// @brief Parses command line arguments based on registered commands.
+    /// @param argc Argument count.
+    /// @param argv Argument vector.
+    /// @param usageMessage Message to display for usage information.
+    /// @param minimumPositionalArgs Minimum required positional arguments.
+    /// @return A map of parsed user options.
+    const UserOptions ArgParser::ParseArgs(int argc, char* argv[], const std::string_view & usageMessage, std::size_t minimumPositionalArgs)
+    {
         // Retrieve the singleton instance
         ArgParser& parser = Instance();
 
@@ -112,6 +123,15 @@ namespace ParticleZoo {
             switch (type) {
                 case CLI_FLOAT:
                     return std::stof(value);
+                case CLI_UINT:
+                    {
+                        // std::stoul with base 0 auto-detects: 0x prefix = hex, 0 prefix = octal, otherwise decimal
+                        unsigned long ulValue = std::stoul(value, nullptr, 0);
+                        if (ulValue > static_cast<unsigned long>(std::numeric_limits<unsigned int>::max())) {
+                            throw std::out_of_range("Value out of range for unsigned int");
+                        }
+                        return static_cast<unsigned int>(ulValue);
+                    }
                 case CLI_INT:
                     return std::stoi(value);
                 case CLI_STRING:
@@ -179,7 +199,7 @@ namespace ParticleZoo {
                         values.push_back(true);
                     } else {
                         if (++i >= argc) {
-                            std::cerr << "Option --" << optName << " requires an argument" << std::endl;
+                            std::cerr << "Option --" << optName << " requires an additional argument" << std::endl;
                             PrintUsage(usageMessage);
                         }
                         try {
@@ -229,7 +249,7 @@ namespace ParticleZoo {
                         values.push_back(true);
                     } else {
                         if (++i >= argc) {
-                            std::cerr << "Option -" << optName << " requires an argument" << std::endl;
+                            std::cerr << "Option -" << optName << " requires an additional argument" << std::endl;
                             PrintUsage(usageMessage);
                         }
                         try {
@@ -262,7 +282,11 @@ namespace ParticleZoo {
         return opts;
     }
 
-    void ArgParser::PrintUsage(std::string usageMessage, int exitCode) {
+    void ArgParser::PrintUsage(const std::string & usageMessage, const int exitCode) {
+        PrintUsage(std::string_view(usageMessage), exitCode);
+    }
+
+    void ArgParser::PrintUsage(const std::string_view & usageMessage, const int exitCode) {
         // Retrieve the singleton instance
         ArgParser& parser = Instance();
         auto& commands = parser.commands;
@@ -301,6 +325,7 @@ namespace ParticleZoo {
         auto typeToString = [](CLIArgType type) -> std::string {
             switch (type) {
                 case CLI_FLOAT: return "number";
+                case CLI_UINT: return "unsigned integer";
                 case CLI_INT: return "integer";
                 case CLI_STRING: return "text";
                 case CLI_BOOL: return "true/false";
