@@ -171,7 +171,6 @@ namespace ParticleZoo {
             std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
 
             bool hasGapsBetweenHistories_;
-            std::uint64_t totalHistoriesToRead_;
             std::uint64_t numberOfOriginalHistories_;
             std::uint64_t numberOfParticlesInPhsp_;
             std::uint64_t numberOfRepresentedHistories_;

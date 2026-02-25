@@ -47,9 +47,6 @@ namespace ParticleZoo {
 
         // Get the number of original histories and adjust totalHistoriesToRead_ if necessary
         numberOfOriginalHistories_ = readers_[0]->getNumberOfOriginalHistories();
-        if (numberOfOriginalHistories_ < totalHistoriesToRead_) {
-            totalHistoriesToRead_ = numberOfOriginalHistories_;
-        }
 
         // Get the number of particles in the phase space
         numberOfParticlesInPhsp_ = readers_[0]->getNumberOfParticles();
