@@ -3,8 +3,6 @@
 
 #include "particlezoo/utilities/formats.h"
 
-#include <thread>
-
 namespace ParticleZoo {
 
     HistoryBalancedParallelReader::HistoryBalancedParallelReader(const std::string& filename, const UserOptions& options, size_t numThreads)
@@ -25,11 +23,10 @@ namespace ParticleZoo {
         }
 
         // Determine the number of represented histories
-        try {
-            // Attempt to get the number of represented histories directly
+        if (readers_[0]->hasNativeRepresentedHistoryCount()) {
             numberOfRepresentedHistories_ = readers_[0]->getNumberOfRepresentedHistories();
-        } catch (const std::runtime_error&) {
-            // Manually count the number of represented histories if not supported
+        } else {
+            // Manually count the number of represented histories by scanning the file
             numberOfRepresentedHistories_ = 0;
             auto reader = FormatRegistry::CreateReader(filename, options);
             while (reader->hasMoreParticles()) {
@@ -68,6 +65,7 @@ namespace ParticleZoo {
         startingHistorys_.reserve(numThreads);
         historiesRead_.reserve(numThreads);
         totalHistoriesRead_.resize(numThreads, 0);
+        particlesRead_.resize(numThreads, 0);
         hasMoreParticlesCache_.resize(numThreads, NEEDS_CHECKING);
         std::uint64_t historiesPerThread = numberOfRepresentedHistories_ / numThreads;
         std::uint64_t remainderHistories = numberOfRepresentedHistories_ % numThreads;
@@ -87,35 +85,33 @@ namespace ParticleZoo {
             }
         }
 
-        // In separate threads, move each reader to its starting history
-        std::vector<std::thread> threads;
-        for (size_t i = 0; i < numThreads; ++i) {
-            threads.emplace_back([this, i]() {
-                std::uint64_t targetHistory = startingHistorys_[i];
-                // Thread 0 starts at the beginning, no positioning needed
-                if (targetHistory == 0) {
-                    return;
-                }
-                std::uint64_t currentHistory = 0;
-                // Skip to the first particle of history #targetHistory (0-indexed)
-                // We need to consume all particles from histories 0 through targetHistory-1
-                while (readers_[i]->hasMoreParticles()) {
-                    const Particle particle = readers_[i]->peekNextParticle();
-                    if (particle.isNewHistory()) {
-                        if (currentHistory == targetHistory) {
-                            // We've reached the start of the target history, stop here
-                            break;
-                        }
-                        currentHistory++;
-                    }
-                    readers_[i]->getNextParticle(); // Consume this particle
-                }
-            });
-        }
+        // Single-pass scan to find the particle index at each thread's starting history.
+        if (numThreads > 1) {
+            std::vector<std::uint64_t> startingParticleIndices(numThreads, 0);
+            {
+                auto scanner = FormatRegistry::CreateReader(filename, options);
+                std::uint64_t historyCount = 0;
+                std::uint64_t particleIndex = 0;
+                size_t nextThreadToFind = 1; // Thread 0 always starts at particle 0
 
-        // Join threads
-        for (auto& thread : threads) {
-            thread.join();
+                while (nextThreadToFind < numThreads && scanner->hasMoreParticles()) {
+                    const Particle particle = scanner->getNextParticle();
+                    if (particle.isNewHistory()) {
+                        if (historyCount == startingHistorys_[nextThreadToFind]) {
+                            startingParticleIndices[nextThreadToFind] = particleIndex;
+                            nextThreadToFind++;
+                        }
+                        historyCount++;
+                    }
+                    particleIndex++;
+                }
+                scanner->close();
+            }
+
+            // Position each reader at its starting particle using direct seek
+            for (size_t i = 1; i < numThreads; ++i) {
+                readers_[i]->moveToParticle(startingParticleIndices[i]);
+            }
         }
     }
 
@@ -169,6 +165,7 @@ namespace ParticleZoo {
 
         // Get the next particle from the appropriate reader
         Particle particle = readers_[threadIndex]->getNextParticle();
+        particlesRead_[threadIndex]++;
 
         // Update history count if this particle starts a new history
         int32_t incrementalHistoryNumber = 0;
@@ -215,6 +212,13 @@ namespace ParticleZoo {
             throw std::out_of_range("Thread index out of range in getHistoriesRead()");
         }
         return totalHistoriesRead_[threadIndex];
+    }
+
+    std::uint64_t HistoryBalancedParallelReader::getParticlesRead(size_t threadIndex) const {
+        if (threadIndex >= readers_.size()) {
+            throw std::out_of_range("Thread index out of range in getParticlesRead()");
+        }
+        return particlesRead_[threadIndex];
     }
 
     void HistoryBalancedParallelReader::close() {

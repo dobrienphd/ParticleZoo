@@ -50,6 +50,23 @@ namespace ParticleZoo::TOPASphspFile
             std::uint64_t  getNumberOfOriginalHistories() const override;
 
             /**
+             * @brief Get the number of represented histories in the phase space.
+             *
+             * Only available for ASCII and BINARY sub-formats (not LIMITED).
+             * For LIMITED, delegates to the base class which throws.
+             *
+             * @return Number of represented histories from the header
+             * @throws std::runtime_error if format is LIMITED
+             */
+            std::uint64_t  getNumberOfRepresentedHistories() const override;
+
+            /**
+             * @brief Check if this format can provide represented history count cheaply.
+             * @return true for ASCII and BINARY, false for LIMITED
+             */
+            bool hasNativeRepresentedHistoryCount() const override;
+
+            /**
              * @brief Get the TOPAS format type of this file
              * @return TOPASFormat enum indicating ASCII, BINARY, or LIMITED
              */
@@ -165,6 +182,15 @@ namespace ParticleZoo::TOPASphspFile
     // Inline implementations for the Reader class
     inline std::uint64_t Reader::getNumberOfParticles() const { return header_.getNumberOfParticles(); }
     inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return header_.getNumberOfOriginalHistories(); }
+    inline std::uint64_t Reader::getNumberOfRepresentedHistories() const {
+        if (formatType_ == TOPASFormat::LIMITED) {
+            return PhaseSpaceFileReader::getNumberOfRepresentedHistories(); // throws
+        }
+        return header_.getNumberOfRepresentedHistories();
+    }
+    inline bool Reader::hasNativeRepresentedHistoryCount() const {
+        return formatType_ != TOPASFormat::LIMITED;
+    }
     inline TOPASFormat Reader::getTOPASFormat() const { return formatType_; }
     inline const Header & Reader::getHeader() const { return header_; }
     inline void Reader::setDetailedReading(bool enable) { readFullDetails_ = enable; }

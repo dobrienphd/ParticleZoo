@@ -132,6 +132,18 @@ namespace ParticleZoo {
             std::uint64_t getHistoriesRead(size_t threadIndex) const;
 
             /**
+             * @brief Gets the total number of particles processed by a specific thread.
+             *
+             * Returns the cumulative count of particles that have been read by this thread.
+             *
+             * @param threadIndex The index of the thread (0 to numThreads-1)
+             * @return Total number of particles processed
+             *
+             * @throws std::out_of_range If threadIndex is invalid
+             */
+            std::uint64_t getParticlesRead(size_t threadIndex) const;
+
+            /**
              * @brief Gets the total number of particles in the phase space file.
              * 
              * @return Total particle count in the file
@@ -160,6 +172,13 @@ namespace ParticleZoo {
             std::uint64_t getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
 
             /**
+             * @brief Gets the number of threads used by this reader.
+             *
+             * @return Number of parallel threads
+             */
+            std::size_t getNumberOfThreads() const { return readers_.size(); }
+
+            /**
              * @brief Closes all underlying phase space file readers.
              * 
              * Should be called when done reading to free file handles and resources.
@@ -180,6 +199,7 @@ namespace ParticleZoo {
             std::vector<std::uint64_t> startingHistorys_;
             std::vector<std::uint64_t> historiesRead_;
             std::vector<std::uint64_t> totalHistoriesRead_;
+            std::vector<std::uint64_t> particlesRead_;
             std::vector<HasMoreParticlesResult> hasMoreParticlesCache_;
     };
 

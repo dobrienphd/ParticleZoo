@@ -133,6 +133,12 @@ namespace ParticleZoo
                  * @return Sum of all delta-N values from particle records
                  */
                 std::uint64_t getNumberOfOriginalHistories() const override;
+
+                /**
+                 * @brief Check if this format stores incremental history numbers per-particle.
+                 * @return true — penEasy always stores delta-N per particle
+                 */
+                bool hasNativeIncrementalHistoryCounters() const override;
     
             protected:
                 /**
@@ -167,6 +173,7 @@ namespace ParticleZoo
         // Inline implementations for the Reader class
         inline std::uint64_t Reader::getNumberOfParticles() const { return numberOfParticles_; }
         inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
+        inline bool Reader::hasNativeIncrementalHistoryCounters() const { return true; }
         inline size_t Reader::getMaximumASCIILineLength() const { return MAX_ASCII_LINE_LENGTH; }
 
     } // namespace penEasyphspFile

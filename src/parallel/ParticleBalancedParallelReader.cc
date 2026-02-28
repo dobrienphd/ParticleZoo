@@ -33,12 +33,27 @@ namespace ParticleZoo {
         // Leave numberOfRepresentedHistories_ undetermined for now, lazily compute it later if needed
         numberOfRepresentedHistories_ = 0;
 
+        // Detect the appropriate history counting mode based on format capabilities
+        if (readers_[0]->hasNativeRepresentedHistoryCount()) {
+            // R is available cheaply from the header — use ratio approach
+            numberOfRepresentedHistories_ = readers_[0]->getNumberOfRepresentedHistories();
+            historyCountMode_ = HistoryCountMode::RATIO;
+        } else {
+            // Use incremental sums. For formats with native per-particle incremental
+            // history data this gives exact original history counts. For other formats
+            // getIncrementalHistories() defaults to 1 per new-history particle, so the
+            // sum equals the number of represented (non-empty) histories read.
+            historyCountMode_ = HistoryCountMode::INCREMENTAL;
+        }
+
         std::uint64_t particlesPerThread = numberOfParticlesInPhsp_ / numThreads;
         std::uint64_t remainderParticles = numberOfParticlesInPhsp_ % numThreads;
 
         // Position each reader at its starting particle
         startingParticleIndex_.reserve(numThreads);
         particlesRead_.resize(numThreads, 0);
+        representedHistoriesRead_.resize(numThreads, 0);
+        incrementalHistorySum_.resize(numThreads, 0);
         std::uint64_t currentParticleIndex = 0;
         for (size_t i = 0; i < numThreads; ++i) {
             std::uint64_t particlesToRead = particlesPerThread + (i < remainderParticles ? 1 : 0);
@@ -91,6 +106,12 @@ namespace ParticleZoo {
         // Get the next particle from the appropriate reader
         Particle particle = readers_[threadIndex]->getNextParticle();
         particlesRead_[threadIndex]++;
+
+        if (particle.isNewHistory()) {
+            representedHistoriesRead_[threadIndex]++;
+            incrementalHistorySum_[threadIndex] += particle.getIncrementalHistories();
+        }
+
         return particle;
     }
 
@@ -110,10 +131,10 @@ namespace ParticleZoo {
     std::uint64_t ParticleBalancedParallelReader::getNumberOfRepresentedHistories() {
         if (numberOfRepresentedHistories_ == 0) {
             // Lazily compute the number of represented histories
-            try {
-                // Attempt to get the number of represented histories directly
+            if (readers_[0]->hasNativeRepresentedHistoryCount()) {
+                // Get the number of represented histories directly
                 numberOfRepresentedHistories_ = readers_[0]->getNumberOfRepresentedHistories();
-            } catch (const std::runtime_error&) {
+            } else {
                 // Manually count the number of represented histories if not supported
                 numberOfRepresentedHistories_ = 0;
                 auto reader = FormatRegistry::CreateReader(filename_, options_);
@@ -135,6 +156,20 @@ namespace ParticleZoo {
             throw std::out_of_range("Thread index out of range in getHistoriesRead()");
         }
         return particlesRead_[threadIndex];
+    }
+
+    std::uint64_t ParticleBalancedParallelReader::getHistoriesRead(size_t threadIndex) const {
+        if (threadIndex >= numThreads_) {
+            throw std::out_of_range("Thread index out of range in getHistoriesRead()");
+        }
+        switch (historyCountMode_) {
+            case HistoryCountMode::RATIO:
+                return (representedHistoriesRead_[threadIndex] * numberOfOriginalHistories_)
+                       / numberOfRepresentedHistories_;
+            case HistoryCountMode::INCREMENTAL:
+                return incrementalHistorySum_[threadIndex];
+        }
+        return representedHistoriesRead_[threadIndex]; // unreachable fallback
     }
 
     void ParticleBalancedParallelReader::close() {

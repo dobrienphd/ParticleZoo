@@ -120,6 +120,28 @@ namespace ParticleZoo {
             std::uint64_t getParticlesRead(size_t threadIndex) const;
 
             /**
+             * @brief Gets the number of original histories processed by a specific thread.
+             *
+             * Returns the cumulative count of original histories (including empty ones)
+             * covered by particles read via getNextParticle() for this thread.
+             *
+             * Uses one of two computation methods depending on format capabilities:
+             * - RATIO: The represented history count is available from the header.
+             *   Maps the per-thread represented count to original histories via the
+             *   known O/R ratio.
+             * - INCREMENTAL: Uses the direct sum of per-particle incremental history
+             *   values. For formats with native per-particle data this gives exact
+             *   original history counts. For formats without native data the default
+             *   of 1 per new-history particle is used, so the result equals the
+             *   number of represented (non-empty) histories read by this thread.
+             *
+             * @param threadIndex The index of the thread (0 to numThreads-1)
+             * @return Number of original histories covered by this thread so far
+             * @throws std::out_of_range If threadIndex is invalid
+             */
+            std::uint64_t getHistoriesRead(size_t threadIndex) const;
+
+            /**
              * @brief Gets the total number of particles in the phase space file.
              * 
              * @return Total particle count in the file
@@ -165,6 +187,9 @@ namespace ParticleZoo {
             void     close();
 
         private:
+            /// @brief Computation mode for per-thread original history counting
+            enum class HistoryCountMode { RATIO, INCREMENTAL };
+
             std::string filename_;
             UserOptions options_;
             std::size_t numThreads_;
@@ -172,10 +197,13 @@ namespace ParticleZoo {
             std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
             std::vector<std::uint64_t> startingParticleIndex_;
             std::vector<std::uint64_t> particlesRead_;
+            std::vector<std::uint64_t> representedHistoriesRead_;
+            std::vector<std::uint64_t> incrementalHistorySum_;
 
             std::uint64_t numberOfOriginalHistories_;
             std::uint64_t numberOfParticlesInPhsp_;
             std::uint64_t numberOfRepresentedHistories_;
+            HistoryCountMode historyCountMode_;
     };
 
 }
