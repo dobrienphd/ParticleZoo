@@ -221,6 +221,13 @@ namespace ParticleZoo {
         return particlesRead_[threadIndex];
     }
 
+    std::uint64_t HistoryBalancedParallelReader::getTotalHistoriesRead() const {
+        std::uint64_t total = 0;
+        for (size_t t = 0; t < readers_.size(); t++)
+            total += totalHistoriesRead_[t];
+        return total;
+    }
+
     void HistoryBalancedParallelReader::close() {
         for (auto& reader : readers_) {
             reader->close();

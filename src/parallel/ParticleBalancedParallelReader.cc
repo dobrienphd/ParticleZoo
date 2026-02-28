@@ -172,6 +172,24 @@ namespace ParticleZoo {
         return representedHistoriesRead_[threadIndex]; // unreachable fallback
     }
 
+    std::uint64_t ParticleBalancedParallelReader::getTotalHistoriesRead() const {
+        switch (historyCountMode_) {
+            case HistoryCountMode::RATIO: {
+                std::uint64_t totalRep = 0;
+                for (size_t t = 0; t < numThreads_; t++)
+                    totalRep += representedHistoriesRead_[t];
+                return (totalRep * numberOfOriginalHistories_) / numberOfRepresentedHistories_;
+            }
+            case HistoryCountMode::INCREMENTAL: {
+                std::uint64_t total = 0;
+                for (size_t t = 0; t < numThreads_; t++)
+                    total += incrementalHistorySum_[t];
+                return total;
+            }
+        }
+        return 0;
+    }
+
     void ParticleBalancedParallelReader::close() {
         for (auto& reader : readers_) {
             reader->close();

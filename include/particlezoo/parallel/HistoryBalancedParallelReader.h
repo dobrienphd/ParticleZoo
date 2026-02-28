@@ -144,6 +144,13 @@ namespace ParticleZoo {
             std::uint64_t getParticlesRead(size_t threadIndex) const;
 
             /**
+             * @brief Gets the total number of original histories read across all threads.
+             *
+             * @return Total number of original histories read
+             */
+            std::uint64_t getTotalHistoriesRead() const;
+
+            /**
              * @brief Gets the total number of particles in the phase space file.
              * 
              * @return Total particle count in the file
