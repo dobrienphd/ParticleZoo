@@ -182,8 +182,13 @@ namespace ParticleZoo {
             }
             case HistoryCountMode::INCREMENTAL: {
                 std::uint64_t total = 0;
-                for (size_t t = 0; t < numThreads_; t++)
+                std::uint64_t totalParticles = 0;
+                for (size_t t = 0; t < numThreads_; t++) {
                     total += incrementalHistorySum_[t];
+                    totalParticles += particlesRead_[t];
+                }
+                if (totalParticles >= numberOfParticlesInPhsp_)
+                    return numberOfOriginalHistories_;
                 return total;
             }
         }
