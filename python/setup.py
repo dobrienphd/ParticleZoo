@@ -24,6 +24,9 @@ sources = [
     str(Path("..") / "src" / "topas" / "TOPASphspFile.cc"),
     str(Path("..") / "src" / "IAEA" / "IAEAHeader.cc"),
     str(Path("..") / "src" / "IAEA" / "IAEAphspFile.cc"),
+    # Parallel readers
+    str(Path("..") / "src" / "parallel" / "HistoryBalancedParallelReader.cc"),
+    str(Path("..") / "src" / "parallel" / "ParticleBalancedParallelReader.cc"),
 ]
 
 define_macros = [("PYBIND11_DETAILED_ERROR_MESSAGES", "1")]
