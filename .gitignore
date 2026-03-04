@@ -1,6 +1,8 @@
 config.status
 build
 tests
+*.md
+!README.md
 .vscode
 .venv
 docs/latex
