@@ -25,3 +25,4 @@ python/.tox/
 python/.venv/
 python/venv/
 python/ENV/
+.DS_Store
