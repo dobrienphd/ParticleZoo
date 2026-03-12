@@ -66,18 +66,21 @@ namespace ParticleZoo {
 
         // Calculate starting history for each thread
         startingHistorys_.reserve(numThreads);
-        threadStats_.resize(numThreads);
+        threadStats_.reserve(numThreads);
+        for (size_t i = 0; i < numThreads; ++i) {
+            threadStats_.emplace_back(std::make_unique<ThreadStatistics>());
+        }
         std::uint64_t historiesPerThread = numberOfRepresentedHistories_ / numThreads;
         std::uint64_t remainderHistories = numberOfRepresentedHistories_ % numThreads;
         std::uint64_t currentStartingHistory = 0;
         for (size_t i = 0; i < numThreads; ++i) {
             startingHistorys_.push_back(currentStartingHistory);
-            threadStats_[i].historiesRead = currentStartingHistory;
+            threadStats_[i]->historiesRead = currentStartingHistory;
             // Calculate the correct initial error for this thread based on how many
             // represented histories have been "processed" before this thread's starting point
             if (hasGapsBetweenHistories_) {
                 std::uint64_t initialError = numberOfRepresentedHistories_ / 2;
-                threadStats_[i].emptyHistoryError = (initialError + currentStartingHistory * perHistoryErrorContribution_) % numberOfRepresentedHistories_;
+                threadStats_[i]->emptyHistoryError = (initialError + currentStartingHistory * perHistoryErrorContribution_) % numberOfRepresentedHistories_;
             }
             currentStartingHistory += historiesPerThread;
             if (i < remainderHistories) {
@@ -122,8 +125,8 @@ namespace ParticleZoo {
         }
 
         // check the cache first
-        if (threadStats_[threadIndex].hasMoreParticlesCache != NEEDS_CHECKING) {
-            return threadStats_[threadIndex].hasMoreParticlesCache == HAS_MORE_PARTICLES;
+        if (threadStats_[threadIndex]->hasMoreParticlesCache != NEEDS_CHECKING) {
+            return threadStats_[threadIndex]->hasMoreParticlesCache == HAS_MORE_PARTICLES;
         }
 
         // Check if the reader has more particles
@@ -137,7 +140,7 @@ namespace ParticleZoo {
                                           : numberOfRepresentedHistories_;
 
             // Check if we have completed all histories for this thread
-            if (threadStats_[threadIndex].historiesRead >= targetHistories) {
+            if (threadStats_[threadIndex]->historiesRead >= targetHistories) {
                 // Check if the next particle would start a new history
                 const Particle nextParticle = readers_[threadIndex]->peekNextParticle();
                 // If the next particle starts a new history, we have no more particles for this thread
@@ -146,7 +149,7 @@ namespace ParticleZoo {
         }
 
         // Update the cache
-        threadStats_[threadIndex].hasMoreParticlesCache = hasMoreParticles ? HAS_MORE_PARTICLES : NO_MORE_PARTICLES;
+        threadStats_[threadIndex]->hasMoreParticlesCache = hasMoreParticles ? HAS_MORE_PARTICLES : NO_MORE_PARTICLES;
 
         return hasMoreParticles;
     }
@@ -161,7 +164,7 @@ namespace ParticleZoo {
         }
 
         // reset the cache since we are consuming a particle
-        threadStats_[threadIndex].hasMoreParticlesCache = NEEDS_CHECKING;
+        threadStats_[threadIndex]->hasMoreParticlesCache = NEEDS_CHECKING;
 
         // Get the next particle from the appropriate reader
         Particle particle = readers_[threadIndex]->getNextParticle();
@@ -169,25 +172,25 @@ namespace ParticleZoo {
         // Update history count if this particle starts a new history
         int32_t incrementalHistoryNumber = 0;
         {
-            std::lock_guard<std::mutex> lock(threadStats_[threadIndex].mutex);
-            threadStats_[threadIndex].particlesRead++;
+            std::lock_guard<std::mutex> lock(threadStats_[threadIndex]->mutex);
+            threadStats_[threadIndex]->particlesRead++;
 
             if (particle.isNewHistory()) {
                 if (hasGapsBetweenHistories_) {
-                    threadStats_[threadIndex].emptyHistoryError += perHistoryErrorContribution_;
-                    if (threadStats_[threadIndex].emptyHistoryError >= numberOfRepresentedHistories_) {
+                    threadStats_[threadIndex]->emptyHistoryError += perHistoryErrorContribution_;
+                    if (threadStats_[threadIndex]->emptyHistoryError >= numberOfRepresentedHistories_) {
                         incrementalHistoryNumber = 2 + emptyHistoriesBetweenEachHistory_;
-                        threadStats_[threadIndex].emptyHistoryError -= numberOfRepresentedHistories_;
+                        threadStats_[threadIndex]->emptyHistoryError -= numberOfRepresentedHistories_;
                     } else {
                         incrementalHistoryNumber = 1 + emptyHistoriesBetweenEachHistory_;
                     }
                 } else {
                     incrementalHistoryNumber = 1;
                 }
-                threadStats_[threadIndex].historiesRead++;
+                threadStats_[threadIndex]->historiesRead++;
             }
 
-            threadStats_[threadIndex].totalHistoriesRead += incrementalHistoryNumber;
+            threadStats_[threadIndex]->totalHistoriesRead += incrementalHistoryNumber;
         }
 
         particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, incrementalHistoryNumber);
@@ -213,27 +216,27 @@ namespace ParticleZoo {
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in getHistoriesRead()");
         }
-        return threadStats_[threadIndex].totalHistoriesRead;
+        return threadStats_[threadIndex]->totalHistoriesRead;
     }
 
     std::uint64_t HistoryBalancedParallelReader::getParticlesRead(size_t threadIndex) const {
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in getParticlesRead()");
         }
-        return threadStats_[threadIndex].particlesRead;
+        return threadStats_[threadIndex]->particlesRead;
     }
 
     std::uint64_t HistoryBalancedParallelReader::getTotalParticlesRead() const {
         std::uint64_t total = 0;
         for (size_t t = 0; t < readers_.size(); t++)
-            total += threadStats_[t].particlesRead;
+            total += threadStats_[t]->particlesRead;
         return total;
     }
 
     std::uint64_t HistoryBalancedParallelReader::getTotalHistoriesRead() const {
         std::uint64_t total = 0;
         for (size_t t = 0; t < readers_.size(); t++)
-            total += threadStats_[t].totalHistoriesRead;
+            total += threadStats_[t]->totalHistoriesRead;
         return total;
     }
 

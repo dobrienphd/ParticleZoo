@@ -228,7 +228,7 @@ namespace ParticleZoo {
             };
 
             std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
-            std::vector<ThreadStatistics> threadStats_;
+            std::vector<std::unique_ptr<ThreadStatistics>> threadStats_;
             std::vector<std::uint64_t> startingHistorys_;
 
             bool hasNativeRepresentedHistoryCount_;
