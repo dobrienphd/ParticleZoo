@@ -7,6 +7,8 @@
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <mutex>
+#include <atomic>
 
 namespace ParticleZoo {
 
