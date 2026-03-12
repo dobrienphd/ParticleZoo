@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Clone ParticleZoo repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v5
       
     - name: Setup Python
       uses: actions/setup-python@v6
@@ -68,7 +68,7 @@ jobs:
 
     steps:
     - name: Clone ParticleZoo repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v5
       
     - name: Setup Python
       uses: actions/setup-python@v6
@@ -126,7 +126,7 @@ jobs:
 
     steps:
     - name: Clone ParticleZoo repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v5
       
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
