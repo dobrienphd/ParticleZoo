@@ -113,6 +113,25 @@ namespace ParticleZoo
             virtual std::uint64_t getNumberOfRepresentedHistories() const;
 
             /**
+             * @brief Check if this format can provide the number of represented histories
+             *        without scanning the file.
+             *
+             * @return true if getNumberOfRepresentedHistories() is cheap (e.g. stored in header)
+             */
+            virtual bool hasNativeRepresentedHistoryCount() const;
+
+            /**
+             * @brief Check if this format directly stores incremental history numbers per-particle.
+             *
+             * When true, particles returned by getNextParticle() carry the
+             * INCREMENTAL_HISTORY_NUMBER property with file-sourced values. Otherwise
+             * the incremental history numbers may be indirectly derived or otherwise determined.
+             *
+             * @return true if incremental history data is directly stored per-particle in this format
+             */
+            virtual bool hasNativeIncrementalHistoryCounters() const;
+
+            /**
              * @brief Get the number of Monte Carlo histories that have been read so far.
              * If the end of the file has been reached, this will return the total number of original histories
              * unless more histories than expected have already been read - in which case it returns the actual count.
@@ -622,6 +641,9 @@ namespace ParticleZoo
     inline std::uint64_t PhaseSpaceFileReader::getNumberOfRepresentedHistories() const {
         throw std::runtime_error("getNumberOfRepresentedHistories() is not supported for this file format.");
     }
+
+    inline bool PhaseSpaceFileReader::hasNativeRepresentedHistoryCount() const { return false; }
+    inline bool PhaseSpaceFileReader::hasNativeIncrementalHistoryCounters() const { return false; }
 
     inline std::size_t PhaseSpaceFileReader::getParticleRecordLength() const {
         throw std::runtime_error("getParticleRecordLength() must be implemented for binary formatted file writers.");

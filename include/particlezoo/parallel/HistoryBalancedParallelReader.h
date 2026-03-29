@@ -8,6 +8,8 @@
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <mutex>
+#include <atomic>
 
 namespace ParticleZoo {
 
@@ -132,6 +134,32 @@ namespace ParticleZoo {
             std::uint64_t getHistoriesRead(size_t threadIndex) const;
 
             /**
+             * @brief Gets the total number of particles processed by a specific thread.
+             *
+             * Returns the cumulative count of particles that have been read by this thread.
+             *
+             * @param threadIndex The index of the thread (0 to numThreads-1)
+             * @return Total number of particles processed
+             *
+             * @throws std::out_of_range If threadIndex is invalid
+             */
+            std::uint64_t getParticlesRead(size_t threadIndex) const;
+
+            /**
+             * @brief Gets the total number of particles read across all threads.
+             * 
+             * @return Total number of particles read
+             */
+            std::uint64_t getTotalParticlesRead() const;
+
+            /**
+             * @brief Gets the total number of original histories read across all threads.
+             *
+             * @return Total number of original histories read
+             */
+            std::uint64_t getTotalHistoriesRead() const;
+
+            /**
              * @brief Gets the total number of particles in the phase space file.
              * 
              * @return Total particle count in the file
@@ -160,6 +188,27 @@ namespace ParticleZoo {
             std::uint64_t getNumberOfRepresentedHistories() const { return numberOfRepresentedHistories_; }
 
             /**
+             * @brief Gets the number of threads used by this reader.
+             *
+             * @return Number of parallel threads
+             */
+            std::size_t getNumberOfThreads() const { return readers_.size(); }
+
+            /**
+             * @brief Checks if the underlying phase space format provides native represented history count.
+             * 
+             * @return True if native represented history count is available, false otherwise
+             */
+            bool hasNativeRepresentedHistoryCount() const;
+
+            /**
+             * @brief Checks if the underlying phase space format provides native incremental history counters.
+             * 
+             * @return True if native incremental history counters are available, false otherwise
+             */
+            bool hasNativeIncrementalHistoryCounters() const;
+
+            /**
              * @brief Closes all underlying phase space file readers.
              * 
              * Should be called when done reading to free file handles and resources.
@@ -168,20 +217,28 @@ namespace ParticleZoo {
             void     close();
 
         private:
-            std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
+            struct ThreadStatistics {
+                mutable std::mutex mutex; // For thread-safe updates
+                std::atomic<std::uint64_t> particlesRead = 0;
+                std::atomic<std::uint64_t> totalHistoriesRead = 0;
+                // Per-thread-only fields (no cross-thread access needed)
+                std::uint64_t historiesRead = 0;
+                std::uint64_t emptyHistoryError = 0;
+                HasMoreParticlesResult hasMoreParticlesCache = NEEDS_CHECKING;
+            };
 
+            std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
+            std::vector<std::unique_ptr<ThreadStatistics>> threadStats_;
+            std::vector<std::uint64_t> startingHistorys_;
+
+            bool hasNativeRepresentedHistoryCount_;
+            bool hasNativeIncrementalHistoryCounters_;
             bool hasGapsBetweenHistories_;
-            std::uint64_t totalHistoriesToRead_;
             std::uint64_t numberOfOriginalHistories_;
             std::uint64_t numberOfParticlesInPhsp_;
             std::uint64_t numberOfRepresentedHistories_;
             std::uint64_t emptyHistoriesBetweenEachHistory_;
             std::uint64_t perHistoryErrorContribution_;
-            std::vector<std::uint64_t> emptyHistoryErrors_;
-            std::vector<std::uint64_t> startingHistorys_;
-            std::vector<std::uint64_t> historiesRead_;
-            std::vector<std::uint64_t> totalHistoriesRead_;
-            std::vector<HasMoreParticlesResult> hasMoreParticlesCache_;
     };
 
 }

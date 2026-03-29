@@ -139,6 +139,12 @@ namespace ParticleZoo::ROOT {
             std::uint64_t getNumberOfOriginalHistories() const override;
 
             /**
+             * @brief Check if this format stores incremental history numbers per-particle.
+             * @return true if the TTree has a history number branch
+             */
+            bool hasNativeIncrementalHistoryCounters() const override;
+
+            /**
              * @brief Get format-specific CLI commands for ROOT configuration.
              * @return Vector of ROOT-specific CLI commands
              */
@@ -209,6 +215,7 @@ namespace ParticleZoo::ROOT {
 
     inline std::uint64_t Reader::getNumberOfParticles() const { return numberOfParticles_; }
     inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return numberOfOriginalHistories_; }
+    inline bool Reader::hasNativeIncrementalHistoryCounters() const { return treeHasHistoryNumber_; }
 
 
     /**

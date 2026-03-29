@@ -7,6 +7,8 @@
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <mutex>
+#include <atomic>
 
 namespace ParticleZoo {
 
@@ -120,6 +122,42 @@ namespace ParticleZoo {
             std::uint64_t getParticlesRead(size_t threadIndex) const;
 
             /**
+             * @brief Gets the number of original histories processed by a specific thread.
+             *
+             * Returns the cumulative count of original histories (including empty ones)
+             * covered by particles read via getNextParticle() for this thread.
+             *
+             * Uses one of two computation methods depending on format capabilities:
+             * - RATIO: The represented history count is available from the header.
+             *   Maps the per-thread represented count to original histories via the
+             *   known O/R ratio.
+             * - INCREMENTAL: Uses the direct sum of per-particle incremental history
+             *   values. For formats with native per-particle data this gives exact
+             *   original history counts. For formats without native data the default
+             *   of 1 per new-history particle is used, so the result equals the
+             *   number of represented (non-empty) histories read by this thread.
+             *
+             * @param threadIndex The index of the thread (0 to numThreads-1)
+             * @return Number of original histories covered by this thread so far
+             * @throws std::out_of_range If threadIndex is invalid
+             */
+            std::uint64_t getHistoriesRead(size_t threadIndex) const;
+
+            /**
+             * @brief Gets the total number of particles read across all threads.
+             * 
+             * @return Total number of particles read
+             */
+            std::uint64_t getTotalParticlesRead() const;
+
+            /**
+             * @brief Gets the total number of original histories read across all threads.
+             * 
+             * @return Total number of original histories read
+             */
+            std::uint64_t getTotalHistoriesRead() const;
+
+            /**
              * @brief Gets the total number of particles in the phase space file.
              * 
              * @return Total particle count in the file
@@ -157,6 +195,20 @@ namespace ParticleZoo {
             std::size_t getNumberOfThreads() const { return numThreads_; }
 
             /**
+             * @brief Checks if the underlying phase space format provides native represented history count.
+             * 
+             * @return True if native represented history count is available, false otherwise
+             */
+            bool hasNativeRepresentedHistoryCount() const;
+
+            /**
+             * @brief Checks if the underlying phase space format provides native incremental history counters.
+             * 
+             * @return True if native incremental history counters are available, false otherwise
+             */
+            bool hasNativeIncrementalHistoryCounters() const;
+
+            /**
              * @brief Closes all underlying phase space file readers.
              * 
              * Should be called when done reading to free file handles and resources.
@@ -165,17 +217,30 @@ namespace ParticleZoo {
             void     close();
 
         private:
+            /// @brief Computation mode for per-thread original history counting
+            enum class HistoryCountMode { RATIO, INCREMENTAL };
+
             std::string filename_;
             UserOptions options_;
             std::size_t numThreads_;
 
+            struct ThreadStatistics {
+                mutable std::mutex mutex; // For thread-safe updates
+                std::atomic<std::uint64_t> particlesRead = 0;
+                std::atomic<std::uint64_t> representedHistoriesRead = 0;
+                std::atomic<std::uint64_t> incrementalHistorySum = 0;
+            };
+
             std::vector<std::shared_ptr<PhaseSpaceFileReader>> readers_;
             std::vector<std::uint64_t> startingParticleIndex_;
-            std::vector<std::uint64_t> particlesRead_;
+            std::vector<std::unique_ptr<ThreadStatistics>> threadStats_;
 
+            bool hasNativeRepresentedHistoryCount_;
+            bool hasNativeIncrementalHistoryCounters_;
             std::uint64_t numberOfOriginalHistories_;
             std::uint64_t numberOfParticlesInPhsp_;
             std::uint64_t numberOfRepresentedHistories_;
+            HistoryCountMode historyCountMode_;
     };
 
 }

@@ -44,7 +44,10 @@ namespace ParticleZoo
       historiesToAccountFor_(0),
       buffer_(BUFFER_SIZE),
       writeParticleDepth_(0),
-      fixedValues_(fixedValues)
+      fixedValues_(fixedValues),
+      flipXDirection_(false),
+      flipYDirection_(false),
+      flipZDirection_(false)
     {
         if (formatType != FormatType::NONE && !file_.is_open())
         {

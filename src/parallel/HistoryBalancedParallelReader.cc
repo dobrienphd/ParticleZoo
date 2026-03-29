@@ -3,8 +3,6 @@
 
 #include "particlezoo/utilities/formats.h"
 
-#include <thread>
-
 namespace ParticleZoo {
 
     HistoryBalancedParallelReader::HistoryBalancedParallelReader(const std::string& filename, const UserOptions& options, size_t numThreads)
@@ -24,12 +22,15 @@ namespace ParticleZoo {
             readers_.emplace_back(std::move(reader));
         }
 
+        // Detect if the format provides native represented history count or incremental history counters
+        hasNativeRepresentedHistoryCount_ = readers_[0]->hasNativeRepresentedHistoryCount();
+        hasNativeIncrementalHistoryCounters_ = readers_[0]->hasNativeIncrementalHistoryCounters();
+
         // Determine the number of represented histories
-        try {
-            // Attempt to get the number of represented histories directly
+        if (hasNativeRepresentedHistoryCount_) {
             numberOfRepresentedHistories_ = readers_[0]->getNumberOfRepresentedHistories();
-        } catch (const std::runtime_error&) {
-            // Manually count the number of represented histories if not supported
+        } else {
+            // Manually count the number of represented histories by scanning the file
             numberOfRepresentedHistories_ = 0;
             auto reader = FormatRegistry::CreateReader(filename, options);
             while (reader->hasMoreParticles()) {
@@ -47,9 +48,6 @@ namespace ParticleZoo {
 
         // Get the number of original histories and adjust totalHistoriesToRead_ if necessary
         numberOfOriginalHistories_ = readers_[0]->getNumberOfOriginalHistories();
-        if (numberOfOriginalHistories_ < totalHistoriesToRead_) {
-            totalHistoriesToRead_ = numberOfOriginalHistories_;
-        }
 
         // Get the number of particles in the phase space
         numberOfParticlesInPhsp_ = readers_[0]->getNumberOfParticles();
@@ -64,25 +62,25 @@ namespace ParticleZoo {
         if (hasGapsBetweenHistories_) {
             emptyHistoriesBetweenEachHistory_ = numberOfEmptyHistories / numberOfRepresentedHistories_;
             perHistoryErrorContribution_ = numberOfEmptyHistories % numberOfRepresentedHistories_;
-            emptyHistoryErrors_.resize(numThreads);
         }
 
         // Calculate starting history for each thread
         startingHistorys_.reserve(numThreads);
-        historiesRead_.reserve(numThreads);
-        totalHistoriesRead_.resize(numThreads, 0);
-        hasMoreParticlesCache_.resize(numThreads, NEEDS_CHECKING);
+        threadStats_.reserve(numThreads);
+        for (size_t i = 0; i < numThreads; ++i) {
+            threadStats_.emplace_back(std::make_unique<ThreadStatistics>());
+        }
         std::uint64_t historiesPerThread = numberOfRepresentedHistories_ / numThreads;
         std::uint64_t remainderHistories = numberOfRepresentedHistories_ % numThreads;
         std::uint64_t currentStartingHistory = 0;
         for (size_t i = 0; i < numThreads; ++i) {
             startingHistorys_.push_back(currentStartingHistory);
-            historiesRead_.push_back(currentStartingHistory);
+            threadStats_[i]->historiesRead = currentStartingHistory;
             // Calculate the correct initial error for this thread based on how many
             // represented histories have been "processed" before this thread's starting point
             if (hasGapsBetweenHistories_) {
                 std::uint64_t initialError = numberOfRepresentedHistories_ / 2;
-                emptyHistoryErrors_[i] = (initialError + currentStartingHistory * perHistoryErrorContribution_) % numberOfRepresentedHistories_;
+                threadStats_[i]->emptyHistoryError = (initialError + currentStartingHistory * perHistoryErrorContribution_) % numberOfRepresentedHistories_;
             }
             currentStartingHistory += historiesPerThread;
             if (i < remainderHistories) {
@@ -90,35 +88,33 @@ namespace ParticleZoo {
             }
         }
 
-        // In separate threads, move each reader to its starting history
-        std::vector<std::thread> threads;
-        for (size_t i = 0; i < numThreads; ++i) {
-            threads.emplace_back([this, i]() {
-                std::uint64_t targetHistory = startingHistorys_[i];
-                // Thread 0 starts at the beginning, no positioning needed
-                if (targetHistory == 0) {
-                    return;
-                }
-                std::uint64_t currentHistory = 0;
-                // Skip to the first particle of history #targetHistory (0-indexed)
-                // We need to consume all particles from histories 0 through targetHistory-1
-                while (readers_[i]->hasMoreParticles()) {
-                    const Particle particle = readers_[i]->peekNextParticle();
-                    if (particle.isNewHistory()) {
-                        if (currentHistory == targetHistory) {
-                            // We've reached the start of the target history, stop here
-                            break;
-                        }
-                        currentHistory++;
-                    }
-                    readers_[i]->getNextParticle(); // Consume this particle
-                }
-            });
-        }
+        // Single-pass scan to find the particle index at each thread's starting history.
+        if (numThreads > 1) {
+            std::vector<std::uint64_t> startingParticleIndices(numThreads, 0);
+            {
+                auto scanner = FormatRegistry::CreateReader(filename, options);
+                std::uint64_t historyCount = 0;
+                std::uint64_t particleIndex = 0;
+                size_t nextThreadToFind = 1; // Thread 0 always starts at particle 0
 
-        // Join threads
-        for (auto& thread : threads) {
-            thread.join();
+                while (nextThreadToFind < numThreads && scanner->hasMoreParticles()) {
+                    const Particle particle = scanner->getNextParticle();
+                    if (particle.isNewHistory()) {
+                        if (historyCount == startingHistorys_[nextThreadToFind]) {
+                            startingParticleIndices[nextThreadToFind] = particleIndex;
+                            nextThreadToFind++;
+                        }
+                        historyCount++;
+                    }
+                    particleIndex++;
+                }
+                scanner->close();
+            }
+
+            // Position each reader at its starting particle using direct seek
+            for (size_t i = 1; i < numThreads; ++i) {
+                readers_[i]->moveToParticle(startingParticleIndices[i]);
+            }
         }
     }
 
@@ -129,8 +125,8 @@ namespace ParticleZoo {
         }
 
         // check the cache first
-        if (hasMoreParticlesCache_[threadIndex] != NEEDS_CHECKING) {
-            return hasMoreParticlesCache_[threadIndex] == HAS_MORE_PARTICLES;
+        if (threadStats_[threadIndex]->hasMoreParticlesCache != NEEDS_CHECKING) {
+            return threadStats_[threadIndex]->hasMoreParticlesCache == HAS_MORE_PARTICLES;
         }
 
         // Check if the reader has more particles
@@ -144,7 +140,7 @@ namespace ParticleZoo {
                                           : numberOfRepresentedHistories_;
 
             // Check if we have completed all histories for this thread
-            if (historiesRead_[threadIndex] >= targetHistories) {
+            if (threadStats_[threadIndex]->historiesRead >= targetHistories) {
                 // Check if the next particle would start a new history
                 const Particle nextParticle = readers_[threadIndex]->peekNextParticle();
                 // If the next particle starts a new history, we have no more particles for this thread
@@ -153,7 +149,7 @@ namespace ParticleZoo {
         }
 
         // Update the cache
-        hasMoreParticlesCache_[threadIndex] = hasMoreParticles ? HAS_MORE_PARTICLES : NO_MORE_PARTICLES;
+        threadStats_[threadIndex]->hasMoreParticlesCache = hasMoreParticles ? HAS_MORE_PARTICLES : NO_MORE_PARTICLES;
 
         return hasMoreParticles;
     }
@@ -168,33 +164,36 @@ namespace ParticleZoo {
         }
 
         // reset the cache since we are consuming a particle
-        hasMoreParticlesCache_[threadIndex] = NEEDS_CHECKING;
+        threadStats_[threadIndex]->hasMoreParticlesCache = NEEDS_CHECKING;
 
         // Get the next particle from the appropriate reader
         Particle particle = readers_[threadIndex]->getNextParticle();
 
         // Update history count if this particle starts a new history
         int32_t incrementalHistoryNumber = 0;
-        if (particle.isNewHistory()) {
-            if (hasGapsBetweenHistories_) {
-                emptyHistoryErrors_[threadIndex] += perHistoryErrorContribution_;
-                if (emptyHistoryErrors_[threadIndex] >= numberOfRepresentedHistories_) {
-                    incrementalHistoryNumber = 2 + emptyHistoriesBetweenEachHistory_;
-                    emptyHistoryErrors_[threadIndex] -= numberOfRepresentedHistories_;
+        {
+            std::lock_guard<std::mutex> lock(threadStats_[threadIndex]->mutex);
+            threadStats_[threadIndex]->particlesRead++;
+
+            if (particle.isNewHistory()) {
+                if (hasGapsBetweenHistories_) {
+                    threadStats_[threadIndex]->emptyHistoryError += perHistoryErrorContribution_;
+                    if (threadStats_[threadIndex]->emptyHistoryError >= numberOfRepresentedHistories_) {
+                        incrementalHistoryNumber = 2 + emptyHistoriesBetweenEachHistory_;
+                        threadStats_[threadIndex]->emptyHistoryError -= numberOfRepresentedHistories_;
+                    } else {
+                        incrementalHistoryNumber = 1 + emptyHistoriesBetweenEachHistory_;
+                    }
                 } else {
-                    incrementalHistoryNumber = 1 + emptyHistoriesBetweenEachHistory_;
+                    incrementalHistoryNumber = 1;
                 }
-            } else {
-                incrementalHistoryNumber = 1;
+                threadStats_[threadIndex]->historiesRead++;
             }
-            historiesRead_[threadIndex]++;
-        } else {
-            incrementalHistoryNumber = 0;
+
+            threadStats_[threadIndex]->totalHistoriesRead += incrementalHistoryNumber;
         }
 
         particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, incrementalHistoryNumber);
-
-        totalHistoriesRead_[threadIndex] += incrementalHistoryNumber;
 
         return particle;
     }
@@ -217,7 +216,28 @@ namespace ParticleZoo {
         if (threadIndex >= readers_.size()) {
             throw std::out_of_range("Thread index out of range in getHistoriesRead()");
         }
-        return totalHistoriesRead_[threadIndex];
+        return threadStats_[threadIndex]->totalHistoriesRead;
+    }
+
+    std::uint64_t HistoryBalancedParallelReader::getParticlesRead(size_t threadIndex) const {
+        if (threadIndex >= readers_.size()) {
+            throw std::out_of_range("Thread index out of range in getParticlesRead()");
+        }
+        return threadStats_[threadIndex]->particlesRead;
+    }
+
+    std::uint64_t HistoryBalancedParallelReader::getTotalParticlesRead() const {
+        std::uint64_t total = 0;
+        for (size_t t = 0; t < readers_.size(); t++)
+            total += threadStats_[t]->particlesRead;
+        return total;
+    }
+
+    std::uint64_t HistoryBalancedParallelReader::getTotalHistoriesRead() const {
+        std::uint64_t total = 0;
+        for (size_t t = 0; t < readers_.size(); t++)
+            total += threadStats_[t]->totalHistoriesRead;
+        return total;
     }
 
     void HistoryBalancedParallelReader::close() {

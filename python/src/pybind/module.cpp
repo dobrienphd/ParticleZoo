@@ -8,6 +8,9 @@
 #include "particlezoo/utilities/formats.h"
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/units.h"
+#include "particlezoo/utilities/version.h"
+#include "particlezoo/parallel/HistoryBalancedParallelReader.h"
+#include "particlezoo/parallel/ParticleBalancedParallelReader.h"
 #include "particlezoo/egs/EGSLATCH.h"
 #include "particlezoo/penelope/ILBArray.h"
 
@@ -16,6 +19,19 @@ using namespace ParticleZoo;
 
 PYBIND11_MODULE(_pz, m) {
     m.doc() = "Python bindings for ParticleZoo core and IAEA reader";
+
+    // ===== Version =====
+    {
+        std::string ver = std::to_string(Version::MAJOR_VERSION) + "." +
+                          std::to_string(Version::MINOR_VERSION) + "." +
+                          std::to_string(Version::PATCH_VERSION);
+        if (Version::CAVEAT[0] != '\0') {
+            ver += "." + std::string(Version::CAVEAT);
+        }
+        m.attr("__version__") = ver;
+    }
+    m.def("get_version_string", &Version::GetVersionString,
+          "Get the full ParticleZoo version string (e.g. 'ParticleZoo v1.1.1').");
 
     // Ensure built-in formats are registered before any factory calls
     try { FormatRegistry::RegisterStandardFormats(); } catch (...) { /* idempotent; ignore */ }
@@ -478,6 +494,82 @@ PYBIND11_MODULE(_pz, m) {
           "Create a phase space file writer for a specific format (e.g., 'IAEA', 'EGS', 'TOPAS'). "
           "Returns PhaseSpaceFileWriter instance configured for the specified format. "
           "Use fixed_values to specify constant properties for all particles.");
+
+    // ===== Parallel Readers =====
+
+    py::class_<HistoryBalancedParallelReader>(m, "HistoryBalancedParallelReader",
+        "Multi-threaded phase space file reader that distributes histories evenly across threads. "
+        "Each thread maintains its own reader positioned at a specific section of the file. "
+        "Histories are the fundamental unit of work; particle counts may vary between threads.")
+        .def(py::init<const std::string&, const UserOptions&, size_t>(),
+             py::arg("filename"), py::arg("options") = UserOptions{}, py::arg("num_threads") = 1,
+             "Create a history-balanced parallel reader. "
+             "Partitions represented histories evenly across the specified number of threads.")
+        .def("peek_next_particle", &HistoryBalancedParallelReader::peekNextParticle,
+             py::arg("thread_index"),
+             "Peek at the next particle for a thread without consuming it.")
+        .def("get_next_particle", &HistoryBalancedParallelReader::getNextParticle,
+             py::arg("thread_index"),
+             "Read and return the next particle for a thread.")
+        .def("has_more_particles", &HistoryBalancedParallelReader::hasMoreParticles,
+             py::arg("thread_index"),
+             "Check if more particles are available for a thread.")
+        .def("get_histories_read", &HistoryBalancedParallelReader::getHistoriesRead,
+             py::arg("thread_index"),
+             "Get the number of original histories processed by a thread (including empty ones).")
+        .def("get_particles_read", &HistoryBalancedParallelReader::getParticlesRead,
+             py::arg("thread_index"),
+             "Get the number of particles processed by a thread.")
+        .def("get_total_histories_read", &HistoryBalancedParallelReader::getTotalHistoriesRead,
+             "Get the total number of original histories read across all threads.")
+        .def("get_number_of_particles", &HistoryBalancedParallelReader::getNumberOfParticles,
+             "Get the total number of particles in the phase space file.")
+        .def("get_number_of_original_histories", &HistoryBalancedParallelReader::getNumberOfOriginalHistories,
+             "Get the number of original histories in the file (including empty ones).")
+        .def("get_number_of_represented_histories", &HistoryBalancedParallelReader::getNumberOfRepresentedHistories,
+             "Get the number of histories that produced at least one particle.")
+        .def("get_number_of_threads", &HistoryBalancedParallelReader::getNumberOfThreads,
+             "Get the number of threads used by this reader.")
+        .def("close", &HistoryBalancedParallelReader::close,
+             "Close all underlying readers and release resources.")
+        ;
+
+    py::class_<ParticleBalancedParallelReader>(m, "ParticleBalancedParallelReader",
+        "Multi-threaded phase space file reader that distributes particles evenly across threads. "
+        "Each thread maintains its own reader positioned at a specific section of the file. "
+        "Particles are the fundamental unit of work; history counts may vary between threads.")
+        .def(py::init<const std::string&, const UserOptions&, size_t>(),
+             py::arg("filename"), py::arg("options") = UserOptions{}, py::arg("num_threads") = 1,
+             "Create a particle-balanced parallel reader. "
+             "Partitions particles evenly across the specified number of threads.")
+        .def("peek_next_particle", &ParticleBalancedParallelReader::peekNextParticle,
+             py::arg("thread_index"),
+             "Peek at the next particle for a thread without consuming it.")
+        .def("get_next_particle", &ParticleBalancedParallelReader::getNextParticle,
+             py::arg("thread_index"),
+             "Read and return the next particle for a thread.")
+        .def("has_more_particles", &ParticleBalancedParallelReader::hasMoreParticles,
+             py::arg("thread_index"),
+             "Check if more particles are available for a thread.")
+        .def("get_particles_read", &ParticleBalancedParallelReader::getParticlesRead,
+             py::arg("thread_index"),
+             "Get the number of particles processed by a thread.")
+        .def("get_histories_read", &ParticleBalancedParallelReader::getHistoriesRead,
+             py::arg("thread_index"),
+             "Get the number of original histories covered by a thread.")
+        .def("get_total_histories_read", &ParticleBalancedParallelReader::getTotalHistoriesRead,
+             "Get the total number of original histories read across all threads.")
+        .def("get_number_of_particles", &ParticleBalancedParallelReader::getNumberOfParticles,
+             "Get the total number of particles in the phase space file.")
+        .def("get_number_of_original_histories", &ParticleBalancedParallelReader::getNumberOfOriginalHistories,
+             "Get the number of original histories in the file (including empty ones).")
+        .def("get_number_of_represented_histories", &ParticleBalancedParallelReader::getNumberOfRepresentedHistories,
+             "Get the number of histories that produced at least one particle.")
+        .def("get_number_of_threads", &ParticleBalancedParallelReader::getNumberOfThreads,
+             "Get the number of threads used by this reader.")
+        .def("close", &ParticleBalancedParallelReader::close,
+             "Close all underlying readers and release resources.")
+        ;
 
     // Expose a simple alias to create a Particle by PDG code
     m.def("particle_from_pdg", [](int pdg, float kineticEnergy, float x, float y, float z, float px, float py, float pz, bool isNewHistory, float weight){

@@ -731,13 +731,13 @@ namespace ParticleZoo::IAEAphspFile
             bool                wIsStored_;
             bool                weightIsStored_;
 
-            float               constantX_;
-            float               constantY_;
-            float               constantZ_;
-            float               constantU_;
-            float               constantV_;
-            float               constantW_;
-            float               constantWeight_;
+            float               constantX_{};
+            float               constantY_{};
+            float               constantZ_{};
+            float               constantU_{};
+            float               constantV_{};
+            float               constantW_{};
+            float               constantWeight_{};
 
             std::vector<EXTRA_FLOAT_TYPE> extraFloatData_;
             std::vector<EXTRA_LONG_TYPE> extraLongData_;

@@ -145,7 +145,7 @@ namespace ParticleZoo::EGSphspFile
 
     // Writer class implementation
     Writer::Writer(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileWriter("EGS", fileName, options)
+    : PhaseSpaceFileWriter("EGS", fileName, options), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2)
     {
         mode_ = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
 
@@ -160,6 +160,23 @@ namespace ParticleZoo::EGSphspFile
                 throw std::runtime_error("Unsupported EGS phase-space file mode: " + modeStr);
             }
         }
+
+        if (options.contains(EGSLATCHOptionCommand)) {
+            int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
+            switch (latchOptionInt) {
+                case 1:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_1;
+                    break;
+                case 2:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_2;
+                    break;
+                case 3:
+                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_3;
+                    break;
+                default:
+                    throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+            }
+        }        
     }
 
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {

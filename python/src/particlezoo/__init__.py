@@ -1,6 +1,10 @@
 from ._pz import (
+    __version__,
+    get_version_string,
     Particle,
     ParticleType,
+    HistoryBalancedParallelReader,
+    ParticleBalancedParallelReader,
     IntPropertyType,
     FloatPropertyType,
     BoolPropertyType,
@@ -71,8 +75,12 @@ from ._pz import (
 )
 
 __all__ = [
+    "__version__",
+    "get_version_string",
     "Particle",
     "ParticleType",
+    "HistoryBalancedParallelReader",
+    "ParticleBalancedParallelReader",
     "IntPropertyType",
     "FloatPropertyType",
     "BoolPropertyType",

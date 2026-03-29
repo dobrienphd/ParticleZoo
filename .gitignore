@@ -1,6 +1,8 @@
 config.status
 build
 tests
+*.md
+!README.md
 .vscode
 .venv
 docs/latex
@@ -23,3 +25,4 @@ python/.tox/
 python/.venv/
 python/venv/
 python/ENV/
+.DS_Store

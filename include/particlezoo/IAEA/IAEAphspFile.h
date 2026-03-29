@@ -60,6 +60,12 @@ namespace ParticleZoo::IAEAphspFile
             std::uint64_t getNumberOfOriginalHistories() const override;
 
             /**
+             * @brief Check if this format stores incremental history numbers per-particle.
+             * @return true if the header has an extra long of type INCREMENTAL_HISTORY_NUMBER
+             */
+            bool hasNativeIncrementalHistoryCounters() const override;
+
+            /**
              * @brief Get the number of particles of a specific type
              * @param particleType Type of particle to count
              * @return Number of particles of the specified type
@@ -241,6 +247,7 @@ namespace ParticleZoo::IAEAphspFile
     inline const IAEAHeader & Reader::getHeader() const { return header_; }
     inline std::uint64_t Reader::getNumberOfParticles() const { return header_.getNumberOfParticles(); }
     inline std::uint64_t Reader::getNumberOfOriginalHistories() const { return header_.getOriginalHistories(); }
+    inline bool Reader::hasNativeIncrementalHistoryCounters() const { return header_.hasExtraLong(IAEAHeader::EXTRA_LONG_TYPE::INCREMENTAL_HISTORY_NUMBER); }
     inline std::uint64_t Reader::getNumberOfParticles(ParticleType particleType) const { return header_.getNumberOfParticles(particleType); }
     inline std::size_t Reader::getParticleRecordStartOffset() const { return 0; }
     inline std::size_t Reader::getParticleRecordLength() const { return header_.getRecordLength(); }
