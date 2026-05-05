@@ -126,13 +126,27 @@ CXXFLAGS_RELEASE := $(CXXFLAGS) -O3 -march=native -Wno-deprecated-declarations $
 # Debug flags
 CXXFLAGS_DEBUG := $(CXXFLAGS) -O0 -g -Wno-deprecated-declarations $(MACRO_DEFINE) $(INCLUDES) $(ROOT_SYS_CFLAGS) $(ROOT_OTHER_FLAGS)
 
+# PIC flags for shared library
+CXXFLAGS_RELEASE_PIC := $(CXXFLAGS_RELEASE) -fPIC
+CXXFLAGS_DEBUG_PIC   := $(CXXFLAGS_DEBUG) -fPIC
+
 # detect Windows vs. Unix
 ifeq ($(OS),Windows_NT)
     BINEXT := .exe
     MKDIR_P := mkdir
+    SHLIB_EXT := .dll
+    SHLIB_FLAG :=
 else
     BINEXT :=
     MKDIR_P := mkdir -p
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+        SHLIB_EXT := .dylib
+        SHLIB_FLAG := -dynamiclib
+    else
+        SHLIB_EXT := .so
+        SHLIB_FLAG := -shared
+    endif
 endif
 
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
@@ -145,19 +159,23 @@ COMBINE_BIN_DBG := $(GCC_BIN_DIR_DBG)/PHSPCombine$(BINEXT)
 IMAGE_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPImage$(BINEXT)
 SPLIT_BIN_DBG   := $(GCC_BIN_DIR_DBG)/PHSPSplit$(BINEXT)
 
+SHLIB_NAME := libparticlezoo$(SHLIB_EXT)
+SHLIB_REL := $(GCC_BIN_DIR_REL)/$(SHLIB_NAME)
+SHLIB_DBG := $(GCC_BIN_DIR_DBG)/$(SHLIB_NAME)
+
 # Make release the default goal
 .DEFAULT_GOAL := release
 
 .PHONY: release debug \
-        gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib \
-        gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib \
+        gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib gcc-release-shlib \
+        gcc-debug-convert   gcc-debug-combine   gcc-debug-image gcc-debug-split gcc-debug-lib gcc-debug-shlib \
         clean install install-debug install-python install-python-dev uninstall-python
 
 # Default (release)
-release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib
+release: gcc-release-convert gcc-release-combine gcc-release-image gcc-release-split gcc-release-lib gcc-release-shlib
 
 # Debug bundle
-debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-split gcc-debug-lib
+debug: gcc-debug-convert gcc-debug-combine gcc-debug-image gcc-debug-split gcc-debug-lib gcc-debug-shlib
 
 # Release object lists for executables
 CONVERT_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/%.o,$(GCC_SRCS_CONVERT))
@@ -170,6 +188,10 @@ CONVERT_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_CONVERT))
 COMBINE_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_COMBINE))
 IMAGE_OBJS_DBG   := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_IMAGE))
 SPLIT_OBJS_DBG   := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/%.o,$(GCC_SRCS_SPLIT))
+
+# Shared library object lists (compiled with -fPIC)
+SHLIB_OBJS_REL := $(patsubst %.cc,$(GCC_BIN_DIR_REL)/pic/%.o,$(LIB_SRCS))
+SHLIB_OBJS_DBG := $(patsubst %.cc,$(GCC_BIN_DIR_DBG)/pic/%.o,$(LIB_SRCS))
 
 # Release executable targets
 gcc-release-convert: $(CONVERT_BIN_REL)
@@ -205,6 +227,13 @@ $(LIB_REL): $(LIB_OBJS_REL)
 	@echo "Building Release static library ($@)..."
 	ar rcs $@ $^
 
+# Release shared library
+gcc-release-shlib: $(SHLIB_REL)
+$(SHLIB_REL): $(SHLIB_OBJS_REL)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Building Release shared library ($@)..."
+	$(CXX) $(SHLIB_FLAG) -o $@ $^ $(ROOT_LIBS)
+
 # Debug executable targets (could be parallelized similarly)
 gcc-debug-convert: $(CONVERT_OBJS_DBG)
 	@$(MKDIR_P) $(GCC_BIN_DIR_DBG)
@@ -232,6 +261,13 @@ $(LIB_DBG): $(LIB_OBJS_DBG)
 	@echo "Building Debug static library ($@)..."
 	ar rcs $@ $^
 
+# Debug shared library
+gcc-debug-shlib: $(SHLIB_DBG)
+$(SHLIB_DBG): $(SHLIB_OBJS_DBG)
+	@$(MKDIR_P) $(dir $@)
+	@echo "Building Debug shared library ($@)..."
+	$(CXX) $(SHLIB_FLAG) -o $@ $^ $(ROOT_LIBS)
+
 # --- compile object files into the right dirs ---
 $(GCC_BIN_DIR_REL)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
@@ -242,6 +278,16 @@ $(GCC_BIN_DIR_DBG)/%.o: %.cc
 	@$(MKDIR_P) $(dir $@)
 	@echo "Compiling Debug object $<..."
 	$(CXX) $(CXXFLAGS_DEBUG) -c $< -o $@
+
+$(GCC_BIN_DIR_REL)/pic/%.o: %.cc
+	@$(MKDIR_P) $(dir $@)
+	@echo "Compiling Release PIC object $<..."
+	$(CXX) $(CXXFLAGS_RELEASE_PIC) -c $< -o $@
+
+$(GCC_BIN_DIR_DBG)/pic/%.o: %.cc
+	@$(MKDIR_P) $(dir $@)
+	@echo "Compiling Debug PIC object $<..."
+	$(CXX) $(CXXFLAGS_DEBUG_PIC) -c $< -o $@
 
 # Clean
 clean:
@@ -258,7 +304,7 @@ install:
 	@printf "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
 	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(SPLIT_BIN_REL) $(BINDIR)
-	@cp $(LIB_REL) $(LIBDIR)
+	@cp $(LIB_REL) $(SHLIB_REL) $(LIBDIR)
 	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
 
@@ -266,7 +312,7 @@ install-debug:
 	@printf "Installing debug binaries and library to $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
 	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
 	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(SPLIT_BIN_DBG) $(BINDIR)
-	@cp $(LIB_DBG) $(LIBDIR)
+	@cp $(LIB_DBG) $(SHLIB_DBG) $(LIBDIR)
 	@cp -r $(PZ_HEADERS) $(PREFIX)/include
 	@echo " done."
 
