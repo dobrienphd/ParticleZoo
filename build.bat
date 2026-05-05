@@ -238,9 +238,10 @@ cl.exe %CFLAGS% /Fo"%OBJDIR%\\" %INCLUDES% /c PHSPSplit.cc || goto :build_fail
 link.exe /OUT:"%OUTDIR%\PHSPSplit.exe" !OBJ_LIST! %OBJDIR%\PHSPSplit.obj %ROOT_LIBS% || goto :build_fail
 
 REM Build dynamic library
+REM MSVC always generates relocatable code; /DYNAMICBASE enables ASLR (equivalent intent to -fPIC)
 if not exist "%OUTDIR%\bin" mkdir "%OUTDIR%\bin"
 echo Building dynamic library particlezoo.dll ...
-link /DLL /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! %ROOT_LIBS% || goto :build_fail
+link /DLL /DYNAMICBASE /OUT:%OUTDIR%\bin\particlezoo.dll !OBJ_LIST! %ROOT_LIBS% || goto :build_fail
 goto :build_success
 
 :build_success
