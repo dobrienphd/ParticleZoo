@@ -1,3 +1,41 @@
+# --- Windows Redirection ---
+ifeq ($(OS),Windows_NT)
+  # Default goal for Windows
+  .DEFAULT_GOAL := release
+
+  # Map common make variables to build.bat flags
+  WIN_OPTS :=
+  ifdef PREFIX
+    WIN_OPTS += --prefix="$(PREFIX)"
+  endif
+  ifeq ($(USE_ROOT),0)
+    WIN_OPTS += --no-root
+  endif
+  ifdef JOBS
+    WIN_OPTS += --jobs=$(JOBS)
+  endif
+
+  release:
+	@call build.bat release $(WIN_OPTS)
+
+  debug:
+	@call build.bat debug $(WIN_OPTS)
+
+  install:
+	@call build.bat install $(WIN_OPTS)
+
+  clean:
+	@if exist build\msvc ( \
+		echo | set /p="Cleaning build artifacts..." && \
+		rmdir /s /q build\msvc && \
+		echo  done. \
+	)
+
+  .PHONY: release debug install clean
+
+else
+# --- POSIX (Linux/macOS) Logic ---
+
 # load configuration
 -include config.status
 
@@ -23,6 +61,7 @@ else
     MACRO_DEFINE :=
     ROOT_SYS_CFLAGS :=
     ROOT_OTHER_FLAGS :=
+    USE_ROOT := 0
 endif
 
 # Common include flags
@@ -130,23 +169,16 @@ CXXFLAGS_DEBUG := $(CXXFLAGS) -O0 -g -Wno-deprecated-declarations $(MACRO_DEFINE
 CXXFLAGS_RELEASE_PIC := $(CXXFLAGS_RELEASE) -fPIC
 CXXFLAGS_DEBUG_PIC   := $(CXXFLAGS_DEBUG) -fPIC
 
-# detect Windows vs. Unix
-ifeq ($(OS),Windows_NT)
-    BINEXT := .exe
-    MKDIR_P := mkdir
-    SHLIB_EXT := .dll
-    SHLIB_FLAG :=
+# Unix platform detection (OS is not Windows_NT)
+BINEXT :=
+MKDIR_P := mkdir -p
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    SHLIB_EXT := .dylib
+    SHLIB_FLAG := -dynamiclib
 else
-    BINEXT :=
-    MKDIR_P := mkdir -p
-    UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Darwin)
-        SHLIB_EXT := .dylib
-        SHLIB_FLAG := -dynamiclib
-    else
-        SHLIB_EXT := .so
-        SHLIB_FLAG := -shared
-    endif
+    SHLIB_EXT := .so
+    SHLIB_FLAG := -shared
 endif
 
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
@@ -370,3 +402,4 @@ uninstall-python:
 			echo "Canceled."; \
 		fi; \
 	fi
+endif
