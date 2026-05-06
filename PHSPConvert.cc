@@ -281,7 +281,7 @@ namespace {
             {
                 throw std::runtime_error("Conflicting particle filter options specified.");
             }
-            if (generationFilter.useFilter && (generationFilter.minimumGeneration < generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min < max and that min is at least 1.");
+            if (generationFilter.useFilter && (generationFilter.minimumGeneration > generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min <= max and that min is at least 1.");
         }
     };
 

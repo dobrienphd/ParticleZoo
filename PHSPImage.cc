@@ -490,7 +490,7 @@ namespace {
                 if (tolerance < 0) throw std::runtime_error("Tolerance cannot be a negative number.");
                 if (imageWidth <= 0) throw std::runtime_error("Image width must be a positive integer.");
                 if (imageHeight <= 0) throw std::runtime_error("Image height must be a positive integer.");
-                if (generationFilter.useFilter && (generationFilter.minimumGeneration < generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min < max and that min is at least 1.");
+                if (generationFilter.useFilter && (generationFilter.minimumGeneration > generationFilter.maximumGeneration || generationFilter.minimumGeneration < 1)) throw std::runtime_error("Invalid generation filter range. Ensure that min <= max and that min is at least 1.");
             }
     };
 
@@ -660,7 +660,7 @@ int main(int argc, char* argv[]) {
             if (validPixel && config.generationFilter.useFilter) {
                 if (particle.hasIntProperty(IntPropertyType::GENERATION)) {
                     const int generation = particle.getIntProperty(IntPropertyType::GENERATION);
-                    validPixel = generation < config.generationFilter.minimumGeneration || generation > config.generationFilter.maximumGeneration;
+                    validPixel = generation >= config.generationFilter.minimumGeneration && generation <= config.generationFilter.maximumGeneration;
                 } else {
                     // Could not determine particle generation, so throw an error
                     throw std::runtime_error("Could not determine particle generation (primary/secondary) from the phase space file.");
