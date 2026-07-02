@@ -198,7 +198,10 @@ namespace ParticleZoo::EGSphspFile
         buffer.write<unsigned int>(numberOfParticles_);
         buffer.write<unsigned int>(numberOfPhotons_);
         buffer.write<float>(maxKineticEnergy_ / MeV);
-        buffer.write<float>(minElectronEnergy_ / MeV);
+
+        // make sure to write a finite value for the minimum electron energy if there are no electrons in the file
+        float minElectronEnergyToWrite = std::isfinite(minElectronEnergy_) ? minElectronEnergy_ / MeV : 0.0f;
+        buffer.write<float>(minElectronEnergyToWrite);
 
         std::uint64_t historiesRecorded = getHistoriesWritten();
         if (historiesRecorded > numberOfOriginalHistories_) {

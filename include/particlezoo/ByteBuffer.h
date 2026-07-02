@@ -609,6 +609,10 @@ namespace ParticleZoo {
                 out[i*W + 0] = bytes[i*W + 1];
                 out[i*W + 1] = bytes[i*W + 0];
             }
+            // Handle odd-sized types by copying the last byte as-is
+            if constexpr (sizeof(T) % 2 != 0) {
+                out[sizeof(T) - 1] = bytes[sizeof(T) - 1];
+            }
         }
 
         return std::bit_cast<T>(out);

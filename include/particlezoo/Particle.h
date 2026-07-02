@@ -581,7 +581,7 @@ namespace ParticleZoo {
             float py_{0.f};
             float pz_{0.f};
             bool isNewHistory_{false};
-            float weight_{0.f};
+            float weight_{1.f};
             ParticleProperties properties_{};
             
             int  getBoolPropertyIndex(BoolPropertyType type) const;
