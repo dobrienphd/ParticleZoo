@@ -421,7 +421,7 @@ namespace {
                         maxGen = std::get<int>(range[1]);
                     }
 
-                    return GenerationFilter(false, minGen, maxGen);
+                    return GenerationFilter(useFilter, minGen, maxGen);
                 }
             }
 
@@ -617,7 +617,12 @@ int main(int argc, char* argv[]) {
             switch (config.projectionType)
             {
                 case(ProjectionType::FLATTEN):
-                    particle.setZ(config.planeLocation);
+                    switch (config.plane)
+                    {
+                        case(XY): particle.setZ(config.planeLocation); break;
+                        case(XZ): particle.setY(config.planeLocation); break;
+                        case(YZ): particle.setX(config.planeLocation); break;
+                    };
                     break;
                 case(ProjectionType::PROJECTION):
                     switch (config.plane)

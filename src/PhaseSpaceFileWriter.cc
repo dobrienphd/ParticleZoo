@@ -6,7 +6,7 @@ namespace ParticleZoo
     CLICommand ConstantXCommand{ WRITER, "X", "constantX", "Set all particles to be written with this constant value for the X position", { CLI_FLOAT } };
     CLICommand ConstantYCommand{ WRITER, "Y", "constantY", "Set all particles to be written with this constant value for the Y position", { CLI_FLOAT } };
     CLICommand ConstantZCommand{ WRITER, "Z", "constantZ", "Set all particles to be written with this constant value for the Z position", { CLI_FLOAT } };
-    CLICommand ConstantPxCommand{ WRITER, "Pz", "constantPx", "Set all particles to be written with this constant value for the X directional cosine", { CLI_FLOAT } };
+    CLICommand ConstantPxCommand{ WRITER, "Px", "constantPx", "Set all particles to be written with this constant value for the X directional cosine", { CLI_FLOAT } };
     CLICommand ConstantPyCommand{ WRITER, "Py", "constantPy", "Set all particles to be written with this constant value for the Y directional cosine", { CLI_FLOAT } };
     CLICommand ConstantPzCommand{ WRITER, "Pz", "constantPz", "Set all particles to be written with this constant value for the Z directional cosine", { CLI_FLOAT } };
     CLICommand ConstantWeightCommand{ WRITER, "W", "constantWeight", "Set all particles to be written with this constant value for the weight", { CLI_FLOAT } };

@@ -242,7 +242,7 @@ namespace {
                     maxGen = std::get<int>(range[1]);
                 }
 
-                return GenerationFilter(false, minGen, maxGen);
+                return GenerationFilter(useFilter, minGen, maxGen);
             }
         }
 
