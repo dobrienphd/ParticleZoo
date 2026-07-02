@@ -552,8 +552,6 @@ namespace ParticleZoo::IAEAphspFile
         sectionTable_["IAEA_INDEX"] = IAEAIndex_;
         sectionTable_["TITLE"] = title_;
         sectionTable_["FILE_TYPE"] = std::to_string(static_cast<int>(fileType_));
-
-        checksum_ = recordLength_ * numberOfParticles_;
         sectionTable_["CHECKSUM"] = std::to_string(checksum_);
 
         std::ostringstream recordContents;

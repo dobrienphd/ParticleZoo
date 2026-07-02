@@ -81,8 +81,12 @@ namespace ParticleZoo::TOPASphspFile
                         particle.setFloatProperty(FloatPropertyType::CUSTOM, static_cast<float>(doubleValue));
                         break;
                     case Header::DataType::INT8:
-                        std::int8_t int8Value;
-                        iss >> int8Value;
+                        int intValue;
+                        iss >> intValue;
+                        if (intValue < std::numeric_limits<std::int8_t>::min() || intValue > std::numeric_limits<std::int8_t>::max()) {
+                            throw std::runtime_error("Integer value out of range for INT8 in TOPAS ASCII phase space file: " + std::to_string(intValue));
+                        }
+                        std::int8_t int8Value = static_cast<std::int8_t>(intValue);
                         particle.setIntProperty(IntPropertyType::CUSTOM, static_cast<std::int32_t>(int8Value));
                         break;
                     case Header::DataType::INT32:
@@ -129,7 +133,7 @@ namespace ParticleZoo::TOPASphspFile
         }
 
         ParticleType particleType = getParticleTypeFromPDGID(typeCode);
-        if (particleType == ParticleType::Unsupported) {    
+        if (particleType == ParticleType::Unsupported) {
             throw std::runtime_error("Invalid particle type code in TOPAS phase space file: " + std::to_string(typeCode));
         }
         

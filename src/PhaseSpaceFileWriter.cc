@@ -104,6 +104,7 @@ namespace ParticleZoo
         if (file_.is_open()) {
             writeNextBlock();
             writeHeaderToFile();
+            writeNextBlock(); // flush anything writeHeaderData() appended
             file_.flush();
             file_.close();
         }
