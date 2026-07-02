@@ -30,7 +30,7 @@
  *                             Valid formats: IAEA, EGS, TOPAS, penEasy, ROOT
  *                             (default: auto-detect format from file extension)
  *   --formats                 Display a list of all supported file formats and exit
- *   --preserveConstants <true|false>  Preserve constant values from input files if present (default: false)
+ *   --preserveConstants <true|false>  Preserve constant values from input files if present (default: true)
  * 
  * USAGE EXAMPLES:
  *   # Combine two EGS files into an IAEA format output
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
     std::string outputFormat = userOptions.contains(OUTPUT_FORMAT_COMMAND) ? (userOptions.at(OUTPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FORMAT_COMMAND)[0])) : "";
     std::string outputFile = userOptions.contains(OUTPUT_FILE_COMMAND) ? (userOptions.at(OUTPUT_FILE_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(OUTPUT_FILE_COMMAND)[0])) : "";
     std::vector<CLIValue> positionals = userOptions.contains(CLI_POSITIONALS) ? userOptions.at(CLI_POSITIONALS) : std::vector<CLIValue>{};
-    bool preserveConstants = userOptions.contains(PRESERVE_CONSTANTS_COMMAND) ? std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]) : false;
+    bool preserveConstants = std::get<bool>(userOptions.at(PRESERVE_CONSTANTS_COMMAND)[0]);
     std::vector<std::string> inputFiles(positionals.size());
     for (size_t i = 0; i < positionals.size(); i++) {
         inputFiles[i] = std::get<std::string>(positionals[i]);

@@ -101,7 +101,7 @@ namespace ParticleZoo::EGSphspFile
                 // Normally these bits would encode the location where the particle has been or interacted
                 // but since we don't have that information here we just set this 5-bit field to 0 for primary and 1 for secondary
                 {
-                    const bool isPrimary = particle.hasIntProperty(IntPropertyType::GENERATION) && particle.getIntProperty(IntPropertyType::GENERATION) == 1;
+                    const bool isPrimary = !particle.hasIntProperty(IntPropertyType::GENERATION) || particle.getIntProperty(IntPropertyType::GENERATION) == 1;
                     if (isPrimary) {
                         LATCH &= ~(0x1F << 24); // Clear bits 24-28 to indicate primary
                     } else {
