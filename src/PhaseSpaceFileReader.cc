@@ -114,7 +114,10 @@ namespace ParticleZoo
         particlesRead_ = particleIndex;
         particlesSkipped_ = particleIndex;
         metaparticlesRead_ = 0;
+        // historiesRead_ restarts from the seek point; a mid-file seek target is not
+        // "the first particle of the file" so only re-arm the flag when seeking to the start
         historiesRead_ = 0;
+        isFirstParticle_ = (particleIndex == 0);
     }
 
     const ByteBuffer PhaseSpaceFileReader::getHeaderData() {
@@ -124,7 +127,7 @@ namespace ParticleZoo
 
     const ByteBuffer PhaseSpaceFileReader::getHeaderData(std::size_t headerSize) {
         if (headerSize == 0 || formatType_ == FormatType::NONE) {
-            return ByteBuffer(0, buffer_.getByteOrder());
+            return ByteBuffer(std::span<const byte>{}, buffer_.getByteOrder());
         }
 
         // Ensure the file is open before trying to read
@@ -216,7 +219,8 @@ namespace ParticleZoo
             if (buffer_.remainingToRead() < maxASCIILength && bytesRead_ < bytesInFile_) {
                 readNextBlock();
             }
-            line = buffer_.readLine();
+            // At end-of-file, allow a final line without a trailing newline
+            line = buffer_.readLine(bytesRead_ >= bytesInFile_);
             pos = line.find_first_not_of(" \t");
             if (pos == std::string::npos) {
                 line.clear(); // Empty line, continue to next iteration

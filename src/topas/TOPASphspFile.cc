@@ -10,6 +10,18 @@ namespace ParticleZoo::TOPASphspFile
     CLICommand TOPASFormatCommand { WRITER, "", "TOPAS-format", "Specify the TOPAS phase space file format to write (ASCII, BINARY or LIMITED)", { CLI_STRING }, { "BINARY" } };
     CLICommand TOPASWritePseudoParticleAtEndOnlyCommand { WRITER, "", "TOPAS-single-pseudo", "For TOPAS binary files, write a single pseudo-particle at the end of the file to account for all empty histories instead of writing them continously throughout the file", { CLI_VALUELESS }, {} };
 
+    // STRING columns only exist in the TOPAS ASCII format; the binary formats have no
+    // representation for them, so reject them before any fixed-record-length I/O begins
+    inline void rejectStringColumnsForBinaryFormats(const Header & header)
+    {
+        if (header.getTOPASFormat() == TOPASFormat::ASCII) return;
+        for (const Header::DataColumn & column : header.getColumnTypes()) {
+            if (column.valueType_ == Header::DataType::STRING) {
+                throw std::runtime_error("STRING columns are not supported by the " + header.getTOPASFormatName() + " format; use TOPAS ASCII instead");
+            }
+        }
+    }
+
     // read the header, decide ASCII vs BINARY, then hand back the header and it's format type
     inline std::pair<FormatType,Header> readHeader(const std::string &filename)
     {
@@ -17,6 +29,7 @@ namespace ParticleZoo::TOPASphspFile
         if (header.getRecordLength() == 0) {
             throw std::runtime_error("Failed to read TOPAS header from file: " + filename);
         }
+        rejectStringColumnsForBinaryFormats(header);
         TOPASFormat topasFormat = header.getTOPASFormat();
         FormatType format = (topasFormat == TOPASFormat::ASCII)
                         ? FormatType::ASCII
@@ -253,8 +266,18 @@ namespace ParticleZoo::TOPASphspFile
     Writer::Writer(const std::string &filename, const UserOptions &options, TOPASFormat formatType)
         : PhaseSpaceFileWriter(Header::getTOPASFormatName(formatType), filename, options, getFormatTypeFromTOPASFormat(formatType)), formatType_(formatType), header_(filename, formatType)
     {
+        rejectStringColumnsForBinaryFormats(header_);
         if (options.contains(TOPASWritePseudoParticleAtEndOnlyCommand)) {
             writePseudoParticleAtEndOnly_ = true;
+        }
+    }
+
+    Writer::~Writer()
+    {
+        try {
+            close();
+        } catch (...) {
+            // destructors must not throw; call close() explicitly to handle write errors
         }
     }
 
@@ -314,27 +337,40 @@ namespace ParticleZoo::TOPASphspFile
             // skip the first 10 columns that we've already consumed
             for (std::size_t idx = 10; idx < columnTypes.size(); ++idx) {
                 const Header::DataColumn & column = columnTypes[idx];
+                // Substitute defaults when the particle has fewer custom properties than the header declares,
+                // matching the guarded pattern used by the binary path
                 switch (column.valueType_) {
                     case Header::DataType::STRING:
-                        oss << std::setw(22) << customStringProperties[customStringIndex++].substr(0,22) << " ";
+                        {
+                            const std::string customString = customStringIndex < customStringProperties.size() ? customStringProperties[customStringIndex++] : "";
+                            oss << std::setw(22) << customString.substr(0,22) << " ";
+                        }
                         break;
                     case Header::DataType::BOOLEAN:
-                        oss << std::setw(2) << (customBoolProperties[customBoolIndex++] ? 1 : 0) << " ";
+                        {
+                            const bool customBool = customBoolIndex < customBoolProperties.size() ? customBoolProperties[customBoolIndex++] : false;
+                            oss << std::setw(2) << (customBool ? 1 : 0) << " ";
+                        }
                         break;
                     case Header::DataType::INT8:
                         {
-                            std::int8_t customIntValue = static_cast<std::int8_t>(customIntProperties[customIntIndex++]);
+                            const std::int32_t customInt = customIntIndex < customIntProperties.size() ? customIntProperties[customIntIndex++] : 0;
+                            std::int8_t customIntValue = static_cast<std::int8_t>(customInt);
                             oss << std::setw(12) << static_cast<int>(customIntValue) << " ";
                         }
                         break;
                     case Header::DataType::INT32:
-                        oss << std::setw(12) << customIntProperties[customIntIndex++] << " ";
+                        {
+                            const std::int32_t customInt32 = customIntIndex < customIntProperties.size() ? customIntProperties[customIntIndex++] : 0;
+                            oss << std::setw(12) << customInt32 << " ";
+                        }
                         break;
                     case Header::DataType::FLOAT32:
-                        oss << std::setw(12) << customFloatProperties[customFloatIndex++] << " ";
-                        break;
                     case Header::DataType::FLOAT64:
-                        oss << std::setw(12) << customFloatProperties[customFloatIndex++] << " ";
+                        {
+                            const float customFloat = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
+                            oss << std::setw(12) << customFloat << " ";
+                        }
                         break;
                 }
             }

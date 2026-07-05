@@ -25,7 +25,21 @@ namespace ParticleZoo::Penelope
     {
         if (ilb1 > 0) {
             particle.setIntProperty(IntPropertyType::GENERATION, ilb1);
+            // IS_SECONDARY_PARTICLE is deprecated but still maintained for backward
+            // compatibility until its removal; suppress the self-inflicted warning
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
             particle.setBoolProperty(BoolPropertyType::IS_SECONDARY_PARTICLE, ilb1 > 1);
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
         } else if (ilb1 < 0) {
             throw std::runtime_error("Invalid ILB1 value: " + std::to_string(ilb1));
         }

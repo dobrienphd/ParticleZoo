@@ -33,10 +33,11 @@ namespace ParticleZoo::IAEAphspFile
         
         if (!newFile) {
             std::ifstream file(filePath);
-            if (file.is_open())
+            if (!file.is_open())
             {
-                readHeader(file);
+                throw std::runtime_error("Failed to open IAEA header file: " + filePath);
             }
+            readHeader(file);
         }
         generateSectionTable();
     }

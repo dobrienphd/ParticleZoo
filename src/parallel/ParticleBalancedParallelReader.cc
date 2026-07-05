@@ -67,12 +67,16 @@ namespace ParticleZoo {
             std::uint64_t targetParticleIndex = currentParticleIndex;
             currentParticleIndex += particlesToRead;
 
-            // Move the reader to the target particle, respecting history boundaries
+            // Move the reader to the target particle, respecting history boundaries.
+            // The start of the file is an implicit history boundary, so never skip
+            // leading particles whose new-history flag is unset in the raw data.
             readers_[i]->moveToParticle(targetParticleIndex);
-            while (readers_[i]->hasMoreParticles() && !readers_[i]->peekNextParticle().isNewHistory()) {
-                // Skip ahead to the next history boundary
-                readers_[i]->getNextParticle();
-                targetParticleIndex++;
+            if (targetParticleIndex > 0) {
+                while (readers_[i]->hasMoreParticles() && !readers_[i]->peekNextParticle().isNewHistory()) {
+                    // Skip ahead to the next history boundary
+                    readers_[i]->getNextParticle();
+                    targetParticleIndex++;
+                }
             }
             startingParticleIndex_.push_back(targetParticleIndex);
         }

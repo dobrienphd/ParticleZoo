@@ -97,13 +97,20 @@ namespace ParticleZoo::penEasyphspFile
             return {0, 0};
         }
 
+        // Report an empty file
+        file.seekg(0, std::ios::end);
+        if (file.tellg() == 0) {
+            throw std::runtime_error("penEasy phase space file is empty: " + filename);
+        }
+        file.seekg(0, std::ios::beg);
+
         ByteBuffer buffer;
         std::size_t lineCount = 0;
         std::uint64_t totalDeltaN = 0;
         std::string currentLine;
         currentLine.reserve(256); // Reserve space for typical line length
 
-        while (!file.eof()) {
+        while (!file.eof() && file.peek() != std::ifstream::traits_type::eof()) {
             size_t bytesRead = buffer.setData(file);
             const byte* data = buffer.data();
             
@@ -142,6 +149,7 @@ namespace ParticleZoo::penEasyphspFile
         }
 
         // Handle last line if file doesn't end with newline
+        file.clear(); // reset eof/fail flags from the final read so the seek below succeeds
         file.seekg(0, std::ios::end);
         if (file.tellg() > 0) {
             if (lineCount == 0) {

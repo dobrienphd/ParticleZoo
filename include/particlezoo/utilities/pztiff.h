@@ -249,22 +249,25 @@ namespace ParticleZoo {
             buffer.write<uint32_t>(valueOrOffset);
         };
 
-        // Write IFD entries
-        writeIFDEntry(TAG_IMAGEWIDTH, TYPE_LONG, 1, static_cast<uint32_t>(width_));
-        writeIFDEntry(TAG_IMAGELENGTH, TYPE_LONG, 1, static_cast<uint32_t>(height_));
-        writeIFDEntry(TAG_BITSPERSAMPLE, TYPE_SHORT, 1, bitsPerSample);
-        writeIFDEntry(TAG_COMPRESSION, TYPE_SHORT, 1, 1); // No compression
-        writeIFDEntry(TAG_PHOTOMETRIC, TYPE_SHORT, 1, 1); // BlackIsZero for grayscale
-        writeIFDEntry(TAG_STRIPOFFSETS, TYPE_LONG, 1, stripDataOffset);
-        writeIFDEntry(TAG_SAMPLESPERPIXEL, TYPE_SHORT, 1, 1); // Grayscale
-        writeIFDEntry(TAG_ROWSPERSTRIP, TYPE_LONG, 1, static_cast<uint32_t>(height_)); // Single strip
-        writeIFDEntry(TAG_STRIPBYTECOUNTS, TYPE_LONG, 1, static_cast<uint32_t>(totalImageDataSize));
-        writeIFDEntry(TAG_XRESOLUTION, TYPE_RATIONAL, 1, xResolutionOffset);
-        writeIFDEntry(TAG_YRESOLUTION, TYPE_RATIONAL, 1, yResolutionOffset);
-        writeIFDEntry(TAG_RESOLUTIONUNIT, TYPE_SHORT, 1, 3); // Centimeter
-        writeIFDEntry(TAG_SAMPLEFORMAT, TYPE_SHORT, 1, sampleFormat);
-        writeIFDEntry(TAG_XPOSITION, TYPE_SRATIONAL, 1, xPositionOffset);
-        writeIFDEntry(TAG_YPOSITION, TYPE_SRATIONAL, 1, yPositionOffset);
+        // Write IFD entries (the TIFF specification requires ascending tag order)
+        // Note: XPosition/YPosition are written as SRATIONAL rather than the spec's
+        // unsigned RATIONAL because negative origins must be representable;
+        // ImageJ-style readers tolerate this deviation.
+        writeIFDEntry(TAG_IMAGEWIDTH, TYPE_LONG, 1, static_cast<uint32_t>(width_));           // 256
+        writeIFDEntry(TAG_IMAGELENGTH, TYPE_LONG, 1, static_cast<uint32_t>(height_));         // 257
+        writeIFDEntry(TAG_BITSPERSAMPLE, TYPE_SHORT, 1, bitsPerSample);                       // 258
+        writeIFDEntry(TAG_COMPRESSION, TYPE_SHORT, 1, 1); // No compression                   // 259
+        writeIFDEntry(TAG_PHOTOMETRIC, TYPE_SHORT, 1, 1); // BlackIsZero for grayscale        // 262
+        writeIFDEntry(TAG_STRIPOFFSETS, TYPE_LONG, 1, stripDataOffset);                       // 273
+        writeIFDEntry(TAG_SAMPLESPERPIXEL, TYPE_SHORT, 1, 1); // Grayscale                    // 277
+        writeIFDEntry(TAG_ROWSPERSTRIP, TYPE_LONG, 1, static_cast<uint32_t>(height_));        // 278
+        writeIFDEntry(TAG_STRIPBYTECOUNTS, TYPE_LONG, 1, static_cast<uint32_t>(totalImageDataSize)); // 279
+        writeIFDEntry(TAG_XRESOLUTION, TYPE_RATIONAL, 1, xResolutionOffset);                  // 282
+        writeIFDEntry(TAG_YRESOLUTION, TYPE_RATIONAL, 1, yResolutionOffset);                  // 283
+        writeIFDEntry(TAG_XPOSITION, TYPE_SRATIONAL, 1, xPositionOffset);                     // 286
+        writeIFDEntry(TAG_YPOSITION, TYPE_SRATIONAL, 1, yPositionOffset);                     // 287
+        writeIFDEntry(TAG_RESOLUTIONUNIT, TYPE_SHORT, 1, 3); // Centimeter                    // 296
+        writeIFDEntry(TAG_SAMPLEFORMAT, TYPE_SHORT, 1, sampleFormat);                         // 339
 
         // Next IFD offset (0 means no more IFDs)
         buffer.write<uint32_t>(0);

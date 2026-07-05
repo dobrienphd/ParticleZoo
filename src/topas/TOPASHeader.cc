@@ -50,6 +50,17 @@ namespace ParticleZoo::TOPASphspFile
         }
     }
 
+    void Header::addColumnType(ColumnType columnType)
+    {
+        DataColumn column(columnType);
+        // STRING data only exists in the TOPAS ASCII format (fixed 22-character field);
+        // reject it here before any record-length arithmetic can be based on it
+        if (column.valueType_ == DataType::STRING && formatType_ != TOPASFormat::ASCII) {
+            throw std::runtime_error("STRING columns are not supported by the " + getTOPASFormatName(formatType_) + " format; use TOPAS ASCII instead");
+        }
+        columnTypes_.push_back(std::move(column));
+    }
+
     std::size_t Header::getRecordLength() const
     {
         if (formatType_ == TOPASFormat::LIMITED) {

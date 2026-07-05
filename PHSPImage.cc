@@ -581,8 +581,9 @@ int main(int argc, char* argv[]) {
         // Calculate pixel mapping
         float xPixelsPerUnitLength = static_cast<float>(config.imageWidth) / (config.maxDim1() - config.minDim1());
         float yPixelsPerUnitLength = static_cast<float>(config.imageHeight) / (config.maxDim2() - config.minDim2());
-        float xOffset = static_cast<float>(config.minDim1()) * xPixelsPerUnitLength;
-        float yOffset = static_cast<float>(config.minDim2()) * yPixelsPerUnitLength;
+        // Image origin as a length; TiffImage::save() converts it to centimeters
+        float xOffset = static_cast<float>(config.minDim1());
+        float yOffset = static_cast<float>(config.minDim2());
         float pixelArea = (config.maxDim1() - config.minDim1()) * (config.maxDim2() - config.minDim2()) / (config.imageWidth * config.imageHeight);
         pixelArea /= cm2; // convert to cm^2
 
