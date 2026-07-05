@@ -33,7 +33,7 @@ The library includes built-in support for major Monte Carlo simulation formats:
 - **IAEA**: `.IAEAphsp` International Atomic Energy Agency format with header files
 - **TOPAS**: `.phsp` files in Binary, ASCII, and Limited variants
 - **penEasy**: `.dat` ASCII format from the PENELOPE simulation code
-- **ROOT** (optional): `.root` files generated with the CERN ROOT framework. Includes build-in templates for TOPAS and OpenGATE generated files. Also supports custom branch mappings
+- **ROOT** (optional): `.root` files generated with the CERN ROOT framework. Includes built-in templates for TOPAS and OpenGATE generated files. Also supports custom branch mappings
 
 Additional formats can be added through the extensible registry system without modifying core library code.
 
@@ -115,6 +115,8 @@ make release  # Explicitly build release version
 # Install (optional)
 make install  # defaults to /usr/local for the install PREFIX
 make install PREFIX=/usr/local
+make install-debug  # Install debug binaries and library instead
+make uninstall      # Remove an installation
 
 # Python bindings (optional)
 make install-python      # Standard installation
@@ -129,6 +131,8 @@ build.bat [--prefix=C:\path\to\install] [debug|release]
 build.bat install [--prefix=C:\path\to\install] [debug|release]
 ```
 
+If GNU Make is available on Windows, the standard `make` targets (`make`, `make debug`, `make install`, `make clean`) also work and forward to `build.bat` automatically. The `PREFIX`, `USE_ROOT=0`, and `JOBS` make variables map to the corresponding `build.bat` flags.
+
 ### Build Outputs
 
 The build system creates the following artifacts:
@@ -139,10 +143,13 @@ The build system creates the following artifacts:
     - Static library:
         - Linux/macOS: `libparticlezoo.a`
         - Windows:   `libparticlezoo.lib`
+    - Shared/dynamic library:
+        - Linux: `libparticlezoo.so`
+        - macOS: `libparticlezoo.dylib`
+        - Windows: `build/msvc/release/bin/particlezoo.dll`
     - Executables:
         - Linux/macOS: `PHSPConvert`, `PHSPCombine`, `PHSPImage`, `PHSPSplit`
         - Windows:   `PHSPConvert.exe`, `PHSPCombine.exe`, `PHSPImage.exe`, `PHSPSplit.exe`
-    - Dynamic library (Windows only): `build/msvc/release/bin/particlezoo.dll`
 
 **Debug build**
 - Linux/macOS: `build/gcc/debug/`
@@ -150,15 +157,18 @@ The build system creates the following artifacts:
     - Static library with debug symbols:
         - Linux/macOS: `libparticlezoo.a`
         - Windows:   `libparticlezoo.lib`
+    - Shared/dynamic library:
+        - Linux: `libparticlezoo.so`
+        - macOS: `libparticlezoo.dylib`
+        - Windows: `build/msvc/debug/bin/particlezoo.dll`
     - Debug executables:
         - Linux/macOS: `PHSPConvert`, etc.
         - Windows:   `PHSPConvert.exe`, etc.
-    - Dynamic library (Windows only): `build/msvc/debug/bin/particlezoo.dll`
 
 **Installation** (optional)
 - Linux/macOS (with `make install`):
     - Headers: `$PREFIX/include/particlezoo/`
-    - Static Library: `$PREFIX/lib/libparticlezoo.a`
+    - Libraries: `$PREFIX/lib/libparticlezoo.a` and `$PREFIX/lib/libparticlezoo.so` (`.dylib` on macOS)
     - Executables: `$PREFIX/bin/PHSPConvert`, etc.
 - Windows (with `build.bat install`):
     - Headers: `%PREFIX%\include\particlezoo\`
@@ -323,7 +333,8 @@ PHSPConvert --inputFormat EGS --outputFormat IAEA input.file output.file
 # Limit particle count
 PHSPConvert --maxParticles 1000000 input.IAEAphsp output.phsp
 
-# Project particles to a plane during conversion
+# Project particles along their direction to a plane during conversion
+# (--projectToX and --projectToY are also available)
 PHSPConvert --projectToZ 100.0 input.phsp output.IAEAphsp
 
 # Filter by particle type
@@ -344,6 +355,9 @@ PHSPConvert --maxRadius 10.0 input.phsp within_radius.phsp
 PHSPConvert --primariesOnly input.phsp primaries.phsp
 PHSPConvert --excludePrimaries input.phsp secondaries.phsp
 PHSPConvert --generations 1 2 input.phsp first_two_generations.phsp
+
+# Treat warnings as errors in the exit code (also supported by PHSPImage)
+PHSPConvert --errorOnWarning input.phsp output.IAEAphsp
 ```
 
 ### PHSPCombine - File Merging
@@ -390,6 +404,12 @@ PHSPImage --minX -10 --maxX 10 --minY -10 --maxY 10 input.phsp custom_bounds.tif
 
 # EGS LATCH filtering (for EGS format files)
 PHSPImage --EGS-latch-filter 0x00000001 input.egsphsp latch_filtered.tiff
+
+# Normalize by particle count instead of history count
+PHSPImage --normalizeByParticles input.phsp per_particle.tiff
+
+# Print detailed information about the parameters being used
+PHSPImage --showDetails input.phsp fluence.tiff
 ```
 
 ### PHSPSplit - File Splitting
@@ -403,6 +423,21 @@ PHSPSplit --splitNumber 10 input.egsphsp
 # Use short flag and specify output format
 PHSPSplit -n 5 --outputFormat IAEA input.egsphsp
 ```
+
+### Common Writer Options
+
+Any tool that writes phase space files also accepts these options:
+
+```bash
+# Hold a value constant for all written particles (X, Y, Z positions in cm;
+# Px, Py, Pz directional cosines; W statistical weight)
+PHSPConvert --constantZ 100.0 input.egsphsp output.IAEAphsp
+
+# Flip directional cosines for all written particles
+PHSPConvert --flipZ input.IAEAphsp flipped.IAEAphsp
+```
+
+Available options: `--constantX`, `--constantY`, `--constantZ`, `--constantPx`, `--constantPy`, `--constantPz`, `--constantWeight`, `--flipX`, `--flipY`, `--flipZ`
 
 ## Examples
 
@@ -676,7 +711,8 @@ print("Conversion complete!")
 For additional support:
 1. Use `--help` option to see a list of available commands
 2. Use `--formats` option to verify supported formats at runtime
-3. Raise an issue on GitHub or post questions in the GitHub discussions
+3. Consult the reference manual and test summary report PDFs in the [docs/](docs/) directory
+4. Raise an issue on GitHub or post questions in the GitHub discussions
 
 ## License
 
