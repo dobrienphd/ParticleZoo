@@ -66,21 +66,28 @@ namespace ParticleZoo::TOPASphspFile
                 const Header::DataColumn & column = columnTypes[idx];
                 switch (column.valueType_) {
                     case Header::DataType::BOOLEAN:
+                    {
                         bool boolValue;
                         iss >> boolValue;
                         particle.setBoolProperty(BoolPropertyType::CUSTOM, boolValue);
                         break;
+                    }
                     case Header::DataType::FLOAT32:
+                    {
                         float floatValue;
                         iss >> floatValue;
                         particle.setFloatProperty(FloatPropertyType::CUSTOM, floatValue);
                         break;
+                    }
                     case Header::DataType::FLOAT64:
+                    {
                         double doubleValue;
                         iss >> doubleValue;
                         particle.setFloatProperty(FloatPropertyType::CUSTOM, static_cast<float>(doubleValue));
                         break;
+                    }
                     case Header::DataType::INT8:
+                    {
                         int intValue;
                         iss >> intValue;
                         if (intValue < std::numeric_limits<std::int8_t>::min() || intValue > std::numeric_limits<std::int8_t>::max()) {
@@ -89,20 +96,23 @@ namespace ParticleZoo::TOPASphspFile
                         std::int8_t int8Value = static_cast<std::int8_t>(intValue);
                         particle.setIntProperty(IntPropertyType::CUSTOM, static_cast<std::int32_t>(int8Value));
                         break;
+                    }
                     case Header::DataType::INT32:
+                    {
                         std::int32_t int32Value;
                         iss >> int32Value;
                         particle.setIntProperty(IntPropertyType::CUSTOM, int32Value);
                         break;
+                    }
                     case Header::DataType::STRING:
-                        {
-                            std::string stringValue;
-                            // read the string value, which is expected to be 22 characters long
-                            stringValue.resize(22);
-                            iss.read(stringValue.data(), 22);
-                            particle.setStringProperty(stringValue);
-                        }
+                    {
+                        std::string stringValue;
+                        // read the string value, which is expected to be 22 characters long
+                        stringValue.resize(22);
+                        iss.read(stringValue.data(), 22);
+                        particle.setStringProperty(stringValue);
                         break;
+                    }
                     default:
                         throw std::runtime_error("Unknown column data type in TOPAS ASCII phase space file: " + std::to_string(static_cast<int>(column.columnType_)));
                 }
