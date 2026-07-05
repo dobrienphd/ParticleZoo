@@ -9,14 +9,16 @@ set NO_ROOT=0
 
 :parse_args
 if "%~1"=="" goto :end_parse_args
+set "ARG=%~1"
 if /I "%~1"=="--prefix" (
     set "PREFIX=%~2"
     shift
     shift
     goto :parse_args
 )
-if /I "%~1:~0,9%"=="--prefix=" (
-    set "PREFIX=!%~1:~9!"
+if /I "!ARG:~0,9!"=="--prefix=" (
+    set "PREFIX=!ARG:~9!"
+    set PREFIX=!PREFIX:"=!
     shift
     goto :parse_args
 )
@@ -41,8 +43,8 @@ if /I "%~1"=="-j" (
     shift
     goto :parse_args
 )
-if /I "%~1:~0,3%"=="-j=" (
-    set "JOBS=%~1:~3%"
+if /I "!ARG:~0,3!"=="-j=" (
+    set "JOBS=!ARG:~3!"
     shift
     goto :parse_args
 )
@@ -52,8 +54,8 @@ if /I "%~1"=="--jobs" (
     shift
     goto :parse_args
 )
-if /I "%~1:~0,7%"=="--jobs=" (
-    set "JOBS=%~1:~7%"
+if /I "!ARG:~0,7!"=="--jobs=" (
+    set "JOBS=!ARG:~7!"
     shift
     goto :parse_args
 )
