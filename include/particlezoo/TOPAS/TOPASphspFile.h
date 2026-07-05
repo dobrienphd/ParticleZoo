@@ -260,6 +260,11 @@ namespace ParticleZoo::TOPASphspFile
             Writer(const std::string &filename, const UserOptions &options = UserOptions{});
 
             /**
+             * @brief Destructor - closes the file if it has not been closed already
+             */
+            ~Writer() override;
+
+            /**
              * @brief Get the maximum number of particles this format can store
              * @return Maximum particle count
              */

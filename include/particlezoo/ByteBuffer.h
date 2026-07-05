@@ -210,15 +210,18 @@ namespace ParticleZoo {
             
             /**
              * @brief Read a line of ASCII text from the buffer.
-             * 
+             *
              * Reads characters until a newline ('\n') is found. Automatically handles
              * Windows-style line endings by removing trailing '\r'. Advances the offset
              * past the newline.
-             * 
+             *
+             * @param allowMissingTerminator If true and no newline is found, the remaining
+             *        data is returned as the final line instead of throwing
              * @return std::string The line read from the buffer (without newline characters)
-             * @throws std::runtime_error if newline is not found or no data is available
+             * @throws std::runtime_error if newline is not found (unless allowMissingTerminator
+             *         is true) or no data is available
              */
-            std::string readLine();
+            std::string readLine(bool allowMissingTerminator = false);
 
             /**
              * @brief Read a span of bytes from the buffer.
@@ -501,7 +504,7 @@ namespace ParticleZoo {
         return result;
     }
 
-    inline std::string ByteBuffer::readLine() {
+    inline std::string ByteBuffer::readLine(bool allowMissingTerminator) {
         std::size_t unread = remainingToRead();
         if (unread == 0) {
             throw std::runtime_error("No data left in buffer to read line.");
@@ -509,17 +512,21 @@ namespace ParticleZoo {
         // Search for '\n' using memchr
         auto startPtr = reinterpret_cast<const char*>(buffer_.data() + offset_);
         const void* newlinePtr = std::memchr(startPtr, '\n', unread);
-        if (!newlinePtr) {
+        if (!newlinePtr && !allowMissingTerminator) {
             throw std::runtime_error("Not enough data in buffer to read line.");
         }
-        std::size_t lineLength = static_cast<const char*>(newlinePtr) - startPtr;
+        // Distance to (but excluding) the '\n', or all remaining data if there is no terminator
+        std::size_t rawLength = newlinePtr
+                              ? static_cast<std::size_t>(static_cast<const char*>(newlinePtr) - startPtr)
+                              : unread;
+        std::size_t lineLength = rawLength;
         // Exclude a trailing '\r' if present
         if (lineLength > 0 && startPtr[lineLength - 1] == '\r') {
             lineLength--;
         }
         std::string result(startPtr, lineLength);
-        // Advance offset past the newline
-        offset_ += lineLength + 1;
+        // Advance offset past the newline, or to the end of the data if there is no terminator
+        offset_ += newlinePtr ? rawLength + 1 : rawLength;
         return result;
     }
     

@@ -94,8 +94,20 @@ PYBIND11_MODULE(_pz, m) {
         "Singleton class for parsing command line arguments. Provides a centralized system for "
         "registering command line argument definitions and parsing command line input. "
         "Designed to provide a consistent interface for command line parsing across ParticleZoo tools.")
-        .def_static("parse_args", 
+        .def_static("parse_args",
             [](const std::vector<std::string>& args, const std::string& usage, size_t min_positional) {
+                // The underlying C++ ArgParser::ParseArgs is one-shot per process: any call
+                // after the first silently returns the first parse's results. Warn so Python
+                // users aren't surprised when their new arguments are ignored.
+                static bool parseArgsAlreadyCalled = false;
+                if (parseArgsAlreadyCalled) {
+                    PyErr_WarnEx(PyExc_RuntimeWarning,
+                        "ArgParser.parse_args() can only parse arguments once per process; "
+                        "this call returns the results of the first invocation and the new "
+                        "arguments are ignored.", 1);
+                } else {
+                    parseArgsAlreadyCalled = true;
+                }
                 // Convert Python list to argc/argv style
                 // C++ ParseArgs expects argv[0] to be the program name, so prepend a dummy
                 std::vector<std::string> argv_strings;

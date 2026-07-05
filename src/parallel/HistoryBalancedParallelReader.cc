@@ -124,6 +124,14 @@ namespace ParticleZoo {
             throw std::out_of_range("Thread index out of range in hasMoreParticles()");
         }
 
+        // When numThreads > numberOfRepresentedHistories, the threads beyond the last history
+        // are assigned a starting history past the end of the file; they have nothing to read.
+        // Without this guard they would sit at particle 0 and rely on the raw new-history flag
+        // of the first particle to stop them, duplicating thread 0's data if it is unset.
+        if (startingHistorys_[threadIndex] >= numberOfRepresentedHistories_) {
+            return false;
+        }
+
         // check the cache first
         if (threadStats_[threadIndex]->hasMoreParticlesCache != NEEDS_CHECKING) {
             return threadStats_[threadIndex]->hasMoreParticlesCache == HAS_MORE_PARTICLES;

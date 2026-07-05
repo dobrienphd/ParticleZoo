@@ -32,6 +32,7 @@ namespace ParticleZoo {
         int width_, height_;
         T minValue_;
         T maxValue_;
+        bool isEmpty_;
 
         std::vector<Pixel<T>> data_;
     };
@@ -40,7 +41,7 @@ namespace ParticleZoo {
 
     template<typename T>
     inline BitmapImage<T>::BitmapImage(int w, int h)
-        : width_(w), height_(h), minValue_(std::numeric_limits<T>::max()), maxValue_(std::numeric_limits<T>::min()), data_(w * h, Pixel<T>{})
+        : width_(w), height_(h), minValue_(std::numeric_limits<T>::max()), maxValue_(std::numeric_limits<T>::lowest()), isEmpty_(true), data_(w * h, Pixel<T>{})
     {
         if (w <= 0 || h <= 0) throw std::runtime_error("Invalid dimensions");
     }
@@ -64,6 +65,7 @@ namespace ParticleZoo {
         if (minInPixel < minValue_) {
             minValue_ = minInPixel;
         }
+        isEmpty_ = false;
     }
 
     template<typename T>
@@ -79,6 +81,7 @@ namespace ParticleZoo {
         if (minInPixel < minValue_) {
             minValue_ = minInPixel;
         }
+        isEmpty_ = false;
     }
 
     template<typename T>
@@ -104,6 +107,12 @@ namespace ParticleZoo {
 
     template<typename T>
     inline void BitmapImage<T>::save(const std::string& path) const {
+        if (isEmpty_) {
+            // No pixels were ever set; write an all-black image instead of
+            // failing on the unset min/max range
+            save(path, static_cast<T>(0), static_cast<T>(255));
+            return;
+        }
         save(path, minValue_, maxValue_);
     }
 

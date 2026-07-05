@@ -216,7 +216,7 @@ namespace ParticleZoo {
              */
             std::string extractStringOption(const CLICommand& cmd, int index = 0) const {
                 auto it = this->find(cmd);
-                if (it == this->end() || it->second.empty()) return "";
+                if (it == this->end() || index < 0 || static_cast<std::size_t>(index) >= it->second.size()) return "";
                 if (auto* str = std::get_if<std::string>(&it->second[index])) {
                     return *str;
                 }
@@ -228,7 +228,7 @@ namespace ParticleZoo {
              */
             int extractIntOption(const CLICommand& cmd, std::optional<int> defaultValue = std::nullopt, int index = 0) const {
                 auto it = this->find(cmd);
-                bool validCommand = !(it == this->end() || it->second.empty());
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
                 if (validCommand) {
                     if (auto* val = std::get_if<int>(&it->second[index])) {
                         return *val;
@@ -245,7 +245,7 @@ namespace ParticleZoo {
              */
             unsigned int extractUIntOption(const CLICommand& cmd, std::optional<unsigned int> defaultValue = std::nullopt, int index = 0) const {
                 auto it = this->find(cmd);
-                bool validCommand = !(it == this->end() || it->second.empty());
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
                 if (validCommand) {
                     if (auto* val = std::get_if<unsigned int>(&it->second[index])) {
                         return *val;
@@ -262,7 +262,7 @@ namespace ParticleZoo {
              */
             float extractFloatOption(const CLICommand& cmd, std::optional<float> defaultValue = std::nullopt, int index = 0) const {
                 auto it = this->find(cmd);
-                bool validCommand = !(it == this->end() || it->second.empty());
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
                 if (validCommand) {
                     if (auto* val = std::get_if<float>(&it->second[index])) {
                         return *val;
@@ -279,7 +279,7 @@ namespace ParticleZoo {
              */
             bool extractBoolOption(const CLICommand& cmd, std::optional<bool> defaultValue = std::nullopt, int index = 0) const {
                 auto it = this->find(cmd);
-                bool validCommand = !(it == this->end() || it->second.empty());
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
                 if (validCommand) {
                     if (auto* val = std::get_if<bool>(&it->second[index])) {
                         return *val;
