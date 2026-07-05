@@ -182,6 +182,22 @@ jobs:
         PHSPSplit --version
         PHSPConvert -f
 
+    - name: Install GNU Make
+      run: choco install make -y
+
+    - name: Build and install ParticleZoo library using GNU Make (forwards to build.bat)
+      run: make clean && make install PREFIX=%LOCALAPPDATA%\particlezoo-make USE_ROOT=0 JOBS=4
+      shell: cmd
+
+    - name: Verify make installation
+      run: |
+        & "$env:LOCALAPPDATA\particlezoo-make\bin\PHSPImage.exe" --version
+        & "$env:LOCALAPPDATA\particlezoo-make\bin\PHSPCombine.exe" --version
+        & "$env:LOCALAPPDATA\particlezoo-make\bin\PHSPConvert.exe" --version
+        & "$env:LOCALAPPDATA\particlezoo-make\bin\PHSPSplit.exe" --version
+        & "$env:LOCALAPPDATA\particlezoo-make\bin\PHSPConvert.exe" -f
+      shell: pwsh
+
     - name: Install Python bindings
       run: |
         python -m venv .venv

@@ -3,16 +3,21 @@ ifeq ($(OS),Windows_NT)
   # Default goal for Windows
   .DEFAULT_GOAL := release
 
+  # Force cmd.exe as the recipe shell so build.bat forwarding works even
+  # when a POSIX sh.exe is present in PATH (e.g. from Git for Windows)
+  SHELL := cmd.exe
+  .SHELLFLAGS := /C
+
   # Map common make variables to build.bat flags
   WIN_OPTS :=
   ifdef PREFIX
-    WIN_OPTS += --prefix="$(PREFIX)"
+    WIN_OPTS += --prefix "$(PREFIX)"
   endif
   ifeq ($(USE_ROOT),0)
     WIN_OPTS += --no-root
   endif
   ifdef JOBS
-    WIN_OPTS += --jobs=$(JOBS)
+    WIN_OPTS += --jobs $(JOBS)
   endif
 
   release:
@@ -25,11 +30,7 @@ ifeq ($(OS),Windows_NT)
 	@call build.bat install $(WIN_OPTS)
 
   clean:
-	@if exist build\msvc ( \
-		echo | set /p="Cleaning build artifacts..." && \
-		rmdir /s /q build\msvc && \
-		echo  done. \
-	)
+	@if exist build\msvc (echo Cleaning build artifacts... && rmdir /s /q build\msvc && echo Done.)
 
   .PHONY: release debug install clean
 
