@@ -351,7 +351,7 @@ install-debug:
 uninstall:
 	@printf "Removing particlezoo installation from $(PREFIX)..."
 	@rm -f $(BINDIR)/PHSPConvert$(BINEXT) $(BINDIR)/PHSPCombine$(BINEXT) $(BINDIR)/PHSPImage$(BINEXT) $(BINDIR)/PHSPSplit$(BINEXT)
-	@rm -f $(LIBDIR)/$(LIB_NAME)
+	@rm -f $(LIBDIR)/$(LIB_NAME) $(LIBDIR)/$(SHLIB_NAME)
 	@rm -rf $(PREFIX)/include/particlezoo
 	@echo " done."
 
