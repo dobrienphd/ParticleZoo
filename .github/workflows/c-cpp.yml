@@ -75,6 +75,9 @@ jobs:
       with:
         python-version: '3.x'
 
+    - name: Remove untrusted Homebrew taps preinstalled on the runner
+      run: brew untap aws/tap || true
+
     - name: Install ROOT framework
       run: brew install root
       
@@ -128,9 +131,6 @@ jobs:
     - name: Clone ParticleZoo repository
       uses: actions/checkout@v5
       
-    - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
     - name: Setup Python
       uses: actions/setup-python@v6
       with:
