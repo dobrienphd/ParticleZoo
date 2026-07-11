@@ -9,7 +9,7 @@ on:
         options: [none, edge, beta, candidate, stable]
         default: none
   push:
-    branches: [main]
+    branches: [main, 'v*']
   pull_request:
   release:
     types: [published]
@@ -44,15 +44,17 @@ jobs:
           path: ${{ steps.build.outputs.snap }}
 
   publish:
-    # Releases publish to stable; a manual run publishes to the chosen
-    # channel (e.g. edge) to rehearse the full publish path beforehand.
+    # Full releases publish to stable; GitHub pre-releases publish to edge,
+    # so the complete publish path can be rehearsed before a real release.
+    # A manual run publishes to the chosen channel (once this file is on the
+    # default branch).
     if: >-
       (github.event_name == 'release' && github.event.action == 'published') ||
       (github.event_name == 'workflow_dispatch' && inputs.publish-channel != 'none')
     needs: [build]
     runs-on: ubuntu-latest
     env:
-      CHANNEL: ${{ github.event_name == 'release' && 'stable' || inputs.publish-channel }}
+      CHANNEL: ${{ github.event_name == 'release' && (github.event.release.prerelease && 'edge' || 'stable') || inputs.publish-channel }}
     steps:
       - name: Download snap artifacts
         uses: actions/download-artifact@v8
