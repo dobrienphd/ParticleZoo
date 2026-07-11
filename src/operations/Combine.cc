@@ -111,7 +111,7 @@ void Combine(const std::vector<std::string>& inputFiles,
 
                 progress.Complete("done. Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");
             }
-            catch (const std::exception& e) {
+            catch (const std::exception&) {
                 if (reader) reader->close();
                 throw;
             }
