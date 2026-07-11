@@ -1,0 +1,58 @@
+name: Build and publish snap
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Clone ParticleZoo repository
+        uses: actions/checkout@v5
+
+      - name: Build snap
+        id: build
+        uses: snapcore/action-build@v1
+
+      - name: Install and smoke-test snap
+        run: |
+          sudo snap install --dangerous "${{ steps.build.outputs.snap }}"
+          particlezoo.convert --version
+          particlezoo.combine --version
+          particlezoo.image --version
+          particlezoo.split --version
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: snap-${{ matrix.os }}
+          path: ${{ steps.build.outputs.snap }}
+
+  publish:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download snap artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: snaps
+          merge-multiple: true
+
+      - name: Publish to the Snap Store (stable channel)
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          sudo snap install snapcraft --classic
+          for snapfile in snaps/*.snap; do
+            snapcraft upload --release=stable "$snapfile"
+          done

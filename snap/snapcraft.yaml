@@ -1,0 +1,69 @@
+name: particlezoo
+title: ParticleZoo
+version: '1.2.0'
+summary: Convert and manipulate Monte Carlo particle phase space files
+description: |
+  ParticleZoo is a high-performance toolkit for reading, writing,
+  converting, combining, splitting, and imaging particle phase space
+  files across Monte Carlo simulation ecosystems (EGSnrc, IAEA, TOPAS,
+  penEasy).
+
+  This snap provides four command-line tools:
+
+  - particlezoo.convert (PHSPConvert) - convert between phase space formats
+  - particlezoo.combine (PHSPCombine) - merge multiple phase space files
+  - particlezoo.image (PHSPImage) - generate fluence images (TIFF/BMP/PNG)
+  - particlezoo.split (PHSPSplit) - split phase space files
+
+  To invoke the tools by their original names, add snap aliases:
+
+    sudo snap alias particlezoo.convert PHSPConvert
+    sudo snap alias particlezoo.combine PHSPCombine
+    sudo snap alias particlezoo.image PHSPImage
+    sudo snap alias particlezoo.split PHSPSplit
+
+  This build does not include CERN ROOT support; for the .root format,
+  build from source with ROOT available (see the project README).
+license: MIT
+website: https://github.com/dobrienphd/ParticleZoo
+source-code: https://github.com/dobrienphd/ParticleZoo
+contact: https://github.com/dobrienphd/ParticleZoo/issues
+issues: https://github.com/dobrienphd/ParticleZoo/issues
+base: core24
+grade: stable
+confinement: strict
+
+platforms:
+  amd64:
+  arm64:
+
+parts:
+  particlezoo:
+    plugin: nil
+    source: .
+    build-packages:
+      - g++
+      - make
+    override-build: |
+      ./configure --no-root
+      make -j"$(nproc)" ARCHFLAGS=-mtune=generic
+      make install PREFIX="$CRAFT_PART_INSTALL/usr" ARCHFLAGS=-mtune=generic
+    prime:
+      # The executables are statically linked against the project objects;
+      # the library and headers are not usable from inside a snap, so ship
+      # only the command-line tools.
+      - usr/bin/*
+
+apps:
+  convert:
+    command: usr/bin/PHSPConvert
+    plugs: [home, removable-media]
+  combine:
+    command: usr/bin/PHSPCombine
+    plugs: [home, removable-media]
+  image:
+    command: usr/bin/PHSPImage
+    plugs: [home, removable-media]
+  split:
+    command: usr/bin/PHSPSplit
+    plugs: [home, removable-media]
