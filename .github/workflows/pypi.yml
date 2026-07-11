@@ -60,7 +60,8 @@ jobs:
           path: wheelhouse/*.whl
 
   publish:
-    if: github.event_name == 'release' && github.event.action == 'published'
+    # Pre-releases (e.g. release candidates) must not publish to PyPI
+    if: github.event_name == 'release' && github.event.action == 'published' && !github.event.release.prerelease
     needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
     environment:
