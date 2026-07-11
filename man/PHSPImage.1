@@ -1,0 +1,165 @@
+.TH PHSPIMAGE 1 "July 2026" "ParticleZoo @VERSION@" "User Commands"
+.SH NAME
+PHSPImage \- render 2D fluence images from particle phase space files
+.SH SYNOPSIS
+.B PHSPImage
+.RI [ OPTIONS ]
+.I inputfile
+.I outputfile
+.SH DESCRIPTION
+.B PHSPImage
+reads a Monte Carlo particle phase space file and renders a 2D image of the
+fluence distribution (or other scored quantities) on a chosen plane. The
+output image format is derived from the output file extension
+(TIFF or BMP), and the input phase space format is auto-detected unless
+overridden with
+.BR \-\-inputFormat .
+Positions are expressed in centimetres and energies in MeV.
+.SH OPTIONS
+.SS General
+.TP
+.BR \-h ", " \-\-help
+Display a help message listing all options.
+.TP
+.BR \-v ", " \-\-version
+Display version information.
+.TP
+.BR \-f ", " \-\-formats
+List all supported file formats.
+.TP
+.BI \-\-inputFormat " FORMAT"
+Force the input file format (default: auto-detect from the file extension).
+.TP
+.BI \-\-outputFormat " tiff|bmp"
+Force the output image format (default: tiff).
+.TP
+.BI \-\-maxParticles " N"
+Maximum number of particles to process (default: unlimited).
+.TP
+.B \-\-showDetails
+Show detailed information about the parameters being used.
+.SS Imaging
+.TP
+.BI \-\-plane " XY|XZ|YZ"
+Imaging plane orientation (default: XY).
+.TP
+.BI \-\-planeLocation " V"
+Location of the imaging plane in cm (default: 0).
+.TP
+.BI \-\-tolerance " V"
+Tolerance perpendicular to the plane in cm (default: 0.25).
+.TP
+.BI \-\-projectionType " none|project|flatten"
+Projection scheme (default: flatten).
+.TP
+.BI \-\-projectTo " V"
+Project particles along their direction of travel to this plane location in
+cm (enables projection mode).
+.TP
+.BI \-\-score " count|energy|xDir|yDir|zDir"
+Quantity to score (default: count).
+.TP
+.B \-\-energyWeighted
+Score energy fluence (equivalent to \fB\-\-score\fP energy).
+.TP
+.B \-\-normalizeByParticles
+Normalize by particles instead of histories.
+.TP
+\fB\-\-imageWidth\fP \fIPX\fP, \fB\-\-imageHeight\fP \fIPX\fP
+Output image dimensions in pixels (default: 1024 x 1024).
+.TP
+\fB\-\-minX\fP \fIV\fP, \fB\-\-maxX\fP \fIV\fP, \fB\-\-minY\fP \fIV\fP, \fB\-\-maxY\fP \fIV\fP, \fB\-\-minZ\fP \fIV\fP, \fB\-\-maxZ\fP \fIV\fP
+Bounds of the imaging region in cm (default: \-40 to 40).
+.TP
+.BI \-\-square " L"
+Side length in cm of a square imaging region centred at (0,0); overrides the
+min/max bounds for both dimensions.
+.SS Particle filtering
+.TP
+.B \-\-primariesOnly
+Only process primary particles.
+.TP
+.B \-\-excludePrimaries
+Exclude primary particles from processing.
+.TP
+.BI \-\-generations " MIN MAX"
+Filter particles by generation range.
+.SS Particle transforms
+.TP
+.BR \-\-flipX ", " \-\-flipY ", " \-\-flipZ
+Flip the corresponding direction component of all particles.
+.TP
+\fB\-X\fP \fIV\fP, \fB\-\-constantX\fP \fIV\fP
+Treat all particles as having this constant X position. The analogous options
+.BR \-Y ", " \-Z ", " \-Px ", " \-Py ", " \-Pz " and " \-W
+set constant Y/Z positions, X/Y/Z directional cosines and weight.
+.SS EGS format options
+.TP
+.B \-\-EGS\-ignore\-header\-count
+Ignore the particle count in the header and calculate it from the file size.
+.TP
+.BI \-\-EGS\-latch\-filter " MASK"
+Bitmask filter applied to the LATCH value when reading EGS files.
+.TP
+.BI \-\-EGS\-latch\-option " 1|2|3"
+LATCH interpretation option when reading/writing EGS files.
+.TP
+.BI \-\-EGS\-mode " MODE0|MODE2"
+EGS phase space file mode (default: MODE0).
+.TP
+.BI \-\-EGS\-particleZ " V"
+Z position to assume for all particles in the EGS file (default: 0).
+.SS IAEA format options
+.TP
+.BI \-\-IAEA\-file\-type " PHSP_FILE|PHSP_GENERATOR"
+File type recorded in the IAEA header (default: PHSP_FILE).
+.TP
+.BI \-\-IAEA\-header\-template " FILE"
+Copy phase space attributes from an existing IAEA header file.
+.TP
+.B \-\-IAEA\-ignore\-checksum
+Ignore checksum errors when reading an IAEA file.
+.TP
+.BR \-\-IAEA\-ilb1 " .. " \-\-IAEA\-ilb5
+Include the corresponding PENELOPE ILB extra long in the IAEA file.
+.TP
+.B \-\-IAEA\-incrementals
+Include the incremental history number extra long.
+.TP
+.BI \-\-IAEA\-index " TEXT"
+Index string for the IAEA header.
+.TP
+.B \-\-IAEA\-latch
+Include the EGS LATCH extra long.
+.TP
+.BI \-\-IAEA\-title " TEXT"
+Title string for the IAEA header.
+.TP
+.BR \-\-IAEA\-xlast ", " \-\-IAEA\-ylast ", " \-\-IAEA\-zlast
+Include the corresponding XLAST/YLAST/ZLAST extra float.
+.SS TOPAS format options
+.TP
+.BI \-\-TOPAS\-format " ASCII|BINARY|LIMITED"
+TOPAS phase space format to write (default: BINARY).
+.TP
+.B \-\-TOPAS\-single\-pseudo
+Write a single pseudo-particle at the end of a TOPAS binary file to account
+for all empty histories, instead of interleaving them throughout the file.
+.SH EXIT STATUS
+Returns 0 on success and non-zero on error.
+.SH EXAMPLES
+.nf
+PHSPImage beam.egsphsp output.tiff
+PHSPImage \-\-plane XZ \-\-square 10 beam.IAEAphsp XZ10x10.tiff
+PHSPImage \-\-energyWeighted \-\-imageWidth 2048 input.phsp hiResEnergyFluence.bmp
+PHSPImage \-\-projectTo 100.0 beam.phsp projectedAtIso.tiff
+.fi
+.SH SEE ALSO
+.BR PHSPConvert (1),
+.BR PHSPCombine (1),
+.BR PHSPSplit (1)
+.PP
+Project homepage:
+.I https://github.com/dobrienphd/ParticleZoo
+.SH AUTHOR
+Daniel O'Brien. ParticleZoo is released under the MIT license.

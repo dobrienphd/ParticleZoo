@@ -359,6 +359,17 @@ PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/lib
 PCDIR  := $(LIBDIR)/pkgconfig
+MANDIR := $(PREFIX)/share/man/man1
+
+MANPAGES := man/PHSPConvert.1 man/PHSPCombine.1 man/PHSPImage.1 man/PHSPSplit.1
+
+# Install man pages with the version substituted into their headers
+define INSTALL_MANPAGES
+	$(MKDIR_P) $(DESTDIR)$(MANDIR)
+	for page in $(MANPAGES); do \
+	  sed 's|@VERSION@|$(VERSION)|g' $$page > $(DESTDIR)$(MANDIR)/$$(basename $$page); \
+	done
+endef
 
 # Generate the pkg-config file from its template
 define INSTALL_PKGCONFIG
@@ -384,6 +395,7 @@ install:
 	@cp $(LIB_REL) $(DESTDIR)$(LIBDIR)
 	@$(call INSTALL_SHLIB,$(SHLIB_REL))
 	@$(call INSTALL_PKGCONFIG)
+	@$(call INSTALL_MANPAGES)
 	@cp -r $(PZ_HEADERS) $(DESTDIR)$(PREFIX)/include
 	@echo " done."
 
@@ -394,6 +406,7 @@ install-debug:
 	@cp $(LIB_DBG) $(DESTDIR)$(LIBDIR)
 	@$(call INSTALL_SHLIB,$(SHLIB_DBG))
 	@$(call INSTALL_PKGCONFIG)
+	@$(call INSTALL_MANPAGES)
 	@cp -r $(PZ_HEADERS) $(DESTDIR)$(PREFIX)/include
 	@echo " done."
 
@@ -402,6 +415,7 @@ uninstall:
 	@rm -f $(DESTDIR)$(BINDIR)/PHSPConvert$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPCombine$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPImage$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPSplit$(BINEXT)
 	@rm -f $(DESTDIR)$(LIBDIR)/$(LIB_NAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_NAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_SONAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_REALNAME)
 	@rm -f $(DESTDIR)$(PCDIR)/particlezoo.pc
+	@rm -f $(DESTDIR)$(MANDIR)/PHSPConvert.1 $(DESTDIR)$(MANDIR)/PHSPCombine.1 $(DESTDIR)$(MANDIR)/PHSPImage.1 $(DESTDIR)$(MANDIR)/PHSPSplit.1
 	@rm -rf $(DESTDIR)$(PREFIX)/include/particlezoo
 	@echo " done."
 

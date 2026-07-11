@@ -1,0 +1,120 @@
+.TH PHSPCOMBINE 1 "July 2026" "ParticleZoo @VERSION@" "User Commands"
+.SH NAME
+PHSPCombine \- merge multiple particle phase space files into one
+.SH SYNOPSIS
+.B PHSPCombine
+.RI [ OPTIONS ]
+.B \-\-outputFile
+.I outputfile
+.I inputfile1
+.IR inputfile2 " ..."
+.SH DESCRIPTION
+.B PHSPCombine
+combines two or more Monte Carlo particle phase space files into a single
+output file. The input files do not need to share a format, and the output
+format may differ from the inputs; formats are detected automatically from
+file extensions unless overridden with
+.B \-\-inputFormat
+and
+.BR \-\-outputFormat .
+.SH OPTIONS
+.SS General
+.TP
+.BR \-h ", " \-\-help
+Display a help message listing all options.
+.TP
+.BR \-v ", " \-\-version
+Display version information.
+.TP
+.BR \-f ", " \-\-formats
+List all supported file formats.
+.TP
+.BI \-\-outputFile " FILE"
+Output file path (required).
+.TP
+.BI \-\-inputFormat " FORMAT"
+Force the input file format (default: auto-detect from the file extension).
+.TP
+.BI \-\-outputFormat " FORMAT"
+Force the output file format (default: auto-detect from the file extension).
+.TP
+.BI \-\-maxParticles " N"
+Maximum number of particles to process (default: unlimited).
+.TP
+.BI \-\-preserveConstants " true/false"
+Preserve constant values from the input files if present (default: true).
+.SS Particle transforms
+.TP
+.BR \-\-flipX ", " \-\-flipY ", " \-\-flipZ
+Flip the corresponding direction component of all particles.
+.TP
+\fB\-X\fP \fIV\fP, \fB\-\-constantX\fP \fIV\fP
+Write all particles with this constant X position. The analogous options
+.BR \-Y ", " \-Z ", " \-Px ", " \-Py ", " \-Pz " and " \-W
+set constant Y/Z positions, X/Y/Z directional cosines and weight.
+.SS EGS format options
+.TP
+.B \-\-EGS\-ignore\-header\-count
+Ignore the particle count in the header and calculate it from the file size.
+.TP
+.BI \-\-EGS\-latch\-option " 1|2|3"
+LATCH interpretation option when reading/writing EGS files.
+.TP
+.BI \-\-EGS\-mode " MODE0|MODE2"
+EGS phase space file mode (default: MODE0).
+.TP
+.BI \-\-EGS\-particleZ " V"
+Z position to assume for all particles in the EGS file (default: 0).
+.SS IAEA format options
+.TP
+.BI \-\-IAEA\-file\-type " PHSP_FILE|PHSP_GENERATOR"
+File type recorded in the IAEA header (default: PHSP_FILE).
+.TP
+.BI \-\-IAEA\-header\-template " FILE"
+Copy phase space attributes from an existing IAEA header file.
+.TP
+.B \-\-IAEA\-ignore\-checksum
+Ignore checksum errors when reading an IAEA file.
+.TP
+.BR \-\-IAEA\-ilb1 " .. " \-\-IAEA\-ilb5
+Include the corresponding PENELOPE ILB extra long in the IAEA file.
+.TP
+.B \-\-IAEA\-incrementals
+Include the incremental history number extra long.
+.TP
+.BI \-\-IAEA\-index " TEXT"
+Index string for the IAEA header.
+.TP
+.B \-\-IAEA\-latch
+Include the EGS LATCH extra long.
+.TP
+.BI \-\-IAEA\-title " TEXT"
+Title string for the IAEA header.
+.TP
+.BR \-\-IAEA\-xlast ", " \-\-IAEA\-ylast ", " \-\-IAEA\-zlast
+Include the corresponding XLAST/YLAST/ZLAST extra float.
+.SS TOPAS format options
+.TP
+.BI \-\-TOPAS\-format " ASCII|BINARY|LIMITED"
+TOPAS phase space format to write (default: BINARY).
+.TP
+.B \-\-TOPAS\-single\-pseudo
+Write a single pseudo-particle at the end of a TOPAS binary file to account
+for all empty histories, instead of interleaving them throughout the file.
+.SH EXIT STATUS
+Returns 0 on success and non-zero on error.
+.SH EXAMPLES
+.nf
+PHSPCombine \-\-outputFile combined.IAEAphsp input1.egsphsp input2.egsphsp
+PHSPCombine \-\-outputFile result.phsp \-\-maxParticles 1000000 file1.phsp file2.phsp
+PHSPCombine \-\-inputFormat IAEA \-\-outputFormat EGS \-\-outputFile out.egsphsp in1.IAEAphsp in2.IAEAphsp
+.fi
+.SH SEE ALSO
+.BR PHSPConvert (1),
+.BR PHSPImage (1),
+.BR PHSPSplit (1)
+.PP
+Project homepage:
+.I https://github.com/dobrienphd/ParticleZoo
+.SH AUTHOR
+Daniel O'Brien. ParticleZoo is released under the MIT license.
