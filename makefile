@@ -361,7 +361,7 @@ LIBDIR := $(PREFIX)/lib
 PCDIR  := $(LIBDIR)/pkgconfig
 MANDIR := $(PREFIX)/share/man/man1
 
-MANPAGES := man/PHSPConvert.1 man/PHSPCombine.1 man/PHSPImage.1 man/PHSPSplit.1
+MANPAGES := docs/man/PHSPConvert.1 docs/man/PHSPCombine.1 docs/man/PHSPImage.1 docs/man/PHSPSplit.1
 
 # Install man pages with the version substituted into their headers
 define INSTALL_MANPAGES
