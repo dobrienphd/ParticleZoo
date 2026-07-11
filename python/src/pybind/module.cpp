@@ -13,6 +13,10 @@
 #include "particlezoo/parallel/ParticleBalancedParallelReader.h"
 #include "particlezoo/egs/EGSLATCH.h"
 #include "particlezoo/penelope/ILBArray.h"
+#include "particlezoo/operations/Combine.h"
+#include "particlezoo/operations/Convert.h"
+#include "particlezoo/operations/GenerateImage.h"
+#include "particlezoo/operations/Split.h"
 
 namespace py = pybind11;
 using namespace ParticleZoo;
@@ -689,6 +693,213 @@ PYBIND11_MODULE(_pz, m) {
           "Extract all five PENELOPE ILB values from a particle as a list. "
           "Returns [ILB1, ILB2, ILB3, ILB4, ILB5] extracted from particle properties. "
           "Missing properties return 0 (except ILB1 which may infer from GENERATION).");
+
+    // ===== High-level operations =====
+
+    // --- Combine ---
+    py::class_<CombineOptions>(m, "CombineOptions",
+        "Options for the combine() operation. All fields have sensible defaults; "
+        "only fields that deviate from the default need to be set.")
+        .def(py::init<>(), "Create a CombineOptions object with all defaults")
+        .def_readwrite("max_particles", &CombineOptions::maxParticles,
+                      "Maximum particles to process across all files (default: unlimited)")
+        .def_readwrite("input_format", &CombineOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &CombineOptions::outputFormat,
+                      "Force output format; empty string = auto-detect from extension")
+        .def_readwrite("preserve_constants", &CombineOptions::preserveConstants,
+                      "Preserve constant particle-property values from the input files");
+
+    m.def("combine", &Combine,
+          py::arg("input_files"), py::arg("output_file"), py::arg("options") = CombineOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Combine multiple phase space files into a single output file. "
+          "Reads particles from each input file in order and writes them to the output file, "
+          "optionally converting between formats. History counts are properly accumulated "
+          "from all input files. Raises RuntimeError on invalid parameters or I/O errors.");
+
+    // --- Convert ---
+    py::class_<ConvertOptions>(m, "ConvertOptions",
+        "Options for the convert() operation. All fields have sensible defaults. "
+        "Physical quantities use the internal unit system - multiply by the module unit "
+        "constants (e.g. 5.0 * pz.cm, 1.0 * pz.MeV). Optional fields accept None (unset) or a value.")
+        .def(py::init<>(), "Create a ConvertOptions object with all defaults")
+        .def_readwrite("max_particles", &ConvertOptions::maxParticles,
+                      "Maximum particles to convert (default: unlimited)")
+        .def_readwrite("input_format", &ConvertOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &ConvertOptions::outputFormat,
+                      "Force output format; empty string = auto-detect from extension")
+        .def_readwrite("preserve_constants", &ConvertOptions::preserveConstants,
+                      "Preserve constant particle-property values from the input file")
+        .def_readwrite("project_to_x", &ConvertOptions::projectToX,
+                      "Project particles to this X coordinate (internal units, use * cm), or None")
+        .def_readwrite("project_to_y", &ConvertOptions::projectToY,
+                      "Project particles to this Y coordinate (internal units, use * cm), or None")
+        .def_readwrite("project_to_z", &ConvertOptions::projectToZ,
+                      "Project particles to this Z coordinate (internal units, use * cm), or None")
+        .def_readwrite("photons_only", &ConvertOptions::photonsOnly,
+                      "Keep only photons (at most one particle-type filter may be set)")
+        .def_readwrite("electrons_only", &ConvertOptions::electronsOnly,
+                      "Keep only electrons (at most one particle-type filter may be set)")
+        .def_readwrite("filter_by_pdg", &ConvertOptions::filterByPDG,
+                      "Keep only particles with this PDG code, or None")
+        .def_readwrite("min_energy", &ConvertOptions::minEnergy,
+                      "Minimum kinetic energy, inclusive (internal units, use * MeV), or None")
+        .def_readwrite("max_energy", &ConvertOptions::maxEnergy,
+                      "Maximum kinetic energy, inclusive (internal units, use * MeV), or None")
+        .def_readwrite("min_x", &ConvertOptions::minX,
+                      "Minimum X position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_x", &ConvertOptions::maxX,
+                      "Maximum X position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_y", &ConvertOptions::minY,
+                      "Minimum Y position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_y", &ConvertOptions::maxY,
+                      "Maximum Y position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_z", &ConvertOptions::minZ,
+                      "Minimum Z position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_z", &ConvertOptions::maxZ,
+                      "Maximum Z position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_radius", &ConvertOptions::minRadius,
+                      "Minimum radial distance in the XY plane, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_radius", &ConvertOptions::maxRadius,
+                      "Maximum radial distance in the XY plane, inclusive (internal units, use * cm), or None")
+        .def_readwrite("primaries_only", &ConvertOptions::primariesOnly,
+                      "Keep only primary particles, generation == 1 (at most one generation filter may be set)")
+        .def_readwrite("exclude_primaries", &ConvertOptions::excludePrimaries,
+                      "Exclude primary particles (at most one generation filter may be set)")
+        .def_readwrite("generations", &ConvertOptions::generations,
+                      "Keep particles whose generation is in the inclusive range (min, max), or None")
+        .def_readwrite("error_on_warning", &ConvertOptions::errorOnWarning,
+                      "Raise an exception for warnings instead of printing them");
+
+    m.def("convert", &Convert,
+          py::arg("input_file"), py::arg("output_file"), py::arg("options") = ConvertOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Convert a phase space file to another format, optionally filtering or projecting "
+          "particles. History counts are preserved from the original file. The output file "
+          "must differ from the input file. Raises RuntimeError on invalid parameters, "
+          "conflicting filters, or I/O errors.");
+
+    // --- GenerateImage ---
+    py::enum_<ImagePlane>(m, "ImagePlane",
+        "Imaging plane orientation for generate_image().")
+        .value("XY", ImagePlane::XY, "View from the Z axis (horizontal slice)")
+        .value("XZ", ImagePlane::XZ, "View from the Y axis")
+        .value("YZ", ImagePlane::YZ, "View from the X axis");
+
+    py::enum_<ImageProjectionType>(m, "ImageProjectionType",
+        "How particles are projected onto the imaging plane in generate_image().")
+        .value("FLATTEN", ImageProjectionType::FLATTEN,
+               "Force all particle coordinates perpendicular to the plane to the plane location")
+        .value("PROJECT", ImageProjectionType::PROJECT,
+               "Project each particle along its direction of travel to the plane")
+        .value("NONE", ImageProjectionType::NONE,
+               "Only score particles already within tolerance of the plane location");
+
+    py::enum_<ImageQuantityType>(m, "ImageQuantityType",
+        "Physical quantity accumulated in each image pixel by generate_image().")
+        .value("COUNT", ImageQuantityType::COUNT, "Particle fluence (weighted particle count per unit area)")
+        .value("ENERGY", ImageQuantityType::ENERGY, "Energy fluence (weighted energy per unit area)")
+        .value("X_DIR", ImageQuantityType::X_DIR, "Mean X directional cosine (weighted)")
+        .value("Y_DIR", ImageQuantityType::Y_DIR, "Mean Y directional cosine (weighted)")
+        .value("Z_DIR", ImageQuantityType::Z_DIR, "Mean Z directional cosine (weighted)");
+
+    py::enum_<ImageOutputFormat>(m, "ImageOutputFormat",
+        "Output image file format for generate_image().")
+        .value("TIFF", ImageOutputFormat::TIFF,
+               "32-bit floating-point TIFF with spatial calibration metadata (default)")
+        .value("BMP", ImageOutputFormat::BMP,
+               "8-bit BMP with automatic window-level contrast adjustment");
+
+    py::class_<GenerateImageOptions>(m, "GenerateImageOptions",
+        "Options for the generate_image() operation. All fields have sensible defaults. "
+        "Physical quantities use the internal unit system - multiply by the module unit "
+        "constants (e.g. 5.0 * pz.cm). Optional fields accept None (unset) or a value.")
+        .def(py::init<>(), "Create a GenerateImageOptions object with all defaults")
+        .def_readwrite("plane", &GenerateImageOptions::plane,
+                      "Imaging plane orientation (default: ImagePlane.XY)")
+        .def_readwrite("plane_location", &GenerateImageOptions::planeLocation,
+                      "Location of the imaging plane (internal units, use * cm; default: 0)")
+        .def_readwrite("projection_type", &GenerateImageOptions::projectionType,
+                      "Particle projection scheme (default: ImageProjectionType.FLATTEN)")
+        .def_readwrite("project_to", &GenerateImageOptions::projectTo,
+                      "If set, project particles to this location and override projection_type "
+                      "to PROJECT (internal units, use * cm), or None")
+        .def_readwrite("image_width", &GenerateImageOptions::imageWidth,
+                      "Output image width in pixels (default: 1024)")
+        .def_readwrite("image_height", &GenerateImageOptions::imageHeight,
+                      "Output image height in pixels (default: 1024)")
+        .def_readwrite("min_x", &GenerateImageOptions::minX,
+                      "Minimum X coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_x", &GenerateImageOptions::maxX,
+                      "Maximum X coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("min_y", &GenerateImageOptions::minY,
+                      "Minimum Y coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_y", &GenerateImageOptions::maxY,
+                      "Maximum Y coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("min_z", &GenerateImageOptions::minZ,
+                      "Minimum Z coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_z", &GenerateImageOptions::maxZ,
+                      "Maximum Z coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("square", &GenerateImageOptions::square,
+                      "If set, use a square region of this side length centred at the origin, "
+                      "overriding min/max for both in-plane axes (internal units, use * cm), or None")
+        .def_readwrite("tolerance", &GenerateImageOptions::tolerance,
+                      "Half-thickness of the scoring slab perpendicular to the plane, used when "
+                      "projection_type == ImageProjectionType.NONE (internal units; default: 0.25 cm)")
+        .def_readwrite("max_particles", &GenerateImageOptions::maxParticles,
+                      "Maximum particles to process (default: unlimited)")
+        .def_readwrite("score", &GenerateImageOptions::score,
+                      "Quantity to accumulate per pixel (default: ImageQuantityType.COUNT)")
+        .def_readwrite("energy_weighted", &GenerateImageOptions::energyWeighted,
+                      "Convenience flag: sets score to ImageQuantityType.ENERGY")
+        .def_readwrite("normalize_by_particles", &GenerateImageOptions::normalizeByParticles,
+                      "Normalize by particle count instead of history count")
+        .def_readwrite("input_format", &GenerateImageOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &GenerateImageOptions::outputFormat,
+                      "Output image format (default: ImageOutputFormat.TIFF)")
+        .def_readwrite("primaries_only", &GenerateImageOptions::primariesOnly,
+                      "Score only primary particles (at most one generation filter may be set)")
+        .def_readwrite("exclude_primaries", &GenerateImageOptions::excludePrimaries,
+                      "Exclude primary particles (at most one generation filter may be set)")
+        .def_readwrite("generations", &GenerateImageOptions::generations,
+                      "Score particles whose generation is in the inclusive range (min, max), or None")
+        .def_readwrite("use_latch_filter", &GenerateImageOptions::useLATCHFilter,
+                      "Apply an EGS LATCH bitmask filter")
+        .def_readwrite("latch_filter", &GenerateImageOptions::LATCHFilter,
+                      "LATCH bitmask (used when use_latch_filter is True)")
+        .def_readwrite("error_on_warning", &GenerateImageOptions::errorOnWarning,
+                      "Raise an exception for warnings instead of printing them")
+        .def_readwrite("show_details", &GenerateImageOptions::showDetails,
+                      "Print detailed parameter information before processing");
+
+    m.def("generate_image", &GenerateImage,
+          py::arg("input_file"), py::arg("output_file"), py::arg("options") = GenerateImageOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Generate a 2D fluence image from a phase space file. Reads particles, projects them "
+          "onto the specified plane, accumulates the selected quantity into a pixel grid, "
+          "normalizes by history (or particle) count, and saves the result to the output file "
+          "(.tiff or .bmp). Raises RuntimeError on invalid parameters or I/O errors.");
+
+    // --- Split ---
+    py::class_<SplitOptions>(m, "SplitOptions",
+        "Options for the split() operation. All fields have sensible defaults.")
+        .def(py::init<>(), "Create a SplitOptions object with all defaults")
+        .def_readwrite("input_format", &SplitOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &SplitOptions::outputFormat,
+                      "Force output format; empty string = same format as input");
+
+    m.def("split", &Split,
+          py::arg("input_file"), py::arg("split_number"), py::arg("options") = SplitOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Split a phase space file into multiple roughly equal-sized files. Divides the input "
+          "into split_number parts (must be > 1), respecting history boundaries so that no "
+          "history is split across files. Output files are named automatically as "
+          "stem_PartXX.ext (1-based, zero-padded index). Fixed (constant) particle-property "
+          "values are always preserved. Raises RuntimeError on invalid parameters or I/O errors.");
 
     // ===== Units - expose as module constants =====
     

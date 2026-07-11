@@ -24,6 +24,19 @@ ParticleZoo serves as a universal translator and processor for particle phase sp
 - **Memory Efficient**: Streaming interfaces for processing large files
 - **Cross-Platform**: Windows, Linux and macOS support with standard build tools
 - **Python Bindings**: Optional Python package for scripting and rapid prototyping
+- **High-Level Operations**: Single-call convert, combine, split, and image-generation operations available from C++, Python, and the command line
+
+## Installation
+
+The quickest way to get started is to install the Python package from PyPI:
+
+```bash
+pip install particlezoo
+```
+
+Pre-built wheels are provided for Linux, macOS, and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source with ROOT available (see [Python Bindings](#python-bindings)).
+
+To build the C++ library and command-line tools from source, see [Building and Installation](#building-and-installation).
 
 ## Supported Formats
 
@@ -637,11 +650,13 @@ ParticleZoo includes optional Python bindings for scripting and rapid prototypin
 
 #### From PyPI
 
+The recommended installation method is from PyPI, as described in [Installation](#installation) at the top of this document:
+
 ```bash
 pip install particlezoo
 ```
 
-Pre-built wheels are provided for Linux, macOS, and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source with ROOT available (see below).
+To install from source instead (required for ROOT format support), use one of the methods below.
 
 #### Linux/macOS (using Makefile)
 
@@ -665,6 +680,41 @@ python -m pip install -e python     # Editable install
 ```
 
 See the [python/README.md](python/README.md) for detailed installation options and full API documentation.
+
+### High-Level Operations
+
+The high-level operations that power the command-line tools (`PHSPConvert`, `PHSPCombine`, `PHSPSplit`, `PHSPImage`) are available directly from Python as single function calls. Each operation takes an optional options object whose attributes mirror the corresponding command-line flags:
+
+```python
+import particlezoo as pz
+
+# Convert between formats with optional filtering and projection
+opts = pz.ConvertOptions()
+opts.photons_only = True
+opts.min_energy = 1.0 * pz.MeV
+opts.project_to_z = 100.0 * pz.cm
+pz.convert("input.egsphsp", "photons.IAEAphsp", opts)
+
+# Combine multiple files into one
+pz.combine(["run1.IAEAphsp", "run2.IAEAphsp"], "combined.IAEAphsp")
+
+# Split a file into roughly equal parts (history boundaries respected)
+pz.split("combined.IAEAphsp", 4)
+
+# Generate a 2D fluence image (TIFF or BMP)
+img = pz.GenerateImageOptions()
+img.energy_weighted = True
+img.square = 20.0 * pz.cm
+img.image_width = 2048
+img.image_height = 2048
+pz.generate_image("beam.IAEAphsp", "energy_fluence.tiff", img)
+```
+
+`generate_image()` is configured with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums (e.g. `img.plane = pz.ImagePlane.XZ`). All physical quantities use ParticleZoo's unit system: multiply by the unit constants exposed on the module (`pz.cm`, `pz.MeV`, ...) when setting values.
+
+### Low-Level API
+
+For custom processing, the underlying reader/writer API is also fully exposed:
 
 ```python
 import particlezoo as pz

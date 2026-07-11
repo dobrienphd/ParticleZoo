@@ -159,7 +159,7 @@ int main(int argc, char* argv[]) {
         options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));
     options.inputFormat       = userOptions.extractStringOption(INPUT_FORMAT_COMMAND);
     options.outputFormat      = userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND);
-    options.preserveConstants = userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, true);
+    options.preserveConstants = userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, options.preserveConstants);
 
     if (userOptions.contains(PROJECT_TO_X_COMMAND)) options.projectToX = userOptions.extractFloatOption(PROJECT_TO_X_COMMAND) * cm;
     if (userOptions.contains(PROJECT_TO_Y_COMMAND)) options.projectToY = userOptions.extractFloatOption(PROJECT_TO_Y_COMMAND) * cm;

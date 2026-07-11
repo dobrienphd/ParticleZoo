@@ -23,11 +23,6 @@ namespace ParticleZoo {
 
 namespace {
 
-constexpr float DEFAULT_DISTANCE      = 40.0f * cm;
-constexpr float DEFAULT_TOLERANCE     = 0.25f * cm;
-constexpr int   DEFAULT_IMAGE_SIDE    = 1024;
-constexpr float DEFAULT_PLANE_LOCATION = 0.0f * cm;
-
 struct GenerationFilter {
     const bool useFilter;
     const int  minimumGeneration;
@@ -122,7 +117,7 @@ struct InternalImageConfig {
             ss << "    Minimum Generation: " << generationFilter.minimumGeneration << "\n";
             ss << "    Maximum Generation: " << generationFilter.maximumGeneration << "\n";
         }
-        ss << "  Max Particles to Read: " << (maxParticles == std::numeric_limits<uint32_t>::max() ? "all" : std::to_string(maxParticles)) << "\n";
+        ss << "  Max Particles to Read: " << (maxParticles == GenerateImageOptions::DEFAULT_MAX_PARTICLES ? "all" : std::to_string(maxParticles)) << "\n";
         ss << "  Normalization: by " << (normalizeByParticles ? "particles" : "histories") << "\n";
         ss << "  Error on warnings: " << (errorOnWarning ? "true" : "false") << "\n";
         if (useLATCHFilter)
@@ -132,8 +127,8 @@ struct InternalImageConfig {
 
 private:
     static std::array<float,4> computeDimensionLimits(const GenerateImageOptions& opts) {
-        float min1 = -DEFAULT_DISTANCE, max1 = DEFAULT_DISTANCE;
-        float min2 = -DEFAULT_DISTANCE, max2 = DEFAULT_DISTANCE;
+        float min1 = -GenerateImageOptions::DEFAULT_DISTANCE, max1 = GenerateImageOptions::DEFAULT_DISTANCE;
+        float min2 = -GenerateImageOptions::DEFAULT_DISTANCE, max2 = GenerateImageOptions::DEFAULT_DISTANCE;
 
         if (opts.square.has_value()) {
             float halfSide = opts.square.value() / 2.0f;
@@ -245,7 +240,6 @@ void GenerateImage(const std::string& inputFile,
         float yOffset    = static_cast<float>(config.minDim2());
         float pixelArea  = (config.maxDim1() - config.minDim1()) * (config.maxDim2() - config.minDim2())
                          / (config.imageWidth * config.imageHeight);
-        pixelArea /= cm2;
 
         auto start_time = std::chrono::steady_clock::now();
 
@@ -355,7 +349,8 @@ void GenerateImage(const std::string& inputFile,
                         break;
                 }
 
-                float weightPerUnitArea = weight / pixelArea;
+                // Fluence is scored per cm^2, so convert the pixel area to cm^2 here
+                float weightPerUnitArea = weight / (pixelArea / cm2);
                 float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
                 image->setGrayscaleValue(pixelX, pixelY, pixelValue);
             }

@@ -5,6 +5,7 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 ## Features
 
 - **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, penEasy, and ROOT formats
+- **High-Level Operations**: Convert, combine, split, and generate fluence images with single function calls
 - **Automatic Format Detection**: File format is inferred from extension, with explicit override options
 - **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`
 - **Full Particle Access**: Get and set all particle properties (position, momentum, energy, weight, etc.)
@@ -111,6 +112,45 @@ reader.close()
 ```
 
 ## API Reference
+
+### High-Level Operations
+
+The operations that power the ParticleZoo command-line tools (`PHSPConvert`, `PHSPCombine`, `PHSPSplit`, `PHSPImage`) are exposed as single function calls. Each takes an optional options object whose attributes mirror the corresponding command-line flags. All physical quantities use ParticleZoo's internal unit system: multiply by the module's unit constants (`pz.cm`, `pz.MeV`, ...) when setting values. Optional attributes default to `None` (unset).
+
+#### `convert(input_file, output_file, options=ConvertOptions())`
+Convert a phase space file to another format, optionally filtering or projecting particles. `ConvertOptions` attributes include `max_particles`, `input_format`, `output_format`, `preserve_constants`, `project_to_x/y/z`, `photons_only`, `electrons_only`, `filter_by_pdg`, `min_energy`/`max_energy`, `min_x`/`max_x` (and y, z), `min_radius`/`max_radius`, `primaries_only`, `exclude_primaries`, `generations`, and `error_on_warning`.
+
+```python
+opts = pz.ConvertOptions()
+opts.photons_only = True
+opts.min_energy = 1.0 * pz.MeV
+pz.convert("input.egsphsp", "photons.IAEAphsp", opts)
+```
+
+#### `combine(input_files, output_file, options=CombineOptions())`
+Combine multiple phase space files into a single output file, accumulating history counts. `CombineOptions` attributes: `max_particles`, `input_format`, `output_format`, `preserve_constants`.
+
+```python
+pz.combine(["run1.IAEAphsp", "run2.IAEAphsp"], "combined.IAEAphsp")
+```
+
+#### `split(input_file, split_number, options=SplitOptions())`
+Split a phase space file into `split_number` roughly equal parts, respecting history boundaries. Output files are named `stem_PartXX.ext`. `SplitOptions` attributes: `input_format`, `output_format`.
+
+```python
+pz.split("large.IAEAphsp", 4)
+```
+
+#### `generate_image(input_file, output_file, options=GenerateImageOptions())`
+Generate a 2D fluence image (TIFF or BMP) from a phase space file. `GenerateImageOptions` attributes include `plane`, `plane_location`, `projection_type`, `project_to`, `image_width`/`image_height`, `min_x`/`max_x` (and y, z), `square`, `tolerance`, `max_particles`, `score`, `energy_weighted`, `normalize_by_particles`, `input_format`, `output_format`, generation filters, and EGS LATCH filters. Configure it with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums.
+
+```python
+img = pz.GenerateImageOptions()
+img.plane = pz.ImagePlane.XZ
+img.score = pz.ImageQuantityType.ENERGY
+img.square = 20.0 * pz.cm
+pz.generate_image("beam.IAEAphsp", "energy_fluence.tiff", img)
+```
 
 ### Factory Functions
 

@@ -18,7 +18,7 @@ struct CombineOptions {
     uint64_t maxParticles   = std::numeric_limits<uint64_t>::max(); ///< Maximum particles to process across all files (default: unlimited)
     std::string inputFormat  = "";                                   ///< Force input format; empty = auto-detect from extension
     std::string outputFormat = "";                                   ///< Force output format; empty = auto-detect from extension
-    bool preserveConstants   = false;                                ///< Preserve constant particle-property values from the input files
+    bool preserveConstants   = true;                                 ///< Preserve constant particle-property values from the input files
 };
 
 /**
