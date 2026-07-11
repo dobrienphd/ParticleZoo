@@ -635,6 +635,14 @@ ParticleZoo includes optional Python bindings for scripting and rapid prototypin
 
 ### Installation
 
+#### From PyPI
+
+```bash
+pip install particlezoo
+```
+
+Pre-built wheels are provided for Linux, macOS, and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source with ROOT available (see below).
+
 #### Linux/macOS (using Makefile)
 
 ```bash
