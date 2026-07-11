@@ -87,6 +87,7 @@ GCC_SRCS_CONVERT := \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
+    src/operations/Convert.cc \
     PHSPConvert.cc
 
 GCC_SRCS_COMBINE := \
@@ -101,6 +102,7 @@ GCC_SRCS_COMBINE := \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
+    src/operations/Combine.cc \
     PHSPCombine.cc
 
 GCC_SRCS_IMAGE := \
@@ -115,6 +117,7 @@ GCC_SRCS_IMAGE := \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
+    src/operations/GenerateImage.cc \
     PHSPImage.cc
 
 GCC_SRCS_SPLIT := \
@@ -129,6 +132,7 @@ GCC_SRCS_SPLIT := \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc \
+    src/operations/Split.cc \
     PHSPSplit.cc
 
 # --- static library settings ---
@@ -146,7 +150,11 @@ LIB_SRCS := \
         src/IAEA/IAEAphspFile.cc \
         src/topas/TOPASHeader.cc \
         src/topas/TOPASphspFile.cc \
-        src/ROOT/ROOTphsp.cc
+        src/ROOT/ROOTphsp.cc \
+        src/operations/Combine.cc \
+        src/operations/Convert.cc \
+        src/operations/GenerateImage.cc \
+        src/operations/Split.cc
 
 LIB_REL := $(GCC_BIN_DIR_REL)/$(LIB_NAME)
 LIB_DBG := $(GCC_BIN_DIR_DBG)/$(LIB_NAME)

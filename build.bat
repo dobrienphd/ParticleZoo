@@ -192,6 +192,12 @@ if "%USE_ROOT%"=="1" (
 src\ROOT\ROOTphsp.cc
 )
 
+set COMMON_SRCS=!COMMON_SRCS! ^
+src\operations\Combine.cc ^
+src\operations\Convert.cc ^
+src\operations\GenerateImage.cc ^
+src\operations\Split.cc
+
 REM Static Library sources (same as common sources)
 set LIB_SRCS=%COMMON_SRCS%
 set LIB_NAME=libparticlezoo.lib
