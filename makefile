@@ -184,12 +184,27 @@ CXXFLAGS_DEBUG_PIC   := $(CXXFLAGS_DEBUG) -fPIC
 BINEXT :=
 MKDIR_P := mkdir -p
 UNAME_S := $(shell uname -s)
+
+# Library version, read from the canonical source in version.h.
+# SOVERSION is the ABI major number embedded in the SONAME; it changes only
+# on ABI-breaking releases, not with every version bump.
+VERSION := $(shell awk '/MAJOR_VERSION[ \t]*=/{ma=$$NF+0} /MINOR_VERSION[ \t]*=/{mi=$$NF+0} /PATCH_VERSION[ \t]*=/{pa=$$NF+0} END{printf "%d.%d.%d", ma, mi, pa}' include/particlezoo/utilities/version.h)
+SOVERSION := $(word 1,$(subst ., ,$(VERSION)))
+
 ifeq ($(UNAME_S),Darwin)
     SHLIB_EXT := .dylib
     SHLIB_FLAG := -dynamiclib
+    SHLIB_SONAME := libparticlezoo.$(SOVERSION)$(SHLIB_EXT)
+    SHLIB_REALNAME := libparticlezoo.$(VERSION)$(SHLIB_EXT)
+    # LIBDIR is expanded at link time (recursive assignment), so the
+    # install_name reflects the PREFIX the library will be installed under.
+    SHLIB_LDFLAGS = -install_name $(LIBDIR)/$(SHLIB_SONAME) -current_version $(VERSION) -compatibility_version $(SOVERSION).0
 else
     SHLIB_EXT := .so
     SHLIB_FLAG := -shared
+    SHLIB_SONAME := libparticlezoo$(SHLIB_EXT).$(SOVERSION)
+    SHLIB_REALNAME := libparticlezoo$(SHLIB_EXT).$(VERSION)
+    SHLIB_LDFLAGS := -Wl,-soname,$(SHLIB_SONAME)
 endif
 
 CONVERT_BIN_REL := $(GCC_BIN_DIR_REL)/PHSPConvert$(BINEXT)
@@ -275,7 +290,7 @@ gcc-release-shlib: $(SHLIB_REL)
 $(SHLIB_REL): $(SHLIB_OBJS_REL)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Building Release shared library ($@)..."
-	$(CXX) $(SHLIB_FLAG) -o $@ $^ $(ROOT_LIBS)
+	$(CXX) $(SHLIB_FLAG) $(SHLIB_LDFLAGS) -o $@ $^ $(ROOT_LIBS)
 
 # Debug executable targets (could be parallelized similarly)
 gcc-debug-convert: $(CONVERT_OBJS_DBG)
@@ -309,7 +324,7 @@ gcc-debug-shlib: $(SHLIB_DBG)
 $(SHLIB_DBG): $(SHLIB_OBJS_DBG)
 	@$(MKDIR_P) $(dir $@)
 	@echo "Building Debug shared library ($@)..."
-	$(CXX) $(SHLIB_FLAG) -o $@ $^ $(ROOT_LIBS)
+	$(CXX) $(SHLIB_FLAG) $(SHLIB_LDFLAGS) -o $@ $^ $(ROOT_LIBS)
 
 # --- compile object files into the right dirs ---
 $(GCC_BIN_DIR_REL)/%.o: %.cc
@@ -338,32 +353,56 @@ clean:
 	@rm -rf $(GCC_BIN_DIR_REL) $(GCC_BIN_DIR_DBG)
 	@echo " done."
 
-# Installation directory (can be overridden)
+# Installation directories (can be overridden; DESTDIR supports staged
+# installs for package builds, e.g. make install DESTDIR=/tmp/stage)
 PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/lib
+PCDIR  := $(LIBDIR)/pkgconfig
+
+# Generate the pkg-config file from its template
+define INSTALL_PKGCONFIG
+	$(MKDIR_P) $(DESTDIR)$(PCDIR)
+	sed -e 's|@prefix@|$(PREFIX)|g' \
+	    -e 's|@libdir@|$(LIBDIR)|g' \
+	    -e 's|@version@|$(VERSION)|g' \
+	    particlezoo.pc.in > $(DESTDIR)$(PCDIR)/particlezoo.pc
+endef
+
+# Install the shared library under its versioned name with the SONAME and
+# development symlinks alongside it
+define INSTALL_SHLIB
+	cp $(1) $(DESTDIR)$(LIBDIR)/$(SHLIB_REALNAME)
+	ln -sf $(SHLIB_REALNAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_SONAME)
+	ln -sf $(SHLIB_SONAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_NAME)
+endef
 
 install:
-	@printf "Installing into $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
-	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
-	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(SPLIT_BIN_REL) $(BINDIR)
-	@cp $(LIB_REL) $(SHLIB_REL) $(LIBDIR)
-	@cp -r $(PZ_HEADERS) $(PREFIX)/include
+	@printf "Installing into $(DESTDIR)$(BINDIR), $(DESTDIR)$(LIBDIR) and headers into $(DESTDIR)$(PREFIX)/include..."
+	@$(MKDIR_P) $(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBDIR) $(DESTDIR)$(PREFIX)/include
+	@cp $(CONVERT_BIN_REL) $(COMBINE_BIN_REL) $(IMAGE_BIN_REL) $(SPLIT_BIN_REL) $(DESTDIR)$(BINDIR)
+	@cp $(LIB_REL) $(DESTDIR)$(LIBDIR)
+	@$(call INSTALL_SHLIB,$(SHLIB_REL))
+	@$(call INSTALL_PKGCONFIG)
+	@cp -r $(PZ_HEADERS) $(DESTDIR)$(PREFIX)/include
 	@echo " done."
 
 install-debug:
-	@printf "Installing debug binaries and library to $(BINDIR), $(LIBDIR) and headers into $(PREFIX)/include..."
-	@$(MKDIR_P) $(BINDIR) $(LIBDIR) $(PREFIX)/include
-	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(SPLIT_BIN_DBG) $(BINDIR)
-	@cp $(LIB_DBG) $(SHLIB_DBG) $(LIBDIR)
-	@cp -r $(PZ_HEADERS) $(PREFIX)/include
+	@printf "Installing debug binaries and library to $(DESTDIR)$(BINDIR), $(DESTDIR)$(LIBDIR) and headers into $(DESTDIR)$(PREFIX)/include..."
+	@$(MKDIR_P) $(DESTDIR)$(BINDIR) $(DESTDIR)$(LIBDIR) $(DESTDIR)$(PREFIX)/include
+	@cp $(CONVERT_BIN_DBG) $(COMBINE_BIN_DBG) $(IMAGE_BIN_DBG) $(SPLIT_BIN_DBG) $(DESTDIR)$(BINDIR)
+	@cp $(LIB_DBG) $(DESTDIR)$(LIBDIR)
+	@$(call INSTALL_SHLIB,$(SHLIB_DBG))
+	@$(call INSTALL_PKGCONFIG)
+	@cp -r $(PZ_HEADERS) $(DESTDIR)$(PREFIX)/include
 	@echo " done."
 
 uninstall:
-	@printf "Removing particlezoo installation from $(PREFIX)..."
-	@rm -f $(BINDIR)/PHSPConvert$(BINEXT) $(BINDIR)/PHSPCombine$(BINEXT) $(BINDIR)/PHSPImage$(BINEXT) $(BINDIR)/PHSPSplit$(BINEXT)
-	@rm -f $(LIBDIR)/$(LIB_NAME) $(LIBDIR)/$(SHLIB_NAME)
-	@rm -rf $(PREFIX)/include/particlezoo
+	@printf "Removing particlezoo installation from $(DESTDIR)$(PREFIX)..."
+	@rm -f $(DESTDIR)$(BINDIR)/PHSPConvert$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPCombine$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPImage$(BINEXT) $(DESTDIR)$(BINDIR)/PHSPSplit$(BINEXT)
+	@rm -f $(DESTDIR)$(LIBDIR)/$(LIB_NAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_NAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_SONAME) $(DESTDIR)$(LIBDIR)/$(SHLIB_REALNAME)
+	@rm -f $(DESTDIR)$(PCDIR)/particlezoo.pc
+	@rm -rf $(DESTDIR)$(PREFIX)/include/particlezoo
 	@echo " done."
 
 
