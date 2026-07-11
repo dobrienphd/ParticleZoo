@@ -1,28 +1,48 @@
 [build-system]
 requires = [
-  "setuptools>=68",
-  "wheel",
-  "pybind11>=2.11",
+  "setuptools>=77",
+  "pybind11>=2.12",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "particlezoo"
-version = "1.1.2"
-description = "Python bindings for the ParticleZoo C++ library"
+version = "1.2.0"
+description = "Python bindings for ParticleZoo, a C++20 library for reading, writing, and converting Monte Carlo particle phase space files (EGS, IAEA, TOPAS, penEasy, ROOT)"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
-authors = [{ name = "ParticleZoo contributors" }]
+license-files = ["LICENSE"]
+authors = [{ name = "Daniel O'Brien" }]
+keywords = [
+  "monte-carlo",
+  "phase-space",
+  "medical-physics",
+  "particle-transport",
+  "EGSnrc",
+  "IAEA",
+  "TOPAS",
+  "PENELOPE",
+  "penEasy",
+  "ROOT",
+]
 classifiers = [
-  "Programming Language :: Python",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: C++",
   "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Typing :: Typed",
 ]
 
 [project.urls]
 Homepage = "https://github.com/dobrienphd/ParticleZoo"
+Repository = "https://github.com/dobrienphd/ParticleZoo"
+Issues = "https://github.com/dobrienphd/ParticleZoo/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -30,3 +50,21 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["particlezoo*"]
+
+[tool.setuptools.package-data]
+particlezoo = ["*.pyi", "py.typed"]
+
+[tool.cibuildwheel]
+build-frontend = "build"
+# PyPy is untested; musllinux users can build from the sdist.
+skip = "pp* *musllinux*"
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+test-command = "python {project}/examples/python/write_phase_space.py test.egsphsp && python {project}/examples/python/read_phase_space.py test.egsphsp"
+
+[tool.cibuildwheel.macos]
+# Build Intel wheels by cross-compilation from the arm64 runners
+# (x86_64 wheels are tested under Rosetta 2 when available).
+archs = ["arm64", "x86_64"]
+# Must match the -mmacosx-version-min flag set in setup.py
+environment = { MACOSX_DEPLOYMENT_TARGET = "13.3" }

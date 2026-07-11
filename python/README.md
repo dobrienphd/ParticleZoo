@@ -14,11 +14,19 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 
 ## Prerequisites
 
-- Python 3.8+
-- A C++20 compiler (GCC 10+, Clang 13+, or MSVC 2019+)
+- Python 3.9+
+- A C++20 compiler (GCC 10+, Clang 13+, or MSVC 2019+) — only needed when building from source
 - pybind11 (installed automatically by pip)
 
 ## Installation
+
+### From PyPI
+
+```bash
+pip install particlezoo
+```
+
+Pre-built wheels are provided for Linux (x86_64, aarch64), macOS (Intel and Apple Silicon), and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source (below) on a machine where `root-config` is available.
 
 ### Using the Makefile (Linux/macOS)
 

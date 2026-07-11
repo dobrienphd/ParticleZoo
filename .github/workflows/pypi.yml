@@ -1,0 +1,80 @@
+name: Build and publish Python package
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build-sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone ParticleZoo repository
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Build sdist
+        run: pipx run build --sdist python
+
+      - name: Check metadata
+        run: pipx run twine check python/dist/*
+
+      - name: Verify sdist installs and runs
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install python/dist/*.tar.gz
+          cd examples/python
+          ../../.venv/bin/python write_phase_space.py test.egsphsp
+          ../../.venv/bin/python read_phase_space.py test.egsphsp
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sdist
+          path: python/dist/*.tar.gz
+
+  build-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        # x86_64 Linux, arm64 Linux, x86_64 Windows, macOS (builds x86_64 + arm64)
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Clone ParticleZoo repository
+        uses: actions/checkout@v5
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.1
+        with:
+          package-dir: python
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  publish:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [build-sdist, build-wheels]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/particlezoo
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC)
+      id-token: write
+    steps:
+      - name: Download all distribution artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
