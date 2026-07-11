@@ -66,10 +66,6 @@ namespace {
     using namespace ParticleZoo;
     using EGSphspFile::EGSLATCHFilterCommand;
 
-    constexpr float DEFAULT_TOLERANCE      = 0.25f * cm;
-    constexpr int   DEFAULT_IMAGE_SIDE     = 1024;
-    constexpr uint32_t DEFAULT_MAX_PARTICLES = std::numeric_limits<uint32_t>::max();
-
     constexpr std::string_view usageMessage =
         "Usage: PHSPImage [OPTIONS] <inputfile> <outputfile>\n"
         "\n"
@@ -88,11 +84,11 @@ namespace {
     const CLICommand INPUT_FORMAT_COMMAND        = CLICommand(NONE, "", "inputFormat",        "Force input file format (default: auto-detect from extension)",                                                                                              { CLI_STRING });
     const CLICommand OUTPUT_FORMAT_COMMAND       = CLICommand(NONE, "", "outputFormat",       "Force output image format (tiff or bmp)",                                                                                                                    { CLI_STRING }, { "tiff" });
     const CLICommand PLANE_COMMAND               = CLICommand(NONE, "", "plane",              "Imaging plane orientation (XY, XZ, or YZ)",                                                                                                                  { CLI_STRING }, { "XY" });
-    const CLICommand PLANE_LOCATION_COMMAND      = CLICommand(NONE, "", "planeLocation",      "Location of the imaging plane in cm",                                                                                                                        { CLI_FLOAT },  { 0.0f });
+    const CLICommand PLANE_LOCATION_COMMAND      = CLICommand(NONE, "", "planeLocation",      "Location of the imaging plane in cm",                                                                                                                        { CLI_FLOAT },  { GenerateImageOptions::DEFAULT_PLANE_LOCATION / cm });
     const CLICommand PROJECT_TO_COMMAND          = CLICommand(NONE, "", "projectTo",          "Project particles to this plane location in cm (enables projection mode)",                                                                                   { CLI_FLOAT });
     const CLICommand PROJECTION_TYPE_COMMAND     = CLICommand(NONE, "", "projectionType",     "Projection scheme: none, project, or flatten",                                                                                                               { CLI_STRING }, { "flatten" });
-    const CLICommand IMAGE_WIDTH_COMMAND         = CLICommand(NONE, "", "imageWidth",         "Output image width in pixels",                                                                                                                               { CLI_INT },    { DEFAULT_IMAGE_SIDE });
-    const CLICommand IMAGE_HEIGHT_COMMAND        = CLICommand(NONE, "", "imageHeight",        "Output image height in pixels",                                                                                                                              { CLI_INT },    { DEFAULT_IMAGE_SIDE });
+    const CLICommand IMAGE_WIDTH_COMMAND         = CLICommand(NONE, "", "imageWidth",         "Output image width in pixels",                                                                                                                               { CLI_INT },    { GenerateImageOptions::DEFAULT_IMAGE_SIDE });
+    const CLICommand IMAGE_HEIGHT_COMMAND        = CLICommand(NONE, "", "imageHeight",        "Output image height in pixels",                                                                                                                              { CLI_INT },    { GenerateImageOptions::DEFAULT_IMAGE_SIDE });
     const CLICommand MINIMUM_X_COMMAND           = CLICommand(NONE, "", "minX",              "Minimum X coordinate for imaging region in cm (default: -40.0 cm)",                                                                                          { CLI_FLOAT });
     const CLICommand MAXIMUM_X_COMMAND           = CLICommand(NONE, "", "maxX",              "Maximum X coordinate for imaging region in cm (default: 40.0 cm)",                                                                                           { CLI_FLOAT });
     const CLICommand MINIMUM_Y_COMMAND           = CLICommand(NONE, "", "minY",              "Minimum Y coordinate for imaging region in cm (default: -40.0 cm)",                                                                                          { CLI_FLOAT });
@@ -100,7 +96,7 @@ namespace {
     const CLICommand MINIMUM_Z_COMMAND           = CLICommand(NONE, "", "minZ",              "Minimum Z coordinate for imaging region in cm (default: -40.0 cm)",                                                                                          { CLI_FLOAT });
     const CLICommand MAXIMUM_Z_COMMAND           = CLICommand(NONE, "", "maxZ",              "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)",                                                                                           { CLI_FLOAT });
     const CLICommand SQUARE_COMMAND              = CLICommand(NONE, "", "square",             "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)",                                                   { CLI_FLOAT });
-    const CLICommand TOLERANCE_COMMAND           = CLICommand(NONE, "", "tolerance",          "Tolerance in the direction perpendicular to the plane in cm",                                                                                               { CLI_FLOAT },  { DEFAULT_TOLERANCE });
+    const CLICommand TOLERANCE_COMMAND           = CLICommand(NONE, "", "tolerance",          "Tolerance in the direction perpendicular to the plane in cm",                                                                                               { CLI_FLOAT },  { GenerateImageOptions::DEFAULT_TOLERANCE / cm });
     const CLICommand MAX_PARTICLES_COMMAND       = CLICommand(NONE, "", "maxParticles",       "Maximum number of particles to process (default: unlimited)",                                                                                               { CLI_UINT });
     const CLICommand ENERGY_WEIGHTED_COMMAND     = CLICommand(NONE, "", "energyWeighted",     "Score energy fluence (equivalent to --score energy)",                                                                                                       { CLI_VALUELESS });
     const CLICommand QUANTITY_TYPE_COMMAND       = CLICommand(NONE, "", "score",              "Quantity to score: count, energy, xDir, yDir, zDir",                                                                                                        { CLI_STRING }, { "count" });
@@ -195,8 +191,8 @@ int main(int argc, char* argv[]) {
         options.planeLocation = userOptions.extractFloatOption(PLANE_LOCATION_COMMAND) * cm;
 
     // Image dimensions
-    options.imageWidth  = userOptions.extractIntOption(IMAGE_WIDTH_COMMAND,  DEFAULT_IMAGE_SIDE);
-    options.imageHeight = userOptions.extractIntOption(IMAGE_HEIGHT_COMMAND, DEFAULT_IMAGE_SIDE);
+    options.imageWidth  = userOptions.extractIntOption(IMAGE_WIDTH_COMMAND,  GenerateImageOptions::DEFAULT_IMAGE_SIDE);
+    options.imageHeight = userOptions.extractIntOption(IMAGE_HEIGHT_COMMAND, GenerateImageOptions::DEFAULT_IMAGE_SIDE);
 
     // Spatial bounds
     if (userOptions.contains(MINIMUM_X_COMMAND)) options.minX = userOptions.extractFloatOption(MINIMUM_X_COMMAND) * cm;
@@ -207,7 +203,7 @@ int main(int argc, char* argv[]) {
     if (userOptions.contains(MAXIMUM_Z_COMMAND)) options.maxZ = userOptions.extractFloatOption(MAXIMUM_Z_COMMAND) * cm;
     if (userOptions.contains(SQUARE_COMMAND))    options.square = userOptions.extractFloatOption(SQUARE_COMMAND) * cm;
 
-    options.tolerance = userOptions.extractFloatOption(TOLERANCE_COMMAND, DEFAULT_TOLERANCE) * cm;
+    options.tolerance = userOptions.extractFloatOption(TOLERANCE_COMMAND, GenerateImageOptions::DEFAULT_TOLERANCE / cm) * cm;
 
     if (userOptions.contains(MAX_PARTICLES_COMMAND))
         options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));

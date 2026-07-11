@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
         options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));
     options.inputFormat  = userOptions.extractStringOption(INPUT_FORMAT_COMMAND);
     options.outputFormat = userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND);
-    options.preserveConstants = userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, true);
+    options.preserveConstants = userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, options.preserveConstants);
 
     std::string outputFile = userOptions.contains(OUTPUT_FILE_COMMAND)
                            ? userOptions.extractStringOption(OUTPUT_FILE_COMMAND)

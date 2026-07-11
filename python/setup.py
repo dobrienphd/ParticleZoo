@@ -53,6 +53,11 @@ sources = [
     # Parallel readers
     str(src / "parallel" / "HistoryBalancedParallelReader.cc"),
     str(src / "parallel" / "ParticleBalancedParallelReader.cc"),
+    # High-level operations
+    str(src / "operations" / "Combine.cc"),
+    str(src / "operations" / "Convert.cc"),
+    str(src / "operations" / "GenerateImage.cc"),
+    str(src / "operations" / "Split.cc"),
 ]
 
 define_macros = [("PYBIND11_DETAILED_ERROR_MESSAGES", "1")]

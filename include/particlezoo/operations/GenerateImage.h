@@ -47,17 +47,24 @@ enum class ImageOutputFormat {
  * particlezoo/utilities/units.h (e.g. @c 5.0f * cm).
  */
 struct GenerateImageOptions {
+    // --- Default values (single source of truth, shared with the CLI apps) ---
+    static constexpr float    DEFAULT_DISTANCE       = 40.0f * cm; ///< Default half-extent of the imaging region
+    static constexpr float    DEFAULT_TOLERANCE      = 0.25f * cm; ///< Default perpendicular scoring tolerance
+    static constexpr int      DEFAULT_IMAGE_SIDE     = 1024;       ///< Default image width and height in pixels
+    static constexpr float    DEFAULT_PLANE_LOCATION = 0.0f * cm;  ///< Default location of the imaging plane
+    static constexpr uint64_t DEFAULT_MAX_PARTICLES  = std::numeric_limits<uint32_t>::max(); ///< Default particle limit (effectively unlimited)
+
     // --- Plane geometry ---
     ImagePlane plane                       = ImagePlane::XY;               ///< Imaging plane orientation
-    float      planeLocation               = 0.0f * cm;                    ///< Location of the imaging plane (internal units, use * cm)
+    float      planeLocation               = DEFAULT_PLANE_LOCATION;       ///< Location of the imaging plane (internal units, use * cm)
     ImageProjectionType projectionType     = ImageProjectionType::FLATTEN; ///< Particle projection scheme
     std::optional<float> projectTo;                                        ///< If set, project particles to this location and override projectionType to PROJECT (internal units)
 
     // --- Image dimensions ---
-    int imageWidth  = 1024; ///< Output image width in pixels
-    int imageHeight = 1024; ///< Output image height in pixels
+    int imageWidth  = DEFAULT_IMAGE_SIDE; ///< Output image width in pixels
+    int imageHeight = DEFAULT_IMAGE_SIDE; ///< Output image height in pixels
 
-    // --- Spatial bounds (internal units, use * cm); nullopt → ±40*cm ---
+    // --- Spatial bounds (internal units, use * cm); nullopt → ±DEFAULT_DISTANCE ---
     std::optional<float> minX; ///< Minimum X coordinate of the imaging region
     std::optional<float> maxX; ///< Maximum X coordinate of the imaging region
     std::optional<float> minY; ///< Minimum Y coordinate of the imaging region
@@ -66,10 +73,10 @@ struct GenerateImageOptions {
     std::optional<float> maxZ; ///< Maximum Z coordinate of the imaging region
     std::optional<float> square; ///< If set, use a square region of this side length centred at the origin (overrides min/max for both in-plane axes)
 
-    float tolerance = 0.25f * cm; ///< Half-thickness of the scoring slab in the direction perpendicular to the plane (used when projectionType == NONE; internal units)
+    float tolerance = DEFAULT_TOLERANCE; ///< Half-thickness of the scoring slab in the direction perpendicular to the plane (used when projectionType == NONE; internal units)
 
     // --- Processing ---
-    uint64_t maxParticles = std::numeric_limits<uint32_t>::max(); ///< Maximum particles to process (default: unlimited)
+    uint64_t maxParticles = DEFAULT_MAX_PARTICLES; ///< Maximum particles to process (default: unlimited)
     ImageQuantityType score = ImageQuantityType::COUNT;           ///< Quantity to accumulate per pixel
     bool energyWeighted     = false;                              ///< Convenience flag: sets score to ENERGY
     bool normalizeByParticles = false;                            ///< Normalise by particle count instead of history count
