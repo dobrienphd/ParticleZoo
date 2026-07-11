@@ -36,6 +36,23 @@ pip install particlezoo
 
 Pre-built wheels are provided for Linux, macOS, and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source with ROOT available (see [Python Bindings](#python-bindings)).
 
+On Linux, the command-line tools are also available as a snap:
+
+```bash
+sudo snap install particlezoo
+```
+
+This provides `particlezoo.convert`, `particlezoo.combine`, `particlezoo.image`, and `particlezoo.split`. To invoke the tools by their original names, add snap aliases:
+
+```bash
+sudo snap alias particlezoo.convert PHSPConvert
+sudo snap alias particlezoo.combine PHSPCombine
+sudo snap alias particlezoo.image   PHSPImage
+sudo snap alias particlezoo.split   PHSPSplit
+```
+
+The snap is built without ROOT support and does not include the C++ library or headers; to develop against the library or use the ROOT format, build from source instead.
+
 To build the C++ library and command-line tools from source, see [Building and Installation](#building-and-installation).
 
 ## Supported Formats
