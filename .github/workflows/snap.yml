@@ -2,6 +2,12 @@ name: Build and publish snap
 
 on:
   workflow_dispatch:
+    inputs:
+      publish-channel:
+        description: 'Snap Store channel to publish to (none = build only)'
+        type: choice
+        options: [none, edge, beta, candidate, stable]
+        default: none
   push:
     branches: [main]
   pull_request:
@@ -38,9 +44,15 @@ jobs:
           path: ${{ steps.build.outputs.snap }}
 
   publish:
-    if: github.event_name == 'release' && github.event.action == 'published'
+    # Releases publish to stable; a manual run publishes to the chosen
+    # channel (e.g. edge) to rehearse the full publish path beforehand.
+    if: >-
+      (github.event_name == 'release' && github.event.action == 'published') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish-channel != 'none')
     needs: [build]
     runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event_name == 'release' && 'stable' || inputs.publish-channel }}
     steps:
       - name: Download snap artifacts
         uses: actions/download-artifact@v8
@@ -48,11 +60,11 @@ jobs:
           path: snaps
           merge-multiple: true
 
-      - name: Publish to the Snap Store (stable channel)
+      - name: Publish to the Snap Store
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
         run: |
           sudo snap install snapcraft --classic
           for snapfile in snaps/*.snap; do
-            snapcraft upload --release=stable "$snapfile"
+            snapcraft upload --release="$CHANNEL" "$snapfile"
           done
