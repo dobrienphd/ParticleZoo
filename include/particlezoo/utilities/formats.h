@@ -112,10 +112,11 @@ namespace ParticleZoo
         
         /**
          * @brief Create a reader for a specific format and file.
-         * 
+         *
          * Creates a reader instance for the specified format, bypassing automatic detection.
-         * 
-         * @param formatName The name of the format to use (must be registered)
+         * An empty format name falls back to automatic detection from the file extension.
+         *
+         * @param formatName The name of the format to use (must be registered; empty = auto-detect)
          * @param filename The path to the file to read
          * @param options User options for configuring the reader (default: empty)
          * @return std::unique_ptr<PhaseSpaceFileReader> A unique pointer to the created reader
@@ -139,10 +140,11 @@ namespace ParticleZoo
         
         /**
          * @brief Create a writer for a specific format and file.
-         * 
+         *
          * Creates a writer instance for the specified format, bypassing automatic detection.
-         * 
-         * @param formatName The name of the format to use (must be registered)
+         * An empty format name falls back to automatic detection from the file extension.
+         *
+         * @param formatName The name of the format to use (must be registered; empty = auto-detect)
          * @param filename The path to the file to write
          * @param options User options for configuring the writer (default: empty)
          * @param fixedValues Fixed values for constant particle properties (default: empty)
@@ -185,6 +187,7 @@ namespace ParticleZoo
          * - IAEA format (.IAEAphsp)
          * - TOPAS format (.phsp)
          * - penEasy format (.dat)
+         * - MCNP surface source format (.w)
          * - EGS format (.egsphsp with suffixes)
          * - ROOT format (.root) - if compiled with ROOT support
          * 

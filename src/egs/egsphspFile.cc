@@ -144,40 +144,56 @@ namespace ParticleZoo::EGSphspFile
 
 
     // Writer class implementation
-    Writer::Writer(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileWriter("EGS", fileName, options), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2)
-    {
-        mode_ = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
 
-        if (options.contains(EGSModeCommand)) {
-            CLIValue modeValue = options.at(EGSModeCommand)[0];
-            std::string modeStr = std::get<std::string>(modeValue);
-            if (modeStr == "MODE0") {
-                mode_ = EGSMODE::MODE0;
-            } else if (modeStr == "MODE2") {
-                mode_ = EGSMODE::MODE2;
-            } else {
-                throw std::runtime_error("Unsupported EGS phase-space file mode: " + modeStr);
+    namespace {
+        // Resolve and validate the writer options before the base class is constructed
+        // (in a delegating constructor argument), so that an invalid option cannot
+        // leave a partially constructed writer behind.
+        EGSMODE parseEGSMode(const UserOptions & options) {
+            EGSMODE mode = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
+            if (options.contains(EGSModeCommand)) {
+                CLIValue modeValue = options.at(EGSModeCommand)[0];
+                std::string modeStr = std::get<std::string>(modeValue);
+                if (modeStr == "MODE0") {
+                    mode = EGSMODE::MODE0;
+                } else if (modeStr == "MODE2") {
+                    mode = EGSMODE::MODE2;
+                } else {
+                    throw std::runtime_error("Unsupported EGS phase-space file mode: " + modeStr);
+                }
             }
+            return mode;
         }
 
-        if (options.contains(EGSLATCHOptionCommand)) {
-            int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
-            switch (latchOptionInt) {
-                case 1:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_1;
-                    break;
-                case 2:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_2;
-                    break;
-                case 3:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_3;
-                    break;
-                default:
-                    throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+        EGSLATCHOPTION parseEGSLATCHOption(const UserOptions & options) {
+            EGSLATCHOPTION latchOption = EGSLATCHOPTION::LATCH_OPTION_2;
+            if (options.contains(EGSLATCHOptionCommand)) {
+                int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
+                switch (latchOptionInt) {
+                    case 1:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_1;
+                        break;
+                    case 2:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_2;
+                        break;
+                    case 3:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_3;
+                        break;
+                    default:
+                        throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+                }
             }
-        }        
+            return latchOption;
+        }
     }
+
+    Writer::Writer(const std::string & fileName, const UserOptions & options)
+    : Writer(fileName, options, parseEGSMode(options), parseEGSLATCHOption(options))
+    {}
+
+    Writer::Writer(const std::string & fileName, const UserOptions & options, EGSMODE mode, EGSLATCHOPTION latchOption)
+    : PhaseSpaceFileWriter("EGS", fileName, options), mode_(mode), latchOption_(latchOption)
+    {}
 
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
         return { EGSModeCommand, EGSLATCHOptionCommand };

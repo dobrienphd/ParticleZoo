@@ -4,7 +4,7 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 
 ## Features
 
-- **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, penEasy, and ROOT formats
+- **Unified API**: Read and write phase space files from EGS, IAEA, MCNP, TOPAS, penEasy, and ROOT formats
 - **High-Level Operations**: Convert, combine, split, and generate fluence images with single function calls
 - **Automatic Format Detection**: File format is inferred from extension, with explicit override options
 - **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`

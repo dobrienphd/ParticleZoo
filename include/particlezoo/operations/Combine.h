@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "particlezoo/utilities/argParse.h"
+
 namespace ParticleZoo {
 
 /**
@@ -19,6 +21,7 @@ struct CombineOptions {
     std::string inputFormat  = "";                                   ///< Force input format; empty = auto-detect from extension
     std::string outputFormat = "";                                   ///< Force output format; empty = auto-detect from extension
     bool preserveConstants   = true;                                 ///< Preserve constant particle-property values from the input files
+    UserOptions formatOptions{};                                     ///< Format-specific reader/writer options (e.g. EGS mode, MCNP title card)
 };
 
 /**

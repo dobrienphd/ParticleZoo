@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "particlezoo/utilities/argParse.h"
+
 namespace ParticleZoo {
 
 /**
@@ -13,6 +15,7 @@ namespace ParticleZoo {
 struct SplitOptions {
     std::string inputFormat  = ""; ///< Force input format; empty = auto-detect from extension
     std::string outputFormat = ""; ///< Force output format; empty = same format as input
+    UserOptions formatOptions{};   ///< Format-specific reader/writer options (e.g. EGS mode, MCNP title card)
 };
 
 /**

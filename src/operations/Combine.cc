@@ -25,22 +25,14 @@ void Combine(const std::vector<std::string>& inputFiles,
     FixedValues fixedValues;
     if (options.preserveConstants) {
         std::unique_ptr<PhaseSpaceFileReader> firstReader;
-        if (options.inputFormat.empty()) {
-            firstReader = FormatRegistry::CreateReader(inputFiles[0]);
-        } else {
-            firstReader = FormatRegistry::CreateReader(options.inputFormat, inputFiles[0]);
-        }
+        firstReader = FormatRegistry::CreateReader(options.inputFormat, inputFiles[0], options.formatOptions);
         if (!firstReader) throw std::runtime_error("Failed to create reader for file: " + inputFiles[0]);
         fixedValues = firstReader->getFixedValues();
         firstReader->close();
     }
 
     std::unique_ptr<PhaseSpaceFileWriter> writer;
-    if (options.outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFile, {}, fixedValues);
-    } else {
-        writer = FormatRegistry::CreateWriter(options.outputFormat, outputFile, {}, fixedValues);
-    }
+    writer = FormatRegistry::CreateWriter(options.outputFormat, outputFile, options.formatOptions, fixedValues);
 
     try {
         std::cout << "Combining phase space data..." << std::endl;
@@ -53,11 +45,7 @@ void Combine(const std::vector<std::string>& inputFiles,
             }
 
             std::unique_ptr<PhaseSpaceFileReader> reader;
-            if (options.inputFormat.empty()) {
-                reader = FormatRegistry::CreateReader(inputFile);
-            } else {
-                reader = FormatRegistry::CreateReader(options.inputFormat, inputFile);
-            }
+            reader = FormatRegistry::CreateReader(options.inputFormat, inputFile, options.formatOptions);
 
             if (!reader) throw std::runtime_error("Failed to create reader for file: " + inputFile);
 

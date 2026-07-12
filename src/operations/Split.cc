@@ -46,11 +46,7 @@ void Split(const std::string& inputFile,
     std::unique_ptr<PhaseSpaceFileReader> reader;
     std::unique_ptr<PhaseSpaceFileWriter> writer;
 
-    if (options.inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(inputFile);
-    } else {
-        reader = FormatRegistry::CreateReader(options.inputFormat, inputFile);
-    }
+    reader = FormatRegistry::CreateReader(options.inputFormat, inputFile, options.formatOptions);
 
     FixedValues fixedValues = reader->getFixedValues();
 
@@ -74,11 +70,7 @@ void Split(const std::string& inputFile,
     int filesSplit = 0;
     std::string outputFilePath = getSplitFilePath(0);
 
-    if (options.outputFormat.empty()) {
-        writer = FormatRegistry::CreateWriter(outputFilePath, {}, fixedValues);
-    } else {
-        writer = FormatRegistry::CreateWriter(options.outputFormat, outputFilePath, {}, fixedValues);
-    }
+    writer = FormatRegistry::CreateWriter(options.outputFormat, outputFilePath, options.formatOptions, fixedValues);
 
     std::cout << "  Format: " << writer->getPHSPFormat() << std::endl;
 
@@ -141,11 +133,7 @@ void Split(const std::string& inputFile,
 
             if (!isLastFile) {
                 outputFilePath = getSplitFilePath(filesSplit + 1);
-                if (options.outputFormat.empty()) {
-                    writer = FormatRegistry::CreateWriter(outputFilePath, {}, fixedValues);
-                } else {
-                    writer = FormatRegistry::CreateWriter(options.outputFormat, outputFilePath, {}, fixedValues);
-                }
+                writer = FormatRegistry::CreateWriter(options.outputFormat, outputFilePath, options.formatOptions, fixedValues);
                 if (hasBufferedParticle) {
                     writer->writeParticle(particle);
                     particlesWrittenAtStartOfSplit = 1;

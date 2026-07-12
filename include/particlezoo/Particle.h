@@ -32,6 +32,8 @@ namespace ParticleZoo {
         PENELOPE_ILB4,                  ///< PENELOPE ILB array value 4, is non-zero if the particle is created by atomic relaxation and corresponds to the atomic transistion that created the particle
         PENELOPE_ILB5,                  ///< PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle
         GENERATION,                     ///< Generation of the particle (1 for primary, 2 for secondary, etc.)
+        MCNP_SURFACE_ID,                ///< MCNP-specific problem name (number) of the surface the particle was recorded on
+        MCNP_MACROBODY_FACET,           ///< MCNP-specific macrobody facet number of the recording surface (only set when the surface is a macrobody facet)
         CUSTOM                          ///< Custom integer property type, can be used for any user-defined purpose
     };
 
@@ -42,11 +44,12 @@ namespace ParticleZoo {
      * from different Monte Carlo simulation codes.
      */
     enum class FloatPropertyType {
-        INVALID,    ///< Invalid property type, used for error checking
-        XLAST,      ///< EGS-specific XLAST variable, for photons it is the X position of the last interaction, for electrons/positrons it is the X position it (or it's ancestor) was created at by a photon
-        YLAST,      ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
-        ZLAST,      ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon 
-        CUSTOM      ///< Custom float property type, can be used for any user-defined purpose
+        INVALID,            ///< Invalid property type, used for error checking
+        XLAST,              ///< EGS-specific XLAST variable, for photons it is the X position of the last interaction, for electrons/positrons it is the X position it (or it's ancestor) was created at by a photon
+        YLAST,              ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
+        ZLAST,              ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon
+        TIME,               ///< Particle time at the particle position, stored in internal time units
+        CUSTOM              ///< Custom float property type, can be used for any user-defined purpose
     };
 
     /**
@@ -59,6 +62,7 @@ namespace ParticleZoo {
         INVALID,                ///< Invalid property type
         IS_MULTIPLE_CROSSER,    ///< Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)
         IS_SECONDARY_PARTICLE [[deprecated("IS_SECONDARY_PARTICLE is deprecated since v1.1.0. Use IntPropertyType::GENERATION instead.")]],  ///< Flag indicating that the particle is a secondary. @deprecated Since v1.1.0. Use IntPropertyType::GENERATION instead.
+        IS_UNCOLLIDED,          ///< Flag indicating that the particle is uncollided (has not interacted since its creation)
         CUSTOM                  ///< Custom boolean property type, can be used for any user-defined purpose
     };
 

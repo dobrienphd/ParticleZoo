@@ -153,6 +153,7 @@ int main(int argc, char* argv[]) {
 
     // Build GenerateImageOptions from parsed CLI args
     GenerateImageOptions options;
+    options.formatOptions = userOptions;
 
     options.inputFormat       = userOptions.extractStringOption(INPUT_FORMAT_COMMAND);
     options.normalizeByParticles = userOptions.contains(NORMALIZE_BY_PARTICLES_COMMAND);
@@ -164,8 +165,12 @@ int main(int argc, char* argv[]) {
         std::string fmt = userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND);
         if (fmt == "bmp" || fmt == "BMP")
             options.outputFormat = ImageOutputFormat::BMP;
-        else
+        else if (fmt == "tiff" || fmt == "TIFF")
             options.outputFormat = ImageOutputFormat::TIFF;
+        else {
+            std::cerr << "Error: Unsupported output image format: " << fmt << ". Use TIFF or BMP." << std::endl;
+            return ERROR_CODE;
+        }
     }
 
     // Plane
@@ -173,7 +178,11 @@ int main(int argc, char* argv[]) {
         std::string p = userOptions.extractStringOption(PLANE_COMMAND);
         if (p == "XZ")      options.plane = ImagePlane::XZ;
         else if (p == "YZ") options.plane = ImagePlane::YZ;
-        else                options.plane = ImagePlane::XY;
+        else if (p == "XY") options.plane = ImagePlane::XY;
+        else {
+            std::cerr << "Error: Invalid plane specified. Use XY, XZ, or YZ." << std::endl;
+            return ERROR_CODE;
+        }
     }
 
     // Projection type / projectTo
@@ -183,7 +192,11 @@ int main(int argc, char* argv[]) {
         std::string pt = userOptions.extractStringOption(PROJECTION_TYPE_COMMAND);
         if (pt == "none")         options.projectionType = ImageProjectionType::NONE;
         else if (pt == "project") options.projectionType = ImageProjectionType::PROJECT;
-        else                      options.projectionType = ImageProjectionType::FLATTEN;
+        else if (pt == "flatten") options.projectionType = ImageProjectionType::FLATTEN;
+        else {
+            std::cerr << "Error: Invalid projection type specified. Use none, project, or flatten." << std::endl;
+            return ERROR_CODE;
+        }
     }
 
     // Plane location (only used if no projectTo)
@@ -216,7 +229,11 @@ int main(int argc, char* argv[]) {
         else if (q == "xDir")    options.score = ImageQuantityType::X_DIR;
         else if (q == "yDir")    options.score = ImageQuantityType::Y_DIR;
         else if (q == "zDir")    options.score = ImageQuantityType::Z_DIR;
-        else                     options.score = ImageQuantityType::COUNT;
+        else if (q == "count")   options.score = ImageQuantityType::COUNT;
+        else {
+            std::cerr << "Error: Invalid quantity type specified. Use count, energy, xDir, yDir, or zDir." << std::endl;
+            return ERROR_CODE;
+        }
     }
 
     // Generation filter

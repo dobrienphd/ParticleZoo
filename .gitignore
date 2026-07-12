@@ -2,11 +2,13 @@ config.status
 build
 tests
 *.md
+*.pdf
 !README.md
 .vscode
 .venv
 docs/latex
 docs/html
+!docs/*.pdf
 python/build/
 python/dist/
 python/cpp/

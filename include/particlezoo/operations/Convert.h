@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <limits>
 
+#include "particlezoo/utilities/argParse.h"
+
 namespace ParticleZoo {
 
 /**
@@ -21,6 +23,7 @@ struct ConvertOptions {
     std::string inputFormat  = "";                                   ///< Force input format; empty = auto-detect
     std::string outputFormat = "";                                   ///< Force output format; empty = auto-detect
     bool preserveConstants   = true;                                 ///< Preserve constant particle-property values from the input file
+    UserOptions formatOptions{};                                     ///< Format-specific reader/writer options (e.g. EGS mode, MCNP title card)
 
     // --- Projection (internal units, use * cm) ---
     std::optional<float> projectToX; ///< Project particles to this X coordinate

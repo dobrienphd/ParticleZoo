@@ -75,7 +75,9 @@ GCC_BIN_DIR_REL := build/gcc/release
 GCC_BIN_DIR_DBG := build/gcc/debug
 
 # Source lists
-GCC_SRCS_CONVERT := \
+# COMMON_SRCS holds every translation unit shared by the executables and the
+# library; add new formats here once instead of once per target list.
+COMMON_SRCS := \
     src/PhaseSpaceFileReader.cc \
     src/PhaseSpaceFileWriter.cc \
     src/utilities/formats.cc \
@@ -84,73 +86,21 @@ GCC_SRCS_CONVERT := \
     src/peneasy/penEasyphspFile.cc \
     src/IAEA/IAEAHeader.cc \
     src/IAEA/IAEAphspFile.cc \
+    src/MCNP/MCNPphspFile.cc \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
-    src/ROOT/ROOTphsp.cc \
-    src/operations/Convert.cc \
-    PHSPConvert.cc
+    src/ROOT/ROOTphsp.cc
 
-GCC_SRCS_COMBINE := \
-    src/PhaseSpaceFileReader.cc \
-    src/PhaseSpaceFileWriter.cc \
-    src/utilities/formats.cc \
-    src/utilities/argParse.cc \
-    src/egs/egsphspFile.cc \
-    src/peneasy/penEasyphspFile.cc \
-    src/IAEA/IAEAHeader.cc \
-    src/IAEA/IAEAphspFile.cc \
-    src/topas/TOPASHeader.cc \
-    src/topas/TOPASphspFile.cc \
-    src/ROOT/ROOTphsp.cc \
-    src/operations/Combine.cc \
-    PHSPCombine.cc
-
-GCC_SRCS_IMAGE := \
-    src/PhaseSpaceFileReader.cc \
-    src/PhaseSpaceFileWriter.cc \
-    src/utilities/formats.cc \
-    src/utilities/argParse.cc \
-    src/egs/egsphspFile.cc \
-    src/peneasy/penEasyphspFile.cc \
-    src/IAEA/IAEAHeader.cc \
-    src/IAEA/IAEAphspFile.cc \
-    src/topas/TOPASHeader.cc \
-    src/topas/TOPASphspFile.cc \
-    src/ROOT/ROOTphsp.cc \
-    src/operations/GenerateImage.cc \
-    PHSPImage.cc
-
-GCC_SRCS_SPLIT := \
-    src/PhaseSpaceFileReader.cc \
-    src/PhaseSpaceFileWriter.cc \
-    src/utilities/formats.cc \
-    src/utilities/argParse.cc \
-    src/egs/egsphspFile.cc \
-    src/peneasy/penEasyphspFile.cc \
-    src/IAEA/IAEAHeader.cc \
-    src/IAEA/IAEAphspFile.cc \
-    src/topas/TOPASHeader.cc \
-    src/topas/TOPASphspFile.cc \
-    src/ROOT/ROOTphsp.cc \
-    src/operations/Split.cc \
-    PHSPSplit.cc
+GCC_SRCS_CONVERT := $(COMMON_SRCS) src/operations/Convert.cc PHSPConvert.cc
+GCC_SRCS_COMBINE := $(COMMON_SRCS) src/operations/Combine.cc PHSPCombine.cc
+GCC_SRCS_IMAGE   := $(COMMON_SRCS) src/operations/GenerateImage.cc PHSPImage.cc
+GCC_SRCS_SPLIT   := $(COMMON_SRCS) src/operations/Split.cc PHSPSplit.cc
 
 # --- static library settings ---
 LIB_NAME := libparticlezoo.a
-LIB_SRCS := \
-        src/PhaseSpaceFileReader.cc \
-        src/PhaseSpaceFileWriter.cc \
+LIB_SRCS := $(COMMON_SRCS) \
         src/parallel/ParticleBalancedParallelReader.cc \
         src/parallel/HistoryBalancedParallelReader.cc \
-        src/utilities/formats.cc \
-        src/utilities/argParse.cc \
-        src/egs/egsphspFile.cc \
-        src/peneasy/penEasyphspFile.cc \
-        src/IAEA/IAEAHeader.cc \
-        src/IAEA/IAEAphspFile.cc \
-        src/topas/TOPASHeader.cc \
-        src/topas/TOPASphspFile.cc \
-        src/ROOT/ROOTphsp.cc \
         src/operations/Combine.cc \
         src/operations/Convert.cc \
         src/operations/GenerateImage.cc \

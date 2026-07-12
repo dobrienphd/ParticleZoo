@@ -168,6 +168,10 @@ PYBIND11_MODULE(_pz, m) {
                "PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle")
         .value("GENERATION", IntPropertyType::GENERATION,
                "Generation of the particle (1 for primary, 2 for secondary, etc.)")
+        .value("MCNP_SURFACE_ID", IntPropertyType::MCNP_SURFACE_ID,
+               "MCNP-specific problem name (number) of the surface the particle was recorded on")
+        .value("MCNP_MACROBODY_FACET", IntPropertyType::MCNP_MACROBODY_FACET,
+               "MCNP-specific macrobody facet number of the recording surface (only set when the surface is a macrobody facet)")
         .value("CUSTOM", IntPropertyType::CUSTOM,
                "Custom integer property type, can be used for any user-defined purpose");
 
@@ -182,6 +186,8 @@ PYBIND11_MODULE(_pz, m) {
                "EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or its ancestor) was created at by a photon")
         .value("ZLAST", FloatPropertyType::ZLAST,
                "EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or its ancestor) was created at by a photon")
+        .value("TIME", FloatPropertyType::TIME,
+               "Particle time at the particle position, stored in internal time units")
         .value("CUSTOM", FloatPropertyType::CUSTOM,
                "Custom float property type, can be used for any user-defined purpose");
 
@@ -192,6 +198,8 @@ PYBIND11_MODULE(_pz, m) {
                "Invalid property type")
         .value("IS_MULTIPLE_CROSSER", BoolPropertyType::IS_MULTIPLE_CROSSER,
                "Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)")
+        .value("IS_UNCOLLIDED", BoolPropertyType::IS_UNCOLLIDED,
+               "Flag indicating that the particle is uncollided (has not interacted since its creation)")
         .value("CUSTOM", BoolPropertyType::CUSTOM,
                "Custom boolean property type, can be used for any user-defined purpose");
 
@@ -200,8 +208,11 @@ PYBIND11_MODULE(_pz, m) {
           py::arg("pdg"), 
           "Map PDG particle code to ParticleType enum. Returns ParticleType for recognized PDG codes.");
     m.def("get_pdgid", &getPDGIDFromParticleType,
-          py::arg("type"), 
+          py::arg("type"),
           "Get PDG particle code from ParticleType enum. Returns integer PDG code.");
+    m.def("get_anti_particle_type", &getAntiParticleType,
+          py::arg("type"),
+          "Get the charge conjugate of a ParticleType. Returns ParticleType.Unsupported if no antiparticle is defined.");
     m.def("get_particle_type_name", &getParticleTypeName,
           py::arg("type"), 
           "Get human-readable name for ParticleType enum (e.g., 'electron', 'photon').");

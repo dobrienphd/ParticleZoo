@@ -183,6 +183,7 @@ src\egs\egsphspFile.cc ^
 src\peneasy\penEasyphspFile.cc ^
 src\IAEA\IAEAHeader.cc ^
 src\IAEA\IAEAphspFile.cc ^
+src\MCNP\MCNPphspFile.cc ^
 src\topas\TOPASHeader.cc ^
 src\topas\TOPASphspFile.cc
 
