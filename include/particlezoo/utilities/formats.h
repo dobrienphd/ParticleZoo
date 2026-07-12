@@ -187,6 +187,7 @@ namespace ParticleZoo
          * - IAEA format (.IAEAphsp)
          * - TOPAS format (.phsp)
          * - penEasy format (.dat)
+         * - MCNP surface source format (.w)
          * - EGS format (.egsphsp with suffixes)
          * - ROOT format (.root) - if compiled with ROOT support
          * 

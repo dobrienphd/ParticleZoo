@@ -8,6 +8,7 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 #include "particlezoo/egs/egsphspFile.h"
 #include "particlezoo/IAEA/IAEAphspFile.h"
+#include "particlezoo/MCNP/MCNPphspFile.h"
 #include "particlezoo/TOPAS/TOPASphspFile.h"
 #include "particlezoo/peneasy/penEasyphspFile.h"
 
@@ -64,6 +65,20 @@ namespace ParticleZoo
                        },
                        [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::penEasyphspFile::Writer>(filename, options);
+                       });
+
+        // Register MCNP format
+        SupportedFormat mcnpFormat{"MCNP", "MCNP Surface Source File Format (SSW/RSSA; MCNP6, MCNP5 and MCNPX)", ".w"};
+        auto mcnpReaderCommands = MCNPphspFile::Reader::getFormatSpecificCLICommands();
+        auto mcnpWriterCommands = MCNPphspFile::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(mcnpReaderCommands);
+        ArgParser::RegisterCommands(mcnpWriterCommands);
+        RegisterFormat(mcnpFormat,
+                       [](const std::string& filename, const UserOptions & options) {
+                           return std::make_unique<ParticleZoo::MCNPphspFile::Reader>(filename, options);
+                       },
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
+                           return std::make_unique<ParticleZoo::MCNPphspFile::Writer>(filename, options);
                        });
 
         // Register EGS format

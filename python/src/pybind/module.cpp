@@ -168,6 +168,10 @@ PYBIND11_MODULE(_pz, m) {
                "PENELOPE ILB array value 5, a user-defined value which is passed on to all descendant particles created by this particle")
         .value("GENERATION", IntPropertyType::GENERATION,
                "Generation of the particle (1 for primary, 2 for secondary, etc.)")
+        .value("MCNP_SURFACE_ID", IntPropertyType::MCNP_SURFACE_ID,
+               "MCNP-specific problem name (number) of the surface the particle was recorded on")
+        .value("MCNP_MACROBODY_FACET", IntPropertyType::MCNP_MACROBODY_FACET,
+               "MCNP-specific macrobody facet number of the recording surface (only set when the surface is a macrobody facet)")
         .value("CUSTOM", IntPropertyType::CUSTOM,
                "Custom integer property type, can be used for any user-defined purpose");
 
@@ -194,6 +198,8 @@ PYBIND11_MODULE(_pz, m) {
                "Invalid property type")
         .value("IS_MULTIPLE_CROSSER", BoolPropertyType::IS_MULTIPLE_CROSSER,
                "Flag indicating that the particle crossed the phase space plane multiple times (assuming the phase space is planar)")
+        .value("IS_UNCOLLIDED", BoolPropertyType::IS_UNCOLLIDED,
+               "Flag indicating that the particle is uncollided (has not interacted since its creation)")
         .value("CUSTOM", BoolPropertyType::CUSTOM,
                "Custom boolean property type, can be used for any user-defined purpose");
 
@@ -204,6 +210,9 @@ PYBIND11_MODULE(_pz, m) {
     m.def("get_pdgid", &getPDGIDFromParticleType,
           py::arg("type"),
           "Get PDG particle code from ParticleType enum. Returns integer PDG code.");
+    m.def("get_anti_particle_type", &getAntiParticleType,
+          py::arg("type"),
+          "Get the charge conjugate of a ParticleType. Returns ParticleType.Unsupported if no antiparticle is defined.");
     m.def("get_particle_type_name", &getParticleTypeName,
           py::arg("type"), 
           "Get human-readable name for ParticleType enum (e.g., 'electron', 'photon').");

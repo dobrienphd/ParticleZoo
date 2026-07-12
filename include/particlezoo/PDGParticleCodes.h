@@ -876,6 +876,20 @@ namespace ParticleZoo {
     }
 
     /**
+     * @brief Get the charge conjugate of a particle type.
+     *
+     * Uses the fact that ParticleType enumerator values are PDG codes, whose
+     * negation is the antiparticle.
+     *
+     * @param type The particle type
+     * @return ParticleType The antiparticle type, or ParticleType::Unsupported if none is defined
+     */
+    inline ParticleType getAntiParticleType(ParticleType type) noexcept {
+        if (type == ParticleType::Unsupported || type == ParticleType::PseudoParticle) return ParticleType::Unsupported;
+        return getParticleTypeFromPDGID(-static_cast<std::int32_t>(type));
+    }
+
+    /**
      * @brief Get human-readable name for a particle type.
      * 
      * Returns the string representation of a ParticleType enumeration value,
