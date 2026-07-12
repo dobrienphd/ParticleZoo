@@ -167,10 +167,10 @@ namespace ParticleZoo
             public:
                 /**
                  * @brief Construct a new EGS phase space file writer.
-                 * 
+                 *
                  * @param fileName Path where the EGS phase space file will be written
                  * @param options User options including EGS-specific configuration (e.g., mode selection)
-                 * @throws std::runtime_error if specified mode is unsupported
+                 * @throws std::runtime_error if the specified mode or LATCH option is unsupported
                  */
                 Writer(const std::string & fileName, const UserOptions & options = UserOptions{});
 
@@ -253,6 +253,14 @@ namespace ParticleZoo
                 virtual void writeBinaryParticle(ByteBuffer & buffer, Particle & particle) override;
 
             private:
+                /**
+                 * @brief Delegated constructor taking the pre-validated mode and LATCH option.
+                 *
+                 * The options are validated before the base class is constructed, so that an
+                 * invalid option cannot leave a partially constructed writer behind.
+                 */
+                Writer(const std::string & fileName, const UserOptions & options, EGSMODE mode, EGSLATCHOPTION latchOption);
+
                 EGSMODE mode_;                                                      ///< File mode (MODE0 or MODE2)
                 EGSLATCHOPTION latchOption_;                                        ///< LATCH interpretation option
                 unsigned int numberOfParticles_{};                                  ///< Total number of particles written

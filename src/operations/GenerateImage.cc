@@ -19,17 +19,11 @@
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/egs/EGSLATCH.h"
 
+#include "GenerationFilter.h"
+
 namespace ParticleZoo {
 
 namespace {
-
-struct GenerationFilter {
-    const bool useFilter;
-    const int  minimumGeneration;
-    const int  maximumGeneration;
-    GenerationFilter(bool use, int mn, int mx)
-        : useFilter(use), minimumGeneration(mn), maximumGeneration(mx) {}
-};
 
 struct InternalImageConfig {
     const ImagePlane          plane;
@@ -66,7 +60,7 @@ struct InternalImageConfig {
           printDetails(opts.showDetails),
           projectionType(opts.projectTo.has_value() ? ImageProjectionType::PROJECT : opts.projectionType),
           quantityType(opts.energyWeighted ? ImageQuantityType::ENERGY : opts.score),
-          generationFilter(computeGenerationFilter(opts)),
+          generationFilter(GenerationFilter::Resolve(opts.primariesOnly, opts.excludePrimaries, opts.generations)),
           tolerance(projectionType == ImageProjectionType::NONE ? opts.tolerance : 0.0f),
           imageWidth(opts.imageWidth),
           imageHeight(opts.imageHeight),
@@ -159,31 +153,13 @@ private:
         return {min1, max1, min2, max2};
     }
 
-    static GenerationFilter computeGenerationFilter(const GenerateImageOptions& opts) {
-        int commandsUsed = (opts.primariesOnly ? 1 : 0) +
-                           (opts.excludePrimaries ? 1 : 0) +
-                           (opts.generations.has_value() ? 1 : 0);
-        if (commandsUsed > 1)
-            throw std::runtime_error("Cannot specify more than one of primariesOnly, excludePrimaries, or generations at the same time.");
-        if (opts.primariesOnly)
-            return GenerationFilter(true, 1, 1);
-        if (opts.excludePrimaries)
-            return GenerationFilter(true, 2, std::numeric_limits<int>::max());
-        if (opts.generations.has_value())
-            return GenerationFilter(true, opts.generations->first, opts.generations->second);
-        return GenerationFilter(false, 1, std::numeric_limits<int>::max());
-    }
-
     void validate() const {
         if (minDim1() >= maxDim1()) throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
         if (minDim2() >= maxDim2()) throw std::runtime_error("Invalid dimensions specified. Ensure that min < max for both dimensions.");
         if (tolerance < 0)          throw std::runtime_error("Tolerance cannot be a negative number.");
         if (imageWidth  <= 0)       throw std::runtime_error("Image width must be a positive integer.");
         if (imageHeight <= 0)       throw std::runtime_error("Image height must be a positive integer.");
-        if (generationFilter.useFilter &&
-            (generationFilter.minimumGeneration > generationFilter.maximumGeneration ||
-             generationFilter.minimumGeneration < 1))
-            throw std::runtime_error("Invalid generation filter range. Ensure that min <= max and that min is at least 1.");
+        // Generation-filter conflicts and range are validated by GenerationFilter::Resolve at construction
     }
 };
 
@@ -203,11 +179,7 @@ void GenerateImage(const std::string& inputFile,
     const InternalImageConfig config(options);
 
     std::unique_ptr<PhaseSpaceFileReader> reader;
-    if (config.inputFormat.empty()) {
-        reader = FormatRegistry::CreateReader(inputFile);
-    } else {
-        reader = FormatRegistry::CreateReader(config.inputFormat, inputFile);
-    }
+    reader = FormatRegistry::CreateReader(config.inputFormat, inputFile, options.formatOptions);
 
     std::vector<std::string> errorMessages;
     std::vector<std::string> warningMessages;
@@ -239,15 +211,15 @@ void GenerateImage(const std::string& inputFile,
         float xOffset    = static_cast<float>(config.minDim1());
         float yOffset    = static_cast<float>(config.minDim2());
         float pixelArea  = (config.maxDim1() - config.minDim1()) * (config.maxDim2() - config.minDim2())
-                         / (config.imageWidth * config.imageHeight);
+                         / (static_cast<float>(config.imageWidth) * static_cast<float>(config.imageHeight));
 
         auto start_time = std::chrono::steady_clock::now();
 
-        Image<float>* image = nullptr;
+        std::unique_ptr<Image<float>> image;
         if (config.outputFormat == ImageOutputFormat::TIFF) {
-            image = new TiffImage<float>(config.imageWidth, config.imageHeight, xPixelsPerUnitLength, yPixelsPerUnitLength, xOffset, yOffset);
+            image = std::make_unique<TiffImage<float>>(config.imageWidth, config.imageHeight, xPixelsPerUnitLength, yPixelsPerUnitLength, xOffset, yOffset);
         } else if (config.outputFormat == ImageOutputFormat::BMP) {
-            image = new BitmapImage<float>(config.imageWidth, config.imageHeight);
+            image = std::make_unique<BitmapImage<float>>(config.imageWidth, config.imageHeight);
         } else {
             throw std::runtime_error("Unsupported output format.");
         }
@@ -379,8 +351,6 @@ void GenerateImage(const std::string& inputFile,
         } else {
             std::cout << "Image normalized by histories (" << historiesRead << " histories read)." << std::endl;
         }
-
-        delete image;
 
         auto end_time = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double>(end_time - start_time).count();

@@ -45,6 +45,7 @@ int main(int argc, char* argv[]) {
                     : -1;
 
     SplitOptions options;
+    options.formatOptions = userOptions;
     options.inputFormat  = userOptions.contains(INPUT_FORMAT_COMMAND)
                          ? (userOptions.at(INPUT_FORMAT_COMMAND).empty() ? "" : std::get<std::string>(userOptions.at(INPUT_FORMAT_COMMAND)[0]))
                          : "";

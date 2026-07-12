@@ -155,6 +155,7 @@ int main(int argc, char* argv[]) {
 
     // Build ConvertOptions from parsed CLI args
     ConvertOptions options;
+    options.formatOptions = userOptions;
     if (userOptions.contains(MAX_PARTICLES_COMMAND))
         options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));
     options.inputFormat       = userOptions.extractStringOption(INPUT_FORMAT_COMMAND);

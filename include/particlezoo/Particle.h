@@ -42,11 +42,12 @@ namespace ParticleZoo {
      * from different Monte Carlo simulation codes.
      */
     enum class FloatPropertyType {
-        INVALID,    ///< Invalid property type, used for error checking
-        XLAST,      ///< EGS-specific XLAST variable, for photons it is the X position of the last interaction, for electrons/positrons it is the X position it (or it's ancestor) was created at by a photon
-        YLAST,      ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
-        ZLAST,      ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon 
-        CUSTOM      ///< Custom float property type, can be used for any user-defined purpose
+        INVALID,            ///< Invalid property type, used for error checking
+        XLAST,              ///< EGS-specific XLAST variable, for photons it is the X position of the last interaction, for electrons/positrons it is the X position it (or it's ancestor) was created at by a photon
+        YLAST,              ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
+        ZLAST,              ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon
+        TIME,               ///< Particle time at the particle position, stored in internal time units
+        CUSTOM              ///< Custom float property type, can be used for any user-defined purpose
     };
 
     /**

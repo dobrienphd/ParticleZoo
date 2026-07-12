@@ -5,6 +5,7 @@
 #include <utility>
 #include <cstdint>
 #include <limits>
+#include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/units.h"
 
 namespace ParticleZoo {
@@ -84,6 +85,7 @@ struct GenerateImageOptions {
     // --- I/O ---
     std::string inputFormat             = "";                     ///< Force input format; empty = auto-detect
     ImageOutputFormat outputFormat      = ImageOutputFormat::TIFF; ///< Output image format
+    UserOptions formatOptions{};                                  ///< Format-specific reader options (e.g. EGS LATCH option, IAEA options)
 
     // --- Generation filter (at most one may be set) ---
     bool primariesOnly    = false;                                ///< Score only primary particles

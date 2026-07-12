@@ -182,6 +182,8 @@ PYBIND11_MODULE(_pz, m) {
                "EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or its ancestor) was created at by a photon")
         .value("ZLAST", FloatPropertyType::ZLAST,
                "EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or its ancestor) was created at by a photon")
+        .value("TIME", FloatPropertyType::TIME,
+               "Particle time at the particle position, stored in internal time units")
         .value("CUSTOM", FloatPropertyType::CUSTOM,
                "Custom float property type, can be used for any user-defined purpose");
 
@@ -200,7 +202,7 @@ PYBIND11_MODULE(_pz, m) {
           py::arg("pdg"), 
           "Map PDG particle code to ParticleType enum. Returns ParticleType for recognized PDG codes.");
     m.def("get_pdgid", &getPDGIDFromParticleType,
-          py::arg("type"), 
+          py::arg("type"),
           "Get PDG particle code from ParticleType enum. Returns integer PDG code.");
     m.def("get_particle_type_name", &getParticleTypeName,
           py::arg("type"), 

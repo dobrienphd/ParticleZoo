@@ -15,18 +15,12 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 #include "particlezoo/PDGParticleCodes.h"
 
+#include "GenerationFilter.h"
+
 namespace ParticleZoo {
 
 // Internal helpers kept in anonymous namespace
 namespace {
-
-struct GenerationFilter {
-    const bool useFilter;
-    const int  minimumGeneration;
-    const int  maximumGeneration;
-    GenerationFilter(bool use, int mn, int mx)
-        : useFilter(use), minimumGeneration(mn), maximumGeneration(mx) {}
-};
 
 struct InternalConvertConfig {
     const bool          projectToX;
@@ -64,7 +58,7 @@ struct InternalConvertConfig {
                            opts.minY.has_value() || opts.maxY.has_value() ||
                            opts.minZ.has_value() || opts.maxZ.has_value()),
           filterByRadius(opts.minRadius.has_value() || opts.maxRadius.has_value()),
-          generationFilter(determineGenerationFilter(opts)),
+          generationFilter(GenerationFilter::Resolve(opts.primariesOnly, opts.excludePrimaries, opts.generations)),
           minimumEnergy(opts.minEnergy.value_or(0.0f)),
           maximumEnergy(opts.maxEnergy.value_or(std::numeric_limits<float>::max())),
           minimumX(opts.minX.value_or(std::numeric_limits<float>::lowest())),
@@ -88,20 +82,6 @@ private:
         return ParticleType::Unsupported;
     }
 
-    static GenerationFilter determineGenerationFilter(const ConvertOptions& opts) {
-        int commandsUsed = (opts.primariesOnly ? 1 : 0) +
-                           (opts.excludePrimaries ? 1 : 0) +
-                           (opts.generations.has_value() ? 1 : 0);
-        if (commandsUsed > 1)
-            throw std::runtime_error("Cannot specify more than one of primariesOnly, excludePrimaries, or generations at the same time.");
-        if (opts.primariesOnly)
-            return GenerationFilter(true, 1, 1);
-        if (opts.excludePrimaries)
-            return GenerationFilter(true, 2, std::numeric_limits<int>::max());
-        if (opts.generations.has_value())
-            return GenerationFilter(true, opts.generations->first, opts.generations->second);
-        return GenerationFilter(false, 1, std::numeric_limits<int>::max());
-    }
 };
 
 bool applyFilters(const Particle& particle, const InternalConvertConfig& config) {
@@ -169,13 +149,8 @@ void validateOptions(const std::string& inputFile, const std::string& outputFile
     if (opts.minRadius.has_value() && opts.maxRadius.has_value() && opts.minRadius.value() > opts.maxRadius.value())
         throw std::runtime_error("Minimum radius cannot be greater than maximum radius for radius filter.");
 
-    int genFilters = (opts.primariesOnly ? 1 : 0) + (opts.excludePrimaries ? 1 : 0) + (opts.generations.has_value() ? 1 : 0);
-    if (genFilters > 1)
-        throw std::runtime_error("Cannot specify more than one of primariesOnly, excludePrimaries, or generations at the same time.");
-    if (opts.generations.has_value()) {
-        if (opts.generations->first > opts.generations->second || opts.generations->first < 1)
-            throw std::runtime_error("Invalid generation filter range. Ensure that min <= max and that min is at least 1.");
-    }
+    // Generation-filter conflicts and range are validated by GenerationFilter::Resolve
+    // when the internal config is constructed (before any file I/O).
 }
 
 } // anonymous namespace
@@ -196,19 +171,11 @@ void Convert(const std::string& inputFile,
     std::vector<std::string> warningMessages;
 
     try {
-        if (options.inputFormat.empty()) {
-            reader = FormatRegistry::CreateReader(inputFile);
-        } else {
-            reader = FormatRegistry::CreateReader(options.inputFormat, inputFile);
-        }
+        reader = FormatRegistry::CreateReader(options.inputFormat, inputFile, options.formatOptions);
 
         const FixedValues fixedValues = options.preserveConstants ? reader->getFixedValues() : FixedValues{};
 
-        if (options.outputFormat.empty()) {
-            writer = FormatRegistry::CreateWriter(outputFile, {}, fixedValues);
-        } else {
-            writer = FormatRegistry::CreateWriter(options.outputFormat, outputFile, {}, fixedValues);
-        }
+        writer = FormatRegistry::CreateWriter(options.outputFormat, outputFile, options.formatOptions, fixedValues);
 
         std::cout << "Converting particles from "
                   << inputFile << " (" << reader->getPHSPFormat() << ") to "
