@@ -87,6 +87,7 @@ COMMON_SRCS := \
     src/IAEA/IAEAHeader.cc \
     src/IAEA/IAEAphspFile.cc \
     src/MCNP/MCNPphspFile.cc \
+    src/mcpl/MCPLphspFile.cc \
     src/topas/TOPASHeader.cc \
     src/topas/TOPASphspFile.cc \
     src/ROOT/ROOTphsp.cc

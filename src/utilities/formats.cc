@@ -9,6 +9,7 @@
 #include "particlezoo/egs/egsphspFile.h"
 #include "particlezoo/IAEA/IAEAphspFile.h"
 #include "particlezoo/MCNP/MCNPphspFile.h"
+#include "particlezoo/MCPL/MCPLphspFile.h"
 #include "particlezoo/TOPAS/TOPASphspFile.h"
 #include "particlezoo/peneasy/penEasyphspFile.h"
 
@@ -79,6 +80,20 @@ namespace ParticleZoo
                        },
                        [](const std::string& filename, const UserOptions & options, const FixedValues &) {
                            return std::make_unique<ParticleZoo::MCNPphspFile::Writer>(filename, options);
+                       });
+
+        // Register MCPL format
+        SupportedFormat mcplFormat{"MCPL", "Monte Carlo Particle Lists Format (versions 2 and 3)", ".mcpl"};
+        auto mcplReaderCommands = MCPLphspFile::Reader::getFormatSpecificCLICommands();
+        auto mcplWriterCommands = MCPLphspFile::Writer::getFormatSpecificCLICommands();
+        ArgParser::RegisterCommands(mcplReaderCommands);
+        ArgParser::RegisterCommands(mcplWriterCommands);
+        RegisterFormat(mcplFormat,
+                       [](const std::string& filename, const UserOptions & options) {
+                           return std::make_unique<ParticleZoo::MCPLphspFile::Reader>(filename, options);
+                       },
+                       [](const std::string& filename, const UserOptions & options, const FixedValues &) {
+                           return std::make_unique<ParticleZoo::MCPLphspFile::Writer>(filename, options);
                        });
 
         // Register EGS format

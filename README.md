@@ -62,6 +62,7 @@ The library includes built-in support for major Monte Carlo simulation formats:
 - **EGS** (EGSnrc): `.egsphsp` files in MODE0 and MODE2, including suffixed variants (`.egsphsp1`, etc.)
 - **IAEA**: `.IAEAphsp` International Atomic Energy Agency format with header files
 - **MCNP**: `.w` surface source files (SSW/RSSA); reads MCNP6 (`SF_00001`), MCNP5 and MCNPX layouts, writes MCNP6 by default (or MCNP5/MCNPX via `--MCNP-format`)
+- **MCPL**: `.mcpl` Monte Carlo Particle Lists files; reads format versions 2 and 3, writes version 3 (gzip-compressed `.mcpl.gz` files must be decompressed first)
 - **TOPAS**: `.phsp` files in Binary, ASCII, and Limited variants
 - **penEasy**: `.dat` ASCII format from the PENELOPE simulation code
 - **ROOT** (optional): `.root` files generated with the CERN ROOT framework. Includes built-in templates for TOPAS and OpenGATE generated files. Also supports custom branch mappings
