@@ -97,9 +97,15 @@ namespace ParticleZoo {
     constexpr float        lb = 453.59237f * g;                  // pound
 
     // Time
+    constexpr float        ms = 1e-3f * s;                       // millisecond
+    constexpr float        us = 1e-6f * s;                       // microsecond
+    constexpr float        ns = 1e-9f * s;                       // nanosecond
+    constexpr float        ps = 1e-12f * s;                      // picosecond
+    constexpr float        fs = 1e-15f * s;                      // femtosecond
     constexpr float    minute = 60.f * s;                        // minute
     constexpr float      hour = 60.f * minute;                   // hour
     constexpr float       day = 24.f * hour;                     // day
+    constexpr float      week = 7.f * day;                       // week
     constexpr float      year = 365.25f * day;                   // year
 
     // Frequency
