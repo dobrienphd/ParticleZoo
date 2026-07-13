@@ -34,6 +34,7 @@ namespace ParticleZoo {
         GENERATION,                     ///< Generation of the particle (1 for primary, 2 for secondary, etc.)
         MCNP_SURFACE_ID,                ///< MCNP-specific problem name (number) of the surface the particle was recorded on
         MCNP_MACROBODY_FACET,           ///< MCNP-specific macrobody facet number of the recording surface (only set when the surface is a macrobody facet)
+        MCPL_USERFLAGS,                 ///< MCPL-specific user flags value (an unsigned 32-bit value stored via cast)
         CUSTOM                          ///< Custom integer property type, can be used for any user-defined purpose
     };
 
@@ -49,6 +50,9 @@ namespace ParticleZoo {
         YLAST,              ///< EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or it's ancestor) was created at by a photon
         ZLAST,              ///< EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or it's ancestor) was created at by a photon
         TIME,               ///< Particle time at the particle position, stored in internal time units
+        POLARIZATION_X,     ///< X component of the particle polarization vector
+        POLARIZATION_Y,     ///< Y component of the particle polarization vector
+        POLARIZATION_Z,     ///< Z component of the particle polarization vector
         CUSTOM              ///< Custom float property type, can be used for any user-defined purpose
     };
 
