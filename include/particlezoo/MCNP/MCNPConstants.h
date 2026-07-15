@@ -154,11 +154,11 @@ namespace ParticleZoo
             }
             if (typeIndex == 37) {
                 // Heavy ion: A/Z/S packed above the type index; assemble the nucleus PDG code
-                long long A = (packedType >> 9) & 511;
+                long long massNum = (packedType >> 9) & 511;
                 long long Z = (packedType >> 18) & 127;
                 long long S = packedType >> 25;
-                if (A < 1 || Z < 1 || A < Z || S > 9) return ParticleType::Unsupported;
-                std::int32_t pdg = static_cast<std::int32_t>(1000000000 + 10000 * Z + 10 * A + S);
+                if (massNum < 1 || Z < 1 || massNum < Z || S > 9) return ParticleType::Unsupported;
+                std::int32_t pdg = static_cast<std::int32_t>(1000000000 + 10000 * Z + 10 * massNum + S);
                 return getParticleTypeFromPDGID(antibit ? -pdg : pdg);
             }
             return ParticleType::Unsupported;
@@ -192,11 +192,11 @@ namespace ParticleZoo
             if (absCode > 1000000000 && absCode <= 1009999990) {
                 long long S = absCode % 10;
                 long long rest = absCode / 10;
-                long long A = rest % 1000;
+                long long massNum = rest % 1000;
                 rest /= 1000;
                 long long Z = rest % 1000;
-                if (rest / 1000 != 100 || A < 1 || Z < 1 || A < Z) return 0;
-                return (code < 0 ? 4LL : 0LL) + (37LL << 3) + (A << 9) + (Z << 18) + (S << 25);
+                if (rest / 1000 != 100 || massNum < 1 || Z < 1 || massNum < Z) return 0;
+                return (code < 0 ? 4LL : 0LL) + (37LL << 3) + (massNum << 9) + (Z << 18) + (S << 25);
             }
             return 0;
         }
@@ -263,12 +263,12 @@ namespace ParticleZoo
             if (mcnpxType % 1000 == 35) {
                 // Heavy ion encoded as (Z-1)*1000000 + A*1000 + 35; assemble the nucleus PDG code
                 mcnpxType /= 1000;
-                long long A = mcnpxType % 1000;
-                if (!A) return ParticleType::Unsupported;
+                long long massNum = mcnpxType % 1000;
+                if (!massNum) return ParticleType::Unsupported;
                 mcnpxType /= 1000;
                 if (mcnpxType / 1000) return ParticleType::Unsupported;
                 long long ZM1 = mcnpxType % 1000;
-                std::int32_t pdg = static_cast<std::int32_t>(1000000000 + (ZM1 + 1) * 10000 + A * 10);
+                std::int32_t pdg = static_cast<std::int32_t>(1000000000 + (ZM1 + 1) * 10000 + massNum * 10);
                 return getParticleTypeFromPDGID(anti ? -pdg : pdg);
             }
             // Strip auxiliary hundreds digits (2xx / 6xx) and retry
@@ -306,11 +306,11 @@ namespace ParticleZoo
             if (absCode > 1000000000 && absCode <= 1009999990) {
                 long long S = absCode % 10;
                 long long rest = absCode / 10;
-                long long A = rest % 1000;
+                long long massNum = rest % 1000;
                 rest /= 1000;
                 long long Z = rest % 1000;
-                if (S != 0 || rest / 1000 != 100 || A < 1 || Z < 1 || A < Z) return 0;
-                return (Z - 1) * 1000000 + A * 1000 + (code < 0 ? 435 : 35);
+                if (S != 0 || rest / 1000 != 100 || massNum < 1 || Z < 1 || massNum < Z) return 0;
+                return (Z - 1) * 1000000 + massNum * 1000 + (code < 0 ? 435 : 35);
             }
             return 0;
         }

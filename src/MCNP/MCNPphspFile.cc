@@ -366,9 +366,9 @@ namespace ParticleZoo::MCNPphspFile
             case MCNPVariant::MCNP5: {
                 // |b| = 8 * (ipt * 1e6 + surface); some variants scale the type by a
                 // further factor of 100, which is folded away when present
-                long long m = bPacked / 8;
-                packedSurface = m % 1000000;
-                long long mcnp5Type = m / 1000000;
+                long long quot = bPacked / 8;
+                packedSurface = quot % 1000000;
+                long long mcnp5Type = quot / 1000000;
                 if (mcnp5Type >= 100) mcnp5Type /= 100;
                 type = (mcnp5Type == 1) ? ParticleType::Neutron
                      : (mcnp5Type == 2) ? ParticleType::Photon
