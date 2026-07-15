@@ -51,6 +51,7 @@ sources = [
     str(src / "IAEA" / "IAEAHeader.cc"),
     str(src / "IAEA" / "IAEAphspFile.cc"),
     str(src / "MCNP" / "MCNPphspFile.cc"),
+    str(src / "mcpl" / "MCPLphspFile.cc"),
     # Parallel readers
     str(src / "parallel" / "HistoryBalancedParallelReader.cc"),
     str(src / "parallel" / "ParticleBalancedParallelReader.cc"),
