@@ -78,6 +78,16 @@ if sys.platform == "darwin":
     extra_compile_args.append("-mmacosx-version-min=13.3")
     extra_link_args.append("-mmacosx-version-min=13.3")
 
+def strip_std_flags(flags):
+    """Drop -std= flags from ROOT's cflags.
+
+    root-config --cflags reports the standard ROOT was built with (often
+    -std=c++17), which would land after our -std=c++20 on the compile line
+    and win, breaking the C++20 code (std::span, std::endian).
+    """
+    return [f for f in flags if not f.startswith(("-std=", "--std="))]
+
+
 # Try to read ROOT configuration from config.status
 config_status = proj / "config.status"
 use_root = False
@@ -102,7 +112,7 @@ if config_status.exists():
             print("ROOT support enabled (from config.status)")
             define_macros.append(("USE_ROOT", "1"))
             sources.append(str(src / "ROOT" / "ROOTphsp.cc"))
-            extra_compile_args.extend(root_cflags)
+            extra_compile_args.extend(strip_std_flags(root_cflags))
             extra_link_args.extend(root_libs)
         else:
             print("WARNING: USE_ROOT=1 but no ROOT flags found")
@@ -127,7 +137,7 @@ if not use_root and not config_status.exists():
             print("ROOT detected - enabling ROOT support")
             define_macros.append(("USE_ROOT", "1"))
             sources.append(str(src / "ROOT" / "ROOTphsp.cc"))
-            extra_compile_args.extend(root_cflags)
+            extra_compile_args.extend(strip_std_flags(root_cflags))
             extra_link_args.extend(root_libs)
         else:
             print("ROOT found but flags empty - building without ROOT support")

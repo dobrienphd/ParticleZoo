@@ -1,10 +1,10 @@
-# Python Bindings for ParticleZoo
+# ParticleZoo
 
 Python bindings for the ParticleZoo C++20 library, enabling reading, writing, and manipulation of particle phase space files from various Monte Carlo simulation codes.
 
 ## Features
 
-- **Unified API**: Read and write phase space files from EGS, IAEA, MCNP, TOPAS, penEasy, and ROOT formats
+- **Unified API**: Read and write phase space files from EGS, IAEA, MCNP, MCPL, TOPAS, and penEasy formats (ROOT also available — see "ROOT support" under Installation)
 - **High-Level Operations**: Convert, combine, split, and generate fluence images with single function calls
 - **Automatic Format Detection**: File format is inferred from extension, with explicit override options
 - **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`
@@ -13,81 +13,41 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 - **Unit System**: Comprehensive physical units for dimensional consistency
 - **Format-Specific Features**: Access EGS LATCH bits, PENELOPE ILB arrays, and other format-specific data
 
-## Prerequisites
-
-- Python 3.9+
-- A C++20 compiler (GCC 10+, Clang 13+, or MSVC 2019+) — only needed when building from source
-- pybind11 (installed automatically by pip)
-
 ## Installation
-
-### From PyPI
 
 ```bash
 pip install particlezoo
 ```
 
-Pre-built wheels are provided for Linux (x86_64, aarch64), macOS (Intel and Apple Silicon), and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source (below) on a machine where `root-config` is available.
+Requires Python 3.9 or newer. Ready-to-use packages are provided for
+Windows, macOS, and Linux (x86_64 and ARM), so no compiler or other setup
+is needed — the EGS, IAEA, MCNP, MCPL, TOPAS, and penEasy formats work out
+of the box.
 
-### Using the Makefile (Linux/macOS)
+### ROOT support
 
-From the repository root, use the provided makefile targets:
+The standard `pip install particlezoo` does **not** include support for
+CERN ROOT files. If you need the ROOT format:
 
-```bash
-# Standard installation (uses virtual env if active, otherwise user site-packages)
-make install-python
+1. Install [ROOT](https://root.cern/) so that the `root-config` command
+   works in your terminal.
+2. Install ParticleZoo with pip's `--no-binary` flag, which compiles it
+   from source on your machine so it can link against your ROOT
+   installation:
 
-# Development/editable installation (changes to source are reflected immediately)
-make install-python-dev
+   ```bash
+   pip install --no-binary particlezoo particlezoo
+   ```
 
-# Uninstall
-make uninstall-python
-```
+Compiling from source requires a C++20 compiler (GCC 10+, Clang 13+, or
+MSVC 2019+); everything else is handled automatically by pip. One macOS
+note: if you use a python.org Python together with Homebrew ROOT on Apple
+Silicon, prefix the command with `ARCHFLAGS="-arch arm64"` so the build
+matches your ROOT installation's architecture.
 
-If no virtual environment is active, the makefile will prompt before installing to user site-packages (`~/.local`).
-
-### Windows Installation
-
-On Windows, use pip directly from a command prompt or PowerShell:
-
-```powershell
-# Navigate to repository root
-cd path\to\particlezoo
-
-# Optional: Create and activate a virtual environment
-python -m venv .venv
-.venv\Scripts\activate
-
-# Install dependencies and the package
-python -m pip install -U pip setuptools wheel pybind11
-python -m pip install python        # Standard install
-# or
-python -m pip install -e python     # Editable/development install
-```
-
-### Using a Virtual Environment (Linux/macOS)
-
-For isolated development, create and activate a virtual environment first:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-
-# Then install using the makefile
-make install-python      # or make install-python-dev for editable mode
-```
-
-### Direct pip Installation (All Platforms)
-
-Alternatively, install directly with pip from the repository root:
-
-```bash
-python -m pip install -U pip setuptools wheel pybind11
-python -m pip install python        # Standard install
-python -m pip install -e python     # Editable install
-```
-
-The extension compiles its own copy of the C++ sources; it does not require installing the static library first.
+For development or editable installs from a git checkout, see the
+[GitHub repository](https://github.com/dobrienphd/ParticleZoo), which
+provides `make install-python` and `make install-python-dev` targets.
 
 ## Quick Start
 
@@ -655,14 +615,18 @@ reader.close()
 |--------|-----------|-------------|
 | EGS | `.egsphsp`, `.egsphsp1`, etc. | EGSnrc MODE0/MODE2 format |
 | IAEA | `.IAEAphsp` | IAEA standard format with header |
+| MCNP | `.w` | MCNP surface source (SSW/RSSA; MCNP6, MCNP5, MCNPX) |
+| MCPL | `.mcpl` | Monte Carlo Particle Lists (versions 2 and 3) |
 | TOPAS | `.phsp` | TOPAS Binary, ASCII, Limited |
 | penEasy | `.dat` | PENELOPE/penEasy ASCII format |
-| ROOT | `.root` | CERN ROOT trees (if compiled with ROOT support) |
+| ROOT | `.root` | CERN ROOT trees (requires opt-in install — see "ROOT support" under Installation) |
 
 ## Notes
 
-- All positions are in internal units
-- All energies are in internal units
+- Positions and energies are stored in the library's internal units (cm and
+  MeV) — use the unit constants (see Unit System) when converting values in
+  and out
 - Direction cosines are automatically normalized
-- The extension compiles against the C++ sources directly
+- Installing from the source distribution compiles the bundled C++ sources;
+  no separate ParticleZoo C++ library installation is required
 - Thread safety: Each reader/writer should be used from a single thread
