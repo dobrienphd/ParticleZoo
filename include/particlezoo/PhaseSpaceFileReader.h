@@ -319,6 +319,14 @@ namespace ParticleZoo
              */
             void                  close();
 
+            /**
+             * @brief Get metadata associated with the phase space file.
+             * 
+             * Returns a map of metadata key-value pairs extracted from the file header or other sources.
+             * Derived classes can override this method to provide format-specific metadata.
+             * 
+             * @return std::unordered_map<std::string, std::string> Map of metadata key-value pairs
+             */
             virtual std::unordered_map<std::string, std::string> getMetadata() const;
 
         protected:
