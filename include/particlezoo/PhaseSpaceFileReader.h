@@ -319,6 +319,8 @@ namespace ParticleZoo
              */
             void                  close();
 
+            virtual std::unordered_map<std::string, std::string> getMetadata() const;
+
         protected:
 
             /**
@@ -621,6 +623,10 @@ namespace ParticleZoo
     inline void PhaseSpaceFileReader::setConstantWeight(float weight) { fixedValues_.weightIsConstant = true; fixedValues_.constantWeight = weight; }
 
     inline const FixedValues PhaseSpaceFileReader::getFixedValues() const { return fixedValues_; }
+
+    inline std::unordered_map<std::string, std::string> PhaseSpaceFileReader::getMetadata() const {
+        return std::unordered_map<std::string, std::string>(); // Default implementation returns an empty map; derived classes can override to provide actual metadata
+    }
 
     inline std::uint64_t PhaseSpaceFileReader::getHistoriesRead() {
         if (!hasMoreParticles()) {
