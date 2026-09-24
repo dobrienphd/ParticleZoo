@@ -167,6 +167,17 @@ namespace ParticleZoo::IAEAphspFile
         return (it != sectionTable_.end()) ? it->second : "";
     }
 
+    void IAEAHeader::setSection(const std::string &sectionName, const std::string &sectionValue)
+    {
+        sectionTable_[sectionName] = sectionValue;
+    }
+
+    void IAEAHeader::setSection(SECTION section, const std::string &sectionValue)
+    {
+        auto key = sectionToString(section);
+        sectionTable_[std::string{key}] = sectionValue;
+    }
+
     float IAEAHeader::getMinWeight(ParticleType particleType) const { 
         auto it = particleStatsTable_.find(particleType);
         if (it == particleStatsTable_.end() || it->second.count_ == 0)
