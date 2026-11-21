@@ -4,7 +4,7 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 
 ## Features
 
-- **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, and penEasy formats (ROOT also available — see "ROOT support" under Installation)
+- **Unified API**: Read and write phase space files from EGS, IAEA, MCNP, MCPL, TOPAS, and penEasy formats (ROOT also available — see "ROOT support" under Installation)
 - **High-Level Operations**: Convert, combine, split, and generate fluence images with single function calls
 - **Automatic Format Detection**: File format is inferred from extension, with explicit override options
 - **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`
@@ -21,7 +21,7 @@ pip install particlezoo
 
 Requires Python 3.9 or newer. Ready-to-use packages are provided for
 Windows, macOS, and Linux (x86_64 and ARM), so no compiler or other setup
-is needed — the EGS, IAEA, TOPAS, and penEasy formats work out
+is needed — the EGS, IAEA, MCNP, MCPL, TOPAS, and penEasy formats work out
 of the box.
 
 ### ROOT support
@@ -615,6 +615,8 @@ reader.close()
 |--------|-----------|-------------|
 | EGS | `.egsphsp`, `.egsphsp1`, etc. | EGSnrc MODE0/MODE2 format |
 | IAEA | `.IAEAphsp` | IAEA standard format with header |
+| MCNP | `.w` | MCNP surface source (SSW/RSSA; MCNP6, MCNP5, MCNPX) |
+| MCPL | `.mcpl` | Monte Carlo Particle Lists (versions 2 and 3) |
 | TOPAS | `.phsp` | TOPAS Binary, ASCII, Limited |
 | penEasy | `.dat` | PENELOPE/penEasy ASCII format |
 | ROOT | `.root` | CERN ROOT trees (requires opt-in install — see "ROOT support" under Installation) |
