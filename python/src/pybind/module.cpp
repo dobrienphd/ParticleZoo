@@ -623,8 +623,9 @@ PYBIND11_MODULE(_pz, m) {
 
     m.def("extract_latch_from_particle", &ParticleZoo::EGSphspFile::ExtractLATCHFromParticle,
           py::arg("particle"), py::arg("latch_option"),
-          "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it directly. "
-          "Otherwise, constructs LATCH from particle type (bits 29-30), IS_MULTIPLE_CROSSER flag (bit 32), "
+          "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it with the charge "
+          "bits set to match the particle type (0-based bit 30 for electrons, bit 29 for positrons). "
+          "Otherwise, constructs LATCH from particle type (charge bits), IS_MULTIPLE_CROSSER flag (bit 31), "
           "and GENERATION flag (bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
 
     m.def("does_particle_pass_latch_filter", &ParticleZoo::EGSphspFile::DoesParticlePassLATCHFilter,

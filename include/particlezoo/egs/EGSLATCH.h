@@ -9,6 +9,27 @@ namespace ParticleZoo::EGSphspFile
     inline CLICommand EGSLATCHOptionCommand { BOTH, "", "EGS-latch-option", "Specify the LATCH interpretation option when reading/writing EGS phase space files (1, 2, or 3)", { CLI_INT } };
     inline CLICommand EGSLATCHFilterCommand { NONE, "", "EGS-latch-filter", "Specify a bitmask filter to apply to the LATCH value when reading/writing EGS phase space files", { CLI_UINT } };
 
+    constexpr unsigned int LATCH_NEGATIVE_CHARGE_BIT = 1u << 30;   ///< Set for negatively charged particles (electrons), 0-based bit 30
+    constexpr unsigned int LATCH_POSITIVE_CHARGE_BIT = 1u << 29;   ///< Set for positively charged particles (positrons), 0-based bit 29
+    constexpr unsigned int LATCH_CHARGE_BITS = LATCH_NEGATIVE_CHARGE_BIT | LATCH_POSITIVE_CHARGE_BIT;
+
+    /**
+     * @brief Set the charge bits of a LATCH value to match the given particle type.
+     *
+     * Clears bits 29-30 and re-sets them from the particle type; all other bits are preserved.
+     * Mirrors EGSnrc's egs_phsp_scoring, which always re-sets the charge bits from the particle charge.
+     */
+    inline unsigned int SetLATCHChargeBits(unsigned int LATCH, const ParticleType type)
+    {
+        LATCH &= ~LATCH_CHARGE_BITS;
+        if (type == ParticleType::Electron) {
+            LATCH |= LATCH_NEGATIVE_CHARGE_BIT;
+        } else if (type == ParticleType::Positron) {
+            LATCH |= LATCH_POSITIVE_CHARGE_BIT;
+        }
+        return LATCH;
+    }
+
     /**
      * @brief Enumeration of supported LATCH interpretation options.
      * 
@@ -73,29 +94,15 @@ namespace ParticleZoo::EGSphspFile
 
     inline unsigned int ExtractLATCHFromParticle(const Particle & particle, const EGSLATCHOPTION latchOption)
     {
-        // Return existing LATCH value if present
+        // Use existing LATCH value if present, but always make the charge bits consistent with the particle type
         if (particle.hasIntProperty(IntPropertyType::EGS_LATCH)) {
-            return (unsigned int) particle.getIntProperty(IntPropertyType::EGS_LATCH);
+            unsigned int LATCH = (unsigned int) particle.getIntProperty(IntPropertyType::EGS_LATCH);
+            return SetLATCHChargeBits(LATCH, particle.getType());
         }
 
         // Construct LATCH value from particle properties
-        unsigned int LATCH = 0;
-
-        // Bits 29-30: Particle charge
-        // 00 = neutral (photon), 01 = negative (electron), 10 = positive (positron)
-        switch (particle.getType()) {
-            case ParticleType::Photon:
-                LATCH |= (0 << 29);
-                break;
-            case ParticleType::Electron:
-                LATCH |= (1 << 29);
-                break;
-            case ParticleType::Positron:
-                LATCH |= (2 << 29);
-                break;
-            default:
-                break;
-        }
+        // Bits 29-30: Particle charge (bit 30 = negative/electron, bit 29 = positive/positron, neither = neutral/photon)
+        unsigned int LATCH = SetLATCHChargeBits(0, particle.getType());
 
         if (particle.hasBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER) && particle.getBoolProperty(BoolPropertyType::IS_MULTIPLE_CROSSER)) {
             LATCH |= (1 << 31); // Set bit 32
