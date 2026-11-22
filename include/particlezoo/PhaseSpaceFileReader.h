@@ -307,6 +307,8 @@ namespace ParticleZoo
              * 
              * Allows random access to particles within the file. The next call to
              * getNextParticle() will return the particle at the specified index.
+             * ASCII files, and binary files where canSeekDirectly() is false, are read
+             * forward to reach the index.
              * 
              * @param particleIndex Zero-based index of the particle to move to
              */
@@ -408,6 +410,18 @@ namespace ParticleZoo
              * @return std::size_t The byte offset of the first particle record
              */
             virtual std::size_t   getParticleRecordStartOffset() const;
+
+            /**
+             * @brief Check whether particle indices map directly onto record indices in a binary file.
+             * 
+             * When true, moveToParticle() seeks straight to the requested record. Formats whose
+             * binary files can contain metadata records before the last particle (e.g. TOPAS
+             * empty-history pseudoparticles) must override this and return false for such files,
+             * so that moveToParticle() reads forward instead. Default implementation returns true.
+             * 
+             * @return true if every record before the last particle is a particle
+             */
+            virtual bool          canSeekDirectly() const;
             
             /**
              * @brief Get the length in bytes of each particle record.
@@ -609,6 +623,7 @@ namespace ParticleZoo
     inline std::uint64_t PhaseSpaceFileReader::getFileSize() const { return bytesInFile_; }
     inline const std::string PhaseSpaceFileReader::getFileName() const { return fileName_; }
     inline std::size_t PhaseSpaceFileReader::getParticleRecordStartOffset() const { return 0; }
+    inline bool PhaseSpaceFileReader::canSeekDirectly() const { return true; }
     inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) {
         buffer_.setByteOrder(byteOrder);
         if (particleBuffer_) particleBuffer_->setByteOrder(byteOrder);

@@ -4,6 +4,7 @@
 #include "particlezoo/TOPAS/TOPASHeader.h"
 
 #include <cmath>
+#include <optional>
 
 namespace ParticleZoo::TOPASphspFile
 {
@@ -131,6 +132,17 @@ namespace ParticleZoo::TOPASphspFile
              */
             std::size_t    getMaximumASCIILineLength() const override;
 
+            /**
+             * @brief Check whether moveToParticle() can seek straight to a particle record
+             * 
+             * BINARY files can contain empty-history pseudo-particles, which are written
+             * immediately before a particle or once after the last particle. Seeking directly
+             * is only safe when the sole extra record, if any, is a trailing pseudo-particle.
+             * 
+             * @return true if no pseudo-particles precede the last particle
+             */
+            bool           canSeekDirectly() const override;
+
         private:
             /**
              * @brief Private constructor for format-specific initialization
@@ -176,6 +188,7 @@ namespace ParticleZoo::TOPASphspFile
             const TOPASFormat formatType_;           ///< Format type (ASCII, BINARY, or LIMITED)
             const std::size_t particleRecordLength_; ///< Length of each particle record in bytes
             bool  readFullDetails_;                  ///< Flag for detailed vs. core-only reading
+            mutable std::optional<bool> canSeekDirectly_; ///< Cached result of canSeekDirectly()
     };
 
     // Inline implementations for the Reader class

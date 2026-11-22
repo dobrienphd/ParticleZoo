@@ -53,6 +53,33 @@ namespace ParticleZoo::TOPASphspFile
     
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() { return {}; }
 
+    bool Reader::canSeekDirectly() const
+    {
+        if (canSeekDirectly_.has_value()) return *canSeekDirectly_;
+
+        canSeekDirectly_ = [&]() {
+            // Only BINARY files contain pseudo-particles
+            if (formatType_ != TOPASFormat::BINARY) return true;
+
+            std::uint64_t records = getNumberOfEntriesInFile();
+            std::uint64_t particles = getNumberOfParticles();
+            if (records <= particles) return true;
+
+            // At most one pseudo-particle is written after the last particle, so any more extra records
+            // mean that some pseudo-particles are mid-file
+            if (records - particles > 1) return false;
+
+            // A single extra record is safe only if it is a trailing pseudo-particle (type code 0)
+            std::ifstream file(getFileName(), std::ios::binary);
+            file.seekg(static_cast<std::streamoff>((records - 1) * particleRecordLength_), std::ios::beg);
+            ByteBuffer lastRecord(particleRecordLength_);
+            lastRecord.appendData(file);
+            lastRecord.moveTo(7 * sizeof(float)); // x, y, z, u, v, energy and weight precede the type code
+            return lastRecord.read<std::int32_t>() == 0;
+        }();
+        return *canSeekDirectly_;
+    }
+
     Particle Reader::readASCIIParticle(const std::string & line)
     {
         std::istringstream iss(line);

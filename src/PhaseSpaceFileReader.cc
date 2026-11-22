@@ -69,7 +69,10 @@ namespace ParticleZoo
         if (formatType_ == FormatType::NONE) {
             throw std::runtime_error("moveToParticle is not supported for NONE format.");
         }
-        if (particleIndex >= getNumberOfEntriesInFile()) {
+        // Metadata records before the last particle (e.g. TOPAS empty-history pseudoparticles)
+        // mean particle indices cannot be converted to byte offsets
+        const bool seekDirectly = formatType_ == FormatType::BINARY && canSeekDirectly();
+        if (particleIndex >= (seekDirectly ? getNumberOfEntriesInFile() : getNumberOfParticles())) {
             throw std::out_of_range("Particle index out of range.");
         }
 
@@ -79,7 +82,7 @@ namespace ParticleZoo
         asciiLineBuffer_.clear();
         numberOfParticlesToRead_ = 0;
 
-        if (formatType_ == FormatType::BINARY) {
+        if (seekDirectly) {
             // Calculate byte offset to seek to
             std::size_t particleRecordStartOffset = getParticleRecordStartOffset();
             std::size_t particleRecordLength = getParticleRecordLength();
@@ -95,8 +98,9 @@ namespace ParticleZoo
             }
 
             bytesRead_ = bytesToSkip;
-        } else if (formatType_ == FormatType::ASCII) {
-            // For ASCII, we need to read lines until we reach the desired particle index
+            particlesRead_ = particleIndex;
+        } else {
+            // For ASCII, or binary files that cannot seek directly, read forward until we reach the desired particle index
             file_.seekg(0, std::ios::beg);
             if (file_.fail()) {
                 throw std::runtime_error("Failed to seek to beginning of file: " + fileName_);
@@ -104,17 +108,16 @@ namespace ParticleZoo
             // reset counters
             bytesRead_  = 0;
             particlesRead_ = 0;
+            metaparticlesRead_ = 0;
             historiesRead_ = 0;
             for (std::size_t p = 0 ; p < particleIndex ; p++) {
                 getNextParticle(false); // Read without counting in statistics
             }
-        } else {
-            throw std::runtime_error("Unsupported format type for moveToParticle."); // Just for safety
         }
 
-        particlesRead_ = particleIndex;
+        // Every record read so far that is not one of the skipped particles is a metadata record
+        metaparticlesRead_ = particlesRead_ - particleIndex;
         particlesSkipped_ = particleIndex;
-        metaparticlesRead_ = 0;
         // historiesRead_ restarts from the seek point; a mid-file seek target is not
         // "the first particle of the file" so only re-arm the flag when seeking to the start
         historiesRead_ = 0;
