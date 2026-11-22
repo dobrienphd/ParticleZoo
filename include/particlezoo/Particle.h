@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <unordered_map>
 #include <string>
 #include <cmath>
@@ -128,9 +129,6 @@ namespace ParticleZoo {
 
         struct ParticleProperties {
             // well defined properties
-            std::unordered_map<IntPropertyType, unsigned int> intPropertyTypeIndices;
-            std::unordered_map<FloatPropertyType, unsigned int> floatPropertyTypeIndices;
-            std::unordered_map<BoolPropertyType, unsigned int> boolPropertyTypeIndices;
             std::vector<BoolPropertyType>   boolPropertyTypes;
             std::vector<FloatPropertyType>  floatPropertyTypes;
             std::vector<IntPropertyType>    intPropertyTypes;
@@ -671,59 +669,35 @@ namespace ParticleZoo {
 
     inline bool Particle::hasBoolProperty(BoolPropertyType type) const
     {
-        auto it = properties_.boolPropertyTypeIndices.find(type);
-        if (it != properties_.boolPropertyTypeIndices.end()) {
-            return true;
-        } else {
-            return false; // Not found
-        }
+        return getBoolPropertyIndex(type) != -1;
     }
 
     inline bool Particle::hasFloatProperty(FloatPropertyType type) const
     {
-        auto it = properties_.floatPropertyTypeIndices.find(type);
-        if (it != properties_.floatPropertyTypeIndices.end()) {
-            return true;
-        } else {
-            return false; // Not found
-        }
+        return getFloatPropertyIndex(type) != -1;
     }
 
     inline bool Particle::hasIntProperty(IntPropertyType type) const
     {
-        auto it = properties_.intPropertyTypeIndices.find(type);
-        if (it != properties_.intPropertyTypeIndices.end()) {
-            return true;
-        } else {
-            return false; // Not found
-        }
+        return getIntPropertyIndex(type) != -1;
     }
 
     inline int Particle::getBoolPropertyIndex(BoolPropertyType type) const {
-        auto it = properties_.boolPropertyTypeIndices.find(type);
-        if (it != properties_.boolPropertyTypeIndices.end()) {
-            return it->second;
-        } else {
-            return -1; // Not found
-        }
+        const auto & types = properties_.boolPropertyTypes;
+        auto it = std::find(types.begin(), types.end(), type);
+        return it != types.end() ? static_cast<int>(it - types.begin()) : -1;
     }
 
     inline int Particle::getFloatPropertyIndex(FloatPropertyType type) const {
-        auto it = properties_.floatPropertyTypeIndices.find(type);
-        if (it != properties_.floatPropertyTypeIndices.end()) {
-            return it->second;
-        } else {
-            return -1; // Not found
-        }
+        const auto & types = properties_.floatPropertyTypes;
+        auto it = std::find(types.begin(), types.end(), type);
+        return it != types.end() ? static_cast<int>(it - types.begin()) : -1;
     }
 
     inline int Particle::getIntPropertyIndex(IntPropertyType type) const {
-        auto it = properties_.intPropertyTypeIndices.find(type);
-        if (it != properties_.intPropertyTypeIndices.end()) {
-            return it->second;
-        } else {
-            return -1; // Not found
-        }
+        const auto & types = properties_.intPropertyTypes;
+        auto it = std::find(types.begin(), types.end(), type);
+        return it != types.end() ? static_cast<int>(it - types.begin()) : -1;
     }
 
     inline std::int32_t Particle::getIntProperty(IntPropertyType type) const {
@@ -772,7 +746,6 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.boolProperties.push_back(value);
                 properties_.boolPropertyTypes.push_back(type);
-                properties_.boolPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.boolProperties.size() - 1);
             } else {
                 properties_.boolProperties[index] = value;
             }
@@ -788,7 +761,6 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.floatProperties.push_back(value);
                 properties_.floatPropertyTypes.push_back(type);
-                properties_.floatPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.floatProperties.size() - 1);
             } else {
                 properties_.floatProperties[index] = value;
             }
@@ -804,7 +776,6 @@ namespace ParticleZoo {
             if (index == -1) {
                 properties_.intProperties.push_back(value);
                 properties_.intPropertyTypes.push_back(type);
-                properties_.intPropertyTypeIndices[type] = static_cast<unsigned int>(properties_.intProperties.size() - 1);
             } else {
                 properties_.intProperties[index] = value;
             }
