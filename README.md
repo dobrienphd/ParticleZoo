@@ -419,7 +419,7 @@ PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 # Custom plane and energy weighting, particles are not relocated, only particles located at
 # Y = 5 cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
 # with the --tolerance parameter)
-PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
+PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --score energy simulation.IAEAphsp dose_profile.bmp
 
 # Score different quantities (count, energy, xDir, yDir, zDir)
 PHSPImage --score energy input.phsp energy_fluence.tiff
@@ -720,7 +720,7 @@ pz.split("combined.IAEAphsp", 4)
 
 # Generate a 2D fluence image (TIFF or BMP)
 img = pz.GenerateImageOptions()
-img.energy_weighted = True
+img.score = pz.ImageQuantityType.ENERGY
 img.square = 20.0 * pz.cm
 img.image_width = 2048
 img.image_height = 2048

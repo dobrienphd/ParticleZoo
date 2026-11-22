@@ -70,7 +70,7 @@ from ._pz import (
     # Units - Mass
     ug, mg, kg, lb,
     # Units - Time
-    minute, hour, day, year,
+    ms, us, ns, ps, minute, hour, day, week, year,
     # Units - Frequency
     Hz, kHz, MHz, GHz, THz,
     # Units - Force
@@ -152,7 +152,7 @@ __all__ = [
     "km3", "m3", "cm3", "mm3", "um3", "nm3", "angstrom3", "in3", "ft3", "L", "mL", "uL",
     "eV", "keV", "GeV", "TeV", "J",
     "ug", "mg", "kg", "lb",
-    "minute", "hour", "day", "year",
+    "ms", "us", "ns", "ps", "minute", "hour", "day", "week", "year",
     "Hz", "kHz", "MHz", "GHz", "THz",
     "N", "dyn", "lbf",
     "Pa", "kPa", "MPa", "GPa", "atm", "bar", "mbar", "torr", "mmHg", "psi", "baryn",

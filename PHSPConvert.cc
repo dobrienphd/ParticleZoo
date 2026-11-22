@@ -85,7 +85,7 @@ namespace {
         "  PHSPConvert --inputFormat TOPAS --outputFormat IAEA input.phsp output.IAEAphsp\n"
         "  PHSPConvert --formats";
 
-    const CLICommand MAX_PARTICLES_COMMAND      = CLICommand(NONE, "", "maxParticles",      "Maximum number of particles to process (default: unlimited)",                             { CLI_UINT });
+    const CLICommand MAX_PARTICLES_COMMAND      = CLICommand(NONE, "", "maxParticles",      "Maximum number of particles to process (default: unlimited)",                             { CLI_UINT64 });
     const CLICommand INPUT_FORMAT_COMMAND       = CLICommand(NONE, "", "inputFormat",       "Force input file format (default: auto-detect from extension)",                          { CLI_STRING });
     const CLICommand OUTPUT_FORMAT_COMMAND      = CLICommand(NONE, "", "outputFormat",      "Force output file format (default: auto-detect from extension)",                         { CLI_STRING });
     const CLICommand PROJECT_TO_X_COMMAND       = CLICommand(NONE, "", "projectToX",       "Project particles along their direction to this X position in cm",                       { CLI_FLOAT });
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
     ConvertOptions options;
     options.formatOptions = userOptions;
     if (userOptions.contains(MAX_PARTICLES_COMMAND))
-        options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));
+        options.maxParticles = userOptions.extractUInt64Option(MAX_PARTICLES_COMMAND);
     options.inputFormat       = userOptions.extractStringOption(INPUT_FORMAT_COMMAND);
     options.outputFormat      = userOptions.extractStringOption(OUTPUT_FORMAT_COMMAND);
     options.preserveConstants = userOptions.extractBoolOption(PRESERVE_CONSTANTS_COMMAND, options.preserveConstants);

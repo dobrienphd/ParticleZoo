@@ -19,7 +19,7 @@ namespace ParticleZoo {
  * particlezoo/utilities/units.h (e.g. @c 5.0f * cm, @c 1.0f * MeV).
  */
 struct ConvertOptions {
-    uint64_t maxParticles    = std::numeric_limits<uint32_t>::max(); ///< Maximum particles to convert (default: unlimited)
+    uint64_t maxParticles    = std::numeric_limits<uint64_t>::max(); ///< Maximum particles to convert (default: unlimited)
     std::string inputFormat  = "";                                   ///< Force input format; empty = auto-detect
     std::string outputFormat = "";                                   ///< Force output format; empty = auto-detect
     bool preserveConstants   = true;                                 ///< Preserve constant particle-property values from the input file

@@ -1,5 +1,6 @@
 #include "particlezoo/operations/Convert.h"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -182,7 +183,7 @@ void Convert(const std::string& inputFile,
                   << outputFile << " (" << writer->getPHSPFormat() << ")..." << std::endl;
 
         uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t particlesToRead = std::min(static_cast<uint64_t>(options.maxParticles), particlesInFile);
+        uint64_t particlesToRead = std::min(options.maxParticles, particlesInFile);
         uint64_t particlesRejected = 0;
         uint64_t particlesRejectedByProjection = 0;
         bool readPartialFile = particlesToRead < particlesInFile;
@@ -263,18 +264,21 @@ void Convert(const std::string& inputFile,
     try { if (reader) reader->close(); } catch (const std::exception& e) { errorMessages.push_back("Error closing reader: " + std::string(e.what())); }
     try { if (writer) writer->close(); } catch (const std::exception& e) { errorMessages.push_back("Error closing writer: " + std::string(e.what())); }
 
-    for (const auto& warning : warningMessages)
-        std::cerr << "Warning: " << warning << std::endl;
-
     if (!errorMessages.empty()) {
-        for (const auto& error : errorMessages)
-            std::cerr << "Error: " << error << std::endl;
-        throw std::runtime_error(errorMessages[0]);
+        for (const auto& warning : warningMessages)
+            std::cerr << "Warning: " << warning << std::endl;
+        // Nothing has been printed, so report every error in the exception
+        std::string message = errorMessages[0];
+        for (size_t i = 1; i < errorMessages.size(); ++i) message += "\n" + errorMessages[i];
+        throw std::runtime_error(message);
     }
 
     if (options.errorOnWarning && !warningMessages.empty()) {
         throw std::runtime_error("Warnings occurred during conversion (errorOnWarning is set): " + warningMessages[0]);
     }
+
+    for (const auto& warning : warningMessages)
+        std::cerr << "Warning: " << warning << std::endl;
 }
 
 } // namespace ParticleZoo

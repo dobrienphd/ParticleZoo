@@ -53,7 +53,7 @@ struct GenerateImageOptions {
     static constexpr float    DEFAULT_TOLERANCE      = 0.25f * cm; ///< Default perpendicular scoring tolerance
     static constexpr int      DEFAULT_IMAGE_SIDE     = 1024;       ///< Default image width and height in pixels
     static constexpr float    DEFAULT_PLANE_LOCATION = 0.0f * cm;  ///< Default location of the imaging plane
-    static constexpr uint64_t DEFAULT_MAX_PARTICLES  = std::numeric_limits<uint32_t>::max(); ///< Default particle limit (effectively unlimited)
+    static constexpr uint64_t DEFAULT_MAX_PARTICLES  = std::numeric_limits<uint64_t>::max(); ///< Default particle limit (unlimited)
 
     // --- Plane geometry ---
     ImagePlane plane                       = ImagePlane::XY;               ///< Imaging plane orientation
@@ -79,7 +79,6 @@ struct GenerateImageOptions {
     // --- Processing ---
     uint64_t maxParticles = DEFAULT_MAX_PARTICLES; ///< Maximum particles to process (default: unlimited)
     ImageQuantityType score = ImageQuantityType::COUNT;           ///< Quantity to accumulate per pixel
-    bool energyWeighted     = false;                              ///< Convenience flag: sets score to ENERGY
     bool normalizeByParticles = false;                            ///< Normalise by particle count instead of history count
 
     // --- I/O ---

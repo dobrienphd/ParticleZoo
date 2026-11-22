@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <chrono>
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <memory>
@@ -30,7 +31,7 @@ struct InternalImageConfig {
     const std::array<float,4> dimensionLimits; // [min1, max1, min2, max2]
     const std::string         inputFormat;
     const ImageOutputFormat   outputFormat;
-    const uint32_t            maxParticles;
+    const uint64_t            maxParticles;
     const bool                normalizeByParticles;
     const bool                printDetails;
     const ImageProjectionType projectionType;
@@ -54,12 +55,11 @@ struct InternalImageConfig {
           dimensionLimits(computeDimensionLimits(opts)),
           inputFormat(opts.inputFormat),
           outputFormat(opts.outputFormat),
-          maxParticles(static_cast<uint32_t>(std::min(opts.maxParticles,
-                           static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())))),
+          maxParticles(opts.maxParticles),
           normalizeByParticles(opts.normalizeByParticles),
           printDetails(opts.showDetails),
           projectionType(opts.projectTo.has_value() ? ImageProjectionType::PROJECT : opts.projectionType),
-          quantityType(opts.energyWeighted ? ImageQuantityType::ENERGY : opts.score),
+          quantityType(opts.score),
           generationFilter(GenerationFilter::Resolve(opts.primariesOnly, opts.excludePrimaries, opts.generations)),
           tolerance(projectionType == ImageProjectionType::NONE ? opts.tolerance : 0.0f),
           imageWidth(opts.imageWidth),
@@ -72,7 +72,7 @@ struct InternalImageConfig {
         validate();
     }
 
-    void details(const std::string& detectedFormat = "") const {
+    void details(const std::string& detectedFormat) const {
         std::stringstream ss;
         ss << "Parameters:\n";
         ss << "  Image Format: " << (outputFormat == ImageOutputFormat::TIFF ? "TIFF" : "BMP") << "\n";
@@ -82,12 +82,7 @@ struct InternalImageConfig {
         ss << "  Projection Scheme: " << (projectionType == ImageProjectionType::PROJECT ? "Projection"
                                          : projectionType == ImageProjectionType::FLATTEN ? "Flatten"
                                          : "None") << "\n";
-        if (!detectedFormat.empty())
-            ss << "  Input Format: " << detectedFormat << " (auto-detected)\n";
-        else if (!inputFormat.empty())
-            ss << "  Input Format: " << inputFormat << " (forced)\n";
-        else
-            ss << "  Input Format: auto\n";
+        ss << "  Input Format: " << detectedFormat << (inputFormat.empty() ? " (auto-detected)" : " (forced)") << "\n";
         ss << "  Image Width: "  << imageWidth  << " pixels\n";
         ss << "  Image Height: " << imageHeight << " pixels\n";
         ss << "  Dimensions: [" << minDim1()/cm << ", " << maxDim1()/cm << "] cm x ["
@@ -178,11 +173,11 @@ void GenerateImage(const std::string& inputFile,
 
     const InternalImageConfig config(options);
 
-    std::unique_ptr<PhaseSpaceFileReader> reader;
-    reader = FormatRegistry::CreateReader(config.inputFormat, inputFile, options.formatOptions);
-
     std::vector<std::string> errorMessages;
     std::vector<std::string> warningMessages;
+
+    std::unique_ptr<PhaseSpaceFileReader> reader;
+    reader = FormatRegistry::CreateReader(config.inputFormat, inputFile, options.formatOptions);
 
     if (config.printDetails) {
         config.details(reader->getPHSPFormat());
@@ -194,9 +189,7 @@ void GenerateImage(const std::string& inputFile,
                   << outputFile << "..." << std::endl;
 
         uint64_t particlesInFile = reader->getNumberOfParticles();
-        uint64_t particlesToRead = particlesInFile > static_cast<uint64_t>(config.maxParticles)
-                                  ? static_cast<uint64_t>(config.maxParticles)
-                                  : particlesInFile;
+        uint64_t particlesToRead = std::min(config.maxParticles, particlesInFile);
 
         uint64_t onePercentInterval = particlesToRead >= MAX_PERCENTAGE
                                     ? particlesToRead / MAX_PERCENTAGE
@@ -223,6 +216,8 @@ void GenerateImage(const std::string& inputFile,
         } else {
             throw std::runtime_error("Unsupported output format.");
         }
+
+        uint64_t particlesScored = 0;
 
         Progress<uint64_t> progress(particlesToRead);
         progress.Start("Reading particles:");
@@ -325,6 +320,7 @@ void GenerateImage(const std::string& inputFile,
                 float weightPerUnitArea = weight / (pixelArea / cm2);
                 float pixelValue = image->getGrayscaleValue(pixelX, pixelY) + weightPerUnitArea;
                 image->setGrayscaleValue(pixelX, pixelY, pixelValue);
+                particlesScored++;
             }
 
             uint64_t particlesSoFar = reader->getParticlesRead();
@@ -346,6 +342,9 @@ void GenerateImage(const std::string& inputFile,
         image->save(outputFile);
         progress.Complete("Image generation complete. Processed " + std::to_string(historiesRead) + " histories.");
 
+        if (particlesScored == 0)
+            warningMessages.push_back("No particles were scored within the image region. The output image is empty.");
+
         if (config.normalizeByParticles) {
             std::cout << "Image normalized by particles (" << particlesRead << " particles read)." << std::endl;
         } else {
@@ -364,18 +363,21 @@ void GenerateImage(const std::string& inputFile,
 
     std::cout << std::endl;
 
-    for (const auto& warning : warningMessages)
-        std::cerr << "Warning: " << warning << std::endl;
-
     if (!errorMessages.empty()) {
-        for (const auto& error : errorMessages)
-            std::cerr << "Error: " << error << std::endl;
-        throw std::runtime_error(errorMessages[0]);
+        for (const auto& warning : warningMessages)
+            std::cerr << "Warning: " << warning << std::endl;
+        // Nothing has been printed, so report every error in the exception
+        std::string message = errorMessages[0];
+        for (size_t i = 1; i < errorMessages.size(); ++i) message += "\n" + errorMessages[i];
+        throw std::runtime_error(message);
     }
 
-    if (options.errorOnWarning && !warningMessages.empty()) {
+    if (config.errorOnWarning && !warningMessages.empty()) {
         throw std::runtime_error("Warnings occurred during image generation (errorOnWarning is set): " + warningMessages[0]);
     }
+
+    for (const auto& warning : warningMessages)
+        std::cerr << "Warning: " << warning << std::endl;
 }
 
 } // namespace ParticleZoo

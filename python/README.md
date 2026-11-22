@@ -77,8 +77,16 @@ reader.close()
 
 The operations that power the ParticleZoo command-line tools (`PHSPConvert`, `PHSPCombine`, `PHSPSplit`, `PHSPImage`) are exposed as single function calls. Each takes an optional options object whose attributes mirror the corresponding command-line flags. All physical quantities use ParticleZoo's internal unit system: multiply by the module's unit constants (`pz.cm`, `pz.MeV`, ...) when setting values. Optional attributes default to `None` (unset).
 
+Every options object also has a `format_options` attribute holding a `UserOptions` with format-specific reader/writer settings (EGS mode, TOPAS format, IAEA extra values, ...). Set them by command-line name with `set_option()`:
+
+```python
+opts = pz.ConvertOptions()
+opts.format_options.set_option("EGS-particleZ", 100.0)  # EGS files don't store Z; supply it when reading
+pz.convert("input.egsphsp", "output.IAEAphsp", opts)
+```
+
 #### `convert(input_file, output_file, options=ConvertOptions())`
-Convert a phase space file to another format, optionally filtering or projecting particles. `ConvertOptions` attributes include `max_particles`, `input_format`, `output_format`, `preserve_constants`, `project_to_x/y/z`, `photons_only`, `electrons_only`, `filter_by_pdg`, `min_energy`/`max_energy`, `min_x`/`max_x` (and y, z), `min_radius`/`max_radius`, `primaries_only`, `exclude_primaries`, `generations`, and `error_on_warning`.
+Convert a phase space file to another format, optionally filtering or projecting particles. `ConvertOptions` attributes include `max_particles`, `input_format`, `output_format`, `preserve_constants`, `project_to_x/y/z`, `photons_only`, `electrons_only`, `filter_by_pdg`, `min_energy`/`max_energy`, `min_x`/`max_x` (and y, z), `min_radius`/`max_radius`, `primaries_only`, `exclude_primaries`, `generations`, `error_on_warning`, and `format_options`.
 
 ```python
 opts = pz.ConvertOptions()
@@ -88,21 +96,21 @@ pz.convert("input.egsphsp", "photons.IAEAphsp", opts)
 ```
 
 #### `combine(input_files, output_file, options=CombineOptions())`
-Combine multiple phase space files into a single output file, accumulating history counts. `CombineOptions` attributes: `max_particles`, `input_format`, `output_format`, `preserve_constants`.
+Combine multiple phase space files into a single output file, accumulating history counts. `CombineOptions` attributes: `max_particles`, `input_format`, `output_format`, `preserve_constants`, `format_options`.
 
 ```python
 pz.combine(["run1.IAEAphsp", "run2.IAEAphsp"], "combined.IAEAphsp")
 ```
 
 #### `split(input_file, split_number, options=SplitOptions())`
-Split a phase space file into `split_number` roughly equal parts, respecting history boundaries. Output files are named `stem_PartXX.ext`. `SplitOptions` attributes: `input_format`, `output_format`.
+Split a phase space file into `split_number` roughly equal parts, respecting history boundaries. Output files are named `stem_PartXX.ext`. `SplitOptions` attributes: `input_format`, `output_format` (empty = auto-detect from the input file's extension), `format_options`.
 
 ```python
 pz.split("large.IAEAphsp", 4)
 ```
 
 #### `generate_image(input_file, output_file, options=GenerateImageOptions())`
-Generate a 2D fluence image (TIFF or BMP) from a phase space file. `GenerateImageOptions` attributes include `plane`, `plane_location`, `projection_type`, `project_to`, `image_width`/`image_height`, `min_x`/`max_x` (and y, z), `square`, `tolerance`, `max_particles`, `score`, `energy_weighted`, `normalize_by_particles`, `input_format`, `output_format`, generation filters, and EGS LATCH filters. Configure it with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums.
+Generate a 2D fluence image (TIFF or BMP) from a phase space file. `GenerateImageOptions` attributes include `plane`, `plane_location`, `projection_type`, `project_to`, `image_width`/`image_height`, `min_x`/`max_x` (and y, z), `square`, `tolerance`, `max_particles`, `score`, `normalize_by_particles`, `input_format`, `output_format`, generation filters, EGS LATCH filters, `error_on_warning`, and `format_options`. Configure it with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums.
 
 ```python
 img = pz.GenerateImageOptions()
@@ -344,8 +352,9 @@ options = pz.ArgParser.parse_args(
     min_positional_args=1
 )
 
-# Create empty options for manual configuration
+# Or build options programmatically by command-line name (no leading dashes)
 options = pz.UserOptions()
+options.set_option("EGS-mode", "MODE2")
 
 # Pass options to reader/writer
 reader = pz.create_reader("file.phsp", options)
@@ -458,7 +467,7 @@ pz.eV, pz.keV, pz.MeV, pz.GeV, pz.TeV, pz.J
 pz.ug, pz.mg, pz.g, pz.kg, pz.lb
 
 # Time
-pz.s, pz.minute, pz.hour, pz.day, pz.year
+pz.s, pz.ms, pz.us, pz.ns, pz.ps, pz.minute, pz.hour, pz.day, pz.week, pz.year
 
 # Frequency
 pz.Hz, pz.kHz, pz.MHz, pz.GHz, pz.THz

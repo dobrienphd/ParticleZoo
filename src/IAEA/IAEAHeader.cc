@@ -169,13 +169,16 @@ namespace ParticleZoo::IAEAphspFile
 
     void IAEAHeader::setSection(const std::string &sectionName, const std::string &sectionValue)
     {
-        sectionTable_[sectionName] = sectionValue;
+        // Sections backed by member fields must update those fields, otherwise
+        // generateSectionTable() would overwrite the new value on write
+        std::string content = stripWhiteSpace(sectionValue);
+        applySection(sectionName, content);
+        sectionTable_[sectionName] = content;
     }
 
     void IAEAHeader::setSection(SECTION section, const std::string &sectionValue)
     {
-        auto key = sectionToString(section);
-        sectionTable_[std::string{key}] = sectionValue;
+        setSection(std::string{sectionToString(section)}, sectionValue);
     }
 
     float IAEAHeader::getMinWeight(ParticleType particleType) const { 
@@ -253,6 +256,266 @@ namespace ParticleZoo::IAEAphspFile
         throw std::runtime_error("Unknown particle type: " + typeStr);
     }
 
+    void IAEAHeader::applySection(const std::string &sectionTitle, const std::string &content)
+    {
+        SECTION sectionType = getSectionFromString(sectionTitle);
+
+        switch(sectionType)
+        {
+            case SECTION::IAEA_INDEX:
+                IAEAIndex_ = content;
+                break;
+
+            case SECTION::TITLE:
+                title_ = content;
+                break;
+
+            case SECTION::FILE_TYPE:
+                {
+                    int fileTypeValue = (int)getIntValue(content);
+                    switch (fileTypeValue) {
+                        case 0: fileType_ = FileType::PHSP_FILE; break;
+                        case 1: throw std::runtime_error("IAEA Header represents an IAEA phase space generator not an IAEA phase space file. This format is not supported.");
+                        default: throw std::runtime_error("Unknown file type code: " + std::to_string(fileTypeValue));
+                    }
+                }
+                break;
+
+            case SECTION::CHECKSUM:
+                checksum_ = getIntValue(content);
+                break;
+
+            case SECTION::RECORD_CONTENTS:
+                {
+                    std::vector<std::uint64_t> recordContents = getIntArray(content);
+                    if (recordContents.size() < 9) {
+                        throw std::runtime_error("Invalid RECORD_CONTENTS section: it should have at least 9 values.");
+                    }
+                    xIsStored_ = recordContents[0] == 1;
+                    yIsStored_ = recordContents[1] == 1;
+                    zIsStored_ = recordContents[2] == 1;
+                    uIsStored_ = recordContents[3] == 1;
+                    vIsStored_ = recordContents[4] == 1;
+                    wIsStored_ = recordContents[5] == 1;
+                    weightIsStored_ = recordContents[6] == 1;
+
+                    // Sometimes "W is stored ?" is marked as 0 when both U and V are stored.
+                    // It should be marked as 1 in that case as it's value is derived from U
+                    // and V and so it is not recorded explicitly in the header. It is "stored"
+                    // implicitly in the binary data.
+                    if (!wIsStored_ && uIsStored_ && vIsStored_) {
+                        wIsStored_ = true;
+                    }
+
+                    int numberOfExtraFloats = (int)recordContents[7];
+                    int numberOfExtraLongs = (int)recordContents[8];
+                    extraFloatData_.resize(numberOfExtraFloats);
+                    extraLongData_.resize(numberOfExtraLongs);
+                    for (int i = 0; i < numberOfExtraFloats; ++i) {
+                        extraFloatData_[i] = static_cast<EXTRA_FLOAT_TYPE>(recordContents[9 + i]);
+                    }
+                    for (int i = 0; i < numberOfExtraLongs; ++i) {
+                        extraLongData_[i] = static_cast<EXTRA_LONG_TYPE>(recordContents[9 + numberOfExtraFloats + i]);
+                    }
+                }
+                break;
+
+            case SECTION::RECORD_CONSTANT:
+                {
+                    std::size_t expectedConstants = 0;
+                    if (!xIsStored_) expectedConstants++;
+                    if (!yIsStored_) expectedConstants++;
+                    if (!zIsStored_) expectedConstants++;
+                    if (!uIsStored_) expectedConstants++;
+                    if (!vIsStored_) expectedConstants++;
+                    if (!wIsStored_) expectedConstants++;
+                    std::vector<float> recordConstants = getFloatArray(content);
+                    if (recordConstants.size() < expectedConstants) {
+                        throw std::runtime_error("Invalid RECORD_CONSTANT section: it should have at least " + std::to_string(expectedConstants) + " values.");
+                    }
+                    std::size_t index = 0;
+                    if (!xIsStored_) constantX_ = recordConstants[index++];
+                    if (!yIsStored_) constantY_ = recordConstants[index++];
+                    if (!zIsStored_) constantZ_ = recordConstants[index++];
+                    if (!uIsStored_) constantU_ = recordConstants[index++];
+                    if (!vIsStored_) constantV_ = recordConstants[index++];
+                    if (!wIsStored_) constantW_ = recordConstants[index++];
+                    if (!weightIsStored_) { // allow for weight to be missing
+                        if (index >= recordConstants.size()) {
+                            constantWeight_ = 1.f; // Default value if not provided
+                        } else {
+                            constantWeight_ = recordConstants[index];
+                        }
+                    }
+                }
+                break;
+
+            case SECTION::RECORD_LENGTH:
+                {
+                    unsigned int minimumRecordLength = calculateMinimumRecordLength();
+                    std::size_t recordLength = (std::size_t) getIntValue(content);
+                    if (recordLength < minimumRecordLength) {
+                        throw std::runtime_error("Invalid RECORD_LENGTH section: it should be at least " + std::to_string(minimumRecordLength) + " bytes.");
+                    }
+                    recordLength_ = recordLength;
+                    break;
+                }
+
+            case SECTION::BYTE_ORDER:
+                {
+                    int byteOrderCode = (int)getIntValue(content);
+                    switch (byteOrderCode) {
+                        case 1234: byteOrder_ = ByteOrder::LittleEndian; break;
+                        case 4321: byteOrder_ = ByteOrder::BigEndian; break;
+                        case 3412: byteOrder_ = ByteOrder::PDPEndian; break;
+                        default: throw std::runtime_error("Unknown byte order code: " + std::to_string(byteOrderCode));
+                    }
+                    break;
+                }
+
+            case SECTION::ORIGINAL_HISTORIES:
+                originalHistories_ = getIntValue(content);
+                break;
+
+            case SECTION::PARTICLES:
+                numberOfParticles_ = getIntValue(content);
+                break;
+
+            case SECTION::PHOTONS:
+                {
+                    std::uint64_t numberOfPhotons = getIntValue(content);
+                    particleStatsTable_[ParticleType::Photon].count_ = numberOfPhotons;
+                    break;
+                }
+
+            case SECTION::ELECTRONS:
+                {
+                    std::uint64_t numberOfElectrons = getIntValue(content);
+                    particleStatsTable_[ParticleType::Electron].count_ = numberOfElectrons;
+                    break;
+                }
+
+            case SECTION::POSITRONS:
+                {
+                    std::uint64_t numberOfPositrons = getIntValue(content);
+                    particleStatsTable_[ParticleType::Positron].count_ = numberOfPositrons;
+                    break;
+                }
+
+            case SECTION::NEUTRONS:
+                {
+                    std::uint64_t numberOfNeutrons = getIntValue(content);
+                    particleStatsTable_[ParticleType::Neutron].count_ = numberOfNeutrons;
+                    break;
+                }
+                
+            case SECTION::PROTONS:
+                {
+                    std::uint64_t numberOfProtons = getIntValue(content);
+                    particleStatsTable_[ParticleType::Proton].count_ = numberOfProtons;
+                    break;
+                }
+
+            case SECTION::STATISTICAL_INFORMATION_PARTICLES:
+            {
+                std::istringstream iss(content);
+                std::string statsLine;
+                while (std::getline(iss, statsLine))
+                {
+                    // Remove inline comments and trim whitespace.
+                    statsLine = removeInlineComments(statsLine);
+                    statsLine = stripWhiteSpace(statsLine);
+                    if (statsLine.empty())
+                        continue;
+                    // Skip header lines (those not starting with a digit or '-' or '.')
+                    if (!std::isdigit(statsLine.front()) && statsLine.front() != '-' && statsLine.front() != '.')
+                        continue;
+                    
+                    std::istringstream lineStream(statsLine);
+                    // Variables to hold parsed tokens.
+                    float totalWeight, minWeight, maxWeight, meanEnergy, minEnergy, maxEnergy;
+                    std::string particleName;
+                    if (!(lineStream >> totalWeight >> minWeight >> maxWeight >> meanEnergy >> minEnergy >> maxEnergy >> particleName))
+                    {
+                        // If parsing fails for this line, go to the next.
+                        continue;
+                    }
+                    
+                    ParticleType particleType;
+                    particleType = convertParticleTypeFromString(particleName);
+                    
+                    // Update the statistics for this particle type.
+                    auto &stats = particleStatsTable_[particleType];
+                    
+                    // Use the parsed min and max weight and weight sum.
+                    stats.minWeight_ = minWeight;
+                    stats.maxWeight_ = maxWeight;
+                    stats.weightSum_ = totalWeight;
+                    
+                    // Set the energy values.
+                    stats.energySum_ = stats.count_ * static_cast<float>(meanEnergy);
+                    stats.minEnergy_ = minEnergy;
+                    stats.maxEnergy_ = maxEnergy;
+                }
+                break;
+            }
+
+            case SECTION::STATISTICAL_INFORMATION_GEOMETRY:
+            {
+                // Extract all tokens convertible to float.
+                std::istringstream geometryStream(content);
+                std::vector<float> nums;
+                std::string token;
+                while (geometryStream >> token)
+                {
+                    try
+                    {
+                        float value = std::stof(token);
+                        nums.push_back(value);
+                    }
+                    catch (const std::exception&)
+                    {
+                        // Skip non-numeric tokens.
+                        continue;
+                    }
+                }
+                
+                size_t idx = 0;
+                // For axes that are stored, assign the next available pair.
+                if (xIsStored_ && idx + 1 < nums.size())
+                {
+                    minX_ = nums[idx++];
+                    maxX_ = nums[idx++];
+                } else {
+                    minX_ = constantX_;
+                    maxX_ = constantX_;
+                }
+
+                if (yIsStored_ && idx + 1 < nums.size())
+                {
+                    minY_ = nums[idx++];
+                    maxY_ = nums[idx++];
+                } else {
+                    minY_ = constantY_;
+                    maxY_ = constantY_;
+                }
+
+                if (zIsStored_ && idx + 1 < nums.size())
+                {
+                    minZ_ = nums[idx++];
+                    maxZ_ = nums[idx++];
+                } else {
+                    minZ_ = constantZ_;
+                    maxZ_ = constantZ_;
+                }
+                
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     void IAEAHeader::readHeader(std::ifstream & file)
     {
         if (!file.is_open())
@@ -261,266 +524,8 @@ namespace ParticleZoo::IAEAphspFile
         }
 
         auto processSection = [&](const std::string &sectionTitle, const std::stringstream &sectionContent) {
-            SECTION sectionType = getSectionFromString(sectionTitle);
             std::string content = stripWhiteSpace(sectionContent.str());
-            
-            switch(sectionType)
-            {
-                case SECTION::IAEA_INDEX:
-                    IAEAIndex_ = content;
-                    break;
-
-                case SECTION::TITLE:
-                    title_ = content;
-                    break;
-
-                case SECTION::FILE_TYPE:
-                    {
-                        int fileTypeValue = (int)getIntValue(content);
-                        switch (fileTypeValue) {
-                            case 0: fileType_ = FileType::PHSP_FILE; break;
-                            case 1: fileType_ = FileType::PHSP_GENERATOR; break;
-                            default: throw std::runtime_error("Unknown file type code: " + std::to_string(fileTypeValue));
-                        }
-                        if (fileType_ == FileType::PHSP_GENERATOR) {
-                            throw std::runtime_error("IAEA Header represents an IAEA phase space generator not an IAEA phase space file. This format is not supported.");
-                        }
-                    }
-                    break;
-
-                case SECTION::CHECKSUM:
-                    checksum_ = getIntValue(content);
-                    break;
-
-                case SECTION::RECORD_CONTENTS:
-                    {
-                        std::vector<std::uint64_t> recordContents = getIntArray(content);
-                        if (recordContents.size() < 9) {
-                            throw std::runtime_error("Invalid RECORD_CONTENTS section: it should have at least 9 values.");
-                        }
-                        xIsStored_ = recordContents[0] == 1;
-                        yIsStored_ = recordContents[1] == 1;
-                        zIsStored_ = recordContents[2] == 1;
-                        uIsStored_ = recordContents[3] == 1;
-                        vIsStored_ = recordContents[4] == 1;
-                        wIsStored_ = recordContents[5] == 1;
-                        weightIsStored_ = recordContents[6] == 1;
-
-                        // Sometimes "W is stored ?" is marked as 0 when both U and V are stored.
-                        // It should be marked as 1 in that case as it's value is derived from U
-                        // and V and so it is not recorded explicitly in the header. It is "stored"
-                        // implicitly in the binary data.
-                        if (!wIsStored_ && uIsStored_ && vIsStored_) {
-                            wIsStored_ = true;
-                        }
-
-                        int numberOfExtraFloats = (int)recordContents[7];
-                        int numberOfExtraLongs = (int)recordContents[8];
-                        extraFloatData_.resize(numberOfExtraFloats);
-                        extraLongData_.resize(numberOfExtraLongs);
-                        for (int i = 0; i < numberOfExtraFloats; ++i) {
-                            extraFloatData_[i] = static_cast<EXTRA_FLOAT_TYPE>(recordContents[9 + i]);
-                        }
-                        for (int i = 0; i < numberOfExtraLongs; ++i) {
-                            extraLongData_[i] = static_cast<EXTRA_LONG_TYPE>(recordContents[9 + numberOfExtraFloats + i]);
-                        }
-                    }
-                    break;
-
-                case SECTION::RECORD_CONSTANT:
-                    {
-                        std::size_t expectedConstants = 0;
-                        if (!xIsStored_) expectedConstants++;
-                        if (!yIsStored_) expectedConstants++;
-                        if (!zIsStored_) expectedConstants++;
-                        if (!uIsStored_) expectedConstants++;
-                        if (!vIsStored_) expectedConstants++;
-                        if (!wIsStored_) expectedConstants++;
-                        std::vector<float> recordConstants = getFloatArray(content);
-                        if (recordConstants.size() < expectedConstants) {
-                            throw std::runtime_error("Invalid RECORD_CONSTANT section: it should have at least " + std::to_string(expectedConstants) + " values.");
-                        }
-                        std::size_t index = 0;
-                        if (!xIsStored_) constantX_ = recordConstants[index++];
-                        if (!yIsStored_) constantY_ = recordConstants[index++];
-                        if (!zIsStored_) constantZ_ = recordConstants[index++];
-                        if (!uIsStored_) constantU_ = recordConstants[index++];
-                        if (!vIsStored_) constantV_ = recordConstants[index++];
-                        if (!wIsStored_) constantW_ = recordConstants[index++];
-                        if (!weightIsStored_) { // allow for weight to be missing
-                            if (index >= recordConstants.size()) {
-                                constantWeight_ = 1.f; // Default value if not provided
-                            } else {
-                                constantWeight_ = recordConstants[index];
-                            }
-                        }
-                    }
-                    break;
-
-                case SECTION::RECORD_LENGTH:
-                    {
-                        unsigned int minimumRecordLength = calculateMinimumRecordLength();
-                        recordLength_ = (std::size_t) getIntValue(content);
-                        if (recordLength_ < minimumRecordLength) {
-                            throw std::runtime_error("Invalid RECORD_LENGTH section: it should be at least " + std::to_string(minimumRecordLength) + " bytes.");
-                        }
-                        break;
-                    }
-
-                case SECTION::BYTE_ORDER:
-                    {
-                        int byteOrderCode = (int)getIntValue(content);
-                        switch (byteOrderCode) {
-                            case 1234: byteOrder_ = ByteOrder::LittleEndian; break;
-                            case 4321: byteOrder_ = ByteOrder::BigEndian; break;
-                            case 3412: byteOrder_ = ByteOrder::PDPEndian; break;
-                            default: throw std::runtime_error("Unknown byte order code: " + std::to_string(byteOrderCode));
-                        }
-                        break;
-                    }
-
-                case SECTION::ORIGINAL_HISTORIES:
-                    originalHistories_ = getIntValue(content);
-                    break;
-
-                case SECTION::PARTICLES:
-                    numberOfParticles_ = getIntValue(content);
-                    break;
-
-                case SECTION::PHOTONS:
-                    {
-                        std::uint64_t numberOfPhotons = getIntValue(content);
-                        particleStatsTable_[ParticleType::Photon].count_ = numberOfPhotons;
-                        break;
-                    }
-
-                case SECTION::ELECTRONS:
-                    {
-                        std::uint64_t numberOfElectrons = getIntValue(content);
-                        particleStatsTable_[ParticleType::Electron].count_ = numberOfElectrons;
-                        break;
-                    }
-
-                case SECTION::POSITRONS:
-                    {
-                        std::uint64_t numberOfPositrons = getIntValue(content);
-                        particleStatsTable_[ParticleType::Positron].count_ = numberOfPositrons;
-                        break;
-                    }
-
-                case SECTION::NEUTRONS:
-                    {
-                        std::uint64_t numberOfNeutrons = getIntValue(content);
-                        particleStatsTable_[ParticleType::Neutron].count_ = numberOfNeutrons;
-                        break;
-                    }
-                    
-                case SECTION::PROTONS:
-                    {
-                        std::uint64_t numberOfProtons = getIntValue(content);
-                        particleStatsTable_[ParticleType::Proton].count_ = numberOfProtons;
-                        break;
-                    }
-
-                case SECTION::STATISTICAL_INFORMATION_PARTICLES:
-                {
-                    std::istringstream iss(content);
-                    std::string statsLine;
-                    while (std::getline(iss, statsLine))
-                    {
-                        // Remove inline comments and trim whitespace.
-                        statsLine = removeInlineComments(statsLine);
-                        statsLine = stripWhiteSpace(statsLine);
-                        if (statsLine.empty())
-                            continue;
-                        // Skip header lines (those not starting with a digit or '-' or '.')
-                        if (!std::isdigit(statsLine.front()) && statsLine.front() != '-' && statsLine.front() != '.')
-                            continue;
-                        
-                        std::istringstream lineStream(statsLine);
-                        // Variables to hold parsed tokens.
-                        float totalWeight, minWeight, maxWeight, meanEnergy, minEnergy, maxEnergy;
-                        std::string particleName;
-                        if (!(lineStream >> totalWeight >> minWeight >> maxWeight >> meanEnergy >> minEnergy >> maxEnergy >> particleName))
-                        {
-                            // If parsing fails for this line, go to the next.
-                            continue;
-                        }
-                        
-                        ParticleType particleType;
-                        particleType = convertParticleTypeFromString(particleName);
-                        
-                        // Update the statistics for this particle type.
-                        auto &stats = particleStatsTable_[particleType];
-                        
-                        // Use the parsed min and max weight and weight sum.
-                        stats.minWeight_ = minWeight;
-                        stats.maxWeight_ = maxWeight;
-                        stats.weightSum_ = totalWeight;
-                        
-                        // Set the energy values.
-                        stats.energySum_ = stats.count_ * static_cast<float>(meanEnergy);
-                        stats.minEnergy_ = minEnergy;
-                        stats.maxEnergy_ = maxEnergy;
-                    }
-                    break;
-                }
-
-                case SECTION::STATISTICAL_INFORMATION_GEOMETRY:
-                {
-                    // Extract all tokens convertible to float.
-                    std::istringstream geometryStream(content);
-                    std::vector<float> nums;
-                    std::string token;
-                    while (geometryStream >> token)
-                    {
-                        try
-                        {
-                            float value = std::stof(token);
-                            nums.push_back(value);
-                        }
-                        catch (const std::exception&)
-                        {
-                            // Skip non-numeric tokens.
-                            continue;
-                        }
-                    }
-                    
-                    size_t idx = 0;
-                    // For axes that are stored, assign the next available pair.
-                    if (xIsStored_ && idx + 1 < nums.size())
-                    {
-                        minX_ = nums[idx++];
-                        maxX_ = nums[idx++];
-                    } else {
-                        minX_ = constantX_;
-                        maxX_ = constantX_;
-                    }
-
-                    if (yIsStored_ && idx + 1 < nums.size())
-                    {
-                        minY_ = nums[idx++];
-                        maxY_ = nums[idx++];
-                    } else {
-                        minY_ = constantY_;
-                        maxY_ = constantY_;
-                    }
-
-                    if (zIsStored_ && idx + 1 < nums.size())
-                    {
-                        minZ_ = nums[idx++];
-                        maxZ_ = nums[idx++];
-                    } else {
-                        minZ_ = constantZ_;
-                        maxZ_ = constantZ_;
-                    }
-                    
-                    break;
-                }
-                default:
-                    break;
-            }
-
+            applySection(sectionTitle, content);
             sectionTable_.emplace(sectionTitle, content);
         };
 

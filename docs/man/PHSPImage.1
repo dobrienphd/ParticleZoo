@@ -38,6 +38,9 @@ Maximum number of particles to process (default: unlimited).
 .TP
 .B \-\-showDetails
 Show detailed information about the parameters being used.
+.TP
+.B \-\-errorOnWarning
+Treat warnings as errors when determining the exit code.
 .SS Imaging
 .TP
 .BI \-\-plane " XY|XZ|YZ"
@@ -58,9 +61,6 @@ cm (enables projection mode).
 .TP
 .BI \-\-score " count|energy|xDir|yDir|zDir"
 Quantity to score (default: count).
-.TP
-.B \-\-energyWeighted
-Score energy fluence (equivalent to \fB\-\-score\fP energy).
 .TP
 .B \-\-normalizeByParticles
 Normalize by particles instead of histories.
@@ -146,12 +146,14 @@ TOPAS phase space format to write (default: BINARY).
 Write a single pseudo-particle at the end of a TOPAS binary file to account
 for all empty histories, instead of interleaving them throughout the file.
 .SH EXIT STATUS
-Returns 0 on success and non-zero on error.
+Returns 0 on success and non-zero on error. With
+.BR \-\-errorOnWarning ,
+warnings also produce a non-zero exit status.
 .SH EXAMPLES
 .nf
 PHSPImage beam.egsphsp output.tiff
 PHSPImage \-\-plane XZ \-\-square 10 beam.IAEAphsp XZ10x10.tiff
-PHSPImage \-\-energyWeighted \-\-imageWidth 2048 input.phsp hiResEnergyFluence.bmp
+PHSPImage \-\-score energy \-\-imageWidth 2048 input.phsp hiResEnergyFluence.bmp
 PHSPImage \-\-projectTo 100.0 beam.phsp projectedAtIso.tiff
 .fi
 .SH SEE ALSO

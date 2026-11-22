@@ -64,6 +64,23 @@ namespace ParticleZoo {
         }
     }
 
+    /// @brief Finds a registered command by its long or short name.
+    /// @param name The command's long or short name, without leading dashes.
+    /// @return The matching command, or std::nullopt if not found.
+    std::optional<CLICommand> ArgParser::FindCommand(const std::string& name)
+    {
+        RegisterCommands(PhaseSpaceFileReader::getCLICommands());
+        RegisterCommands(PhaseSpaceFileWriter::getCLICommands());
+        FormatRegistry::RegisterStandardFormats();
+
+        for (const auto& cmd : Instance().commands) {
+            if ((!cmd.longName.empty() && cmd.longName == name) || (!cmd.shortName.empty() && cmd.shortName == name)) {
+                return cmd;
+            }
+        }
+        return std::nullopt;
+    }
+
     /// @brief Parses command line arguments based on registered commands.
     /// @param argc Argument count.
     /// @param argv Argument vector.
@@ -131,6 +148,28 @@ namespace ParticleZoo {
                             throw std::out_of_range("Value out of range for unsigned int");
                         }
                         return static_cast<unsigned int>(ulValue);
+                    }
+                case CLI_UINT64:
+                    {
+                        // std::stoull silently wraps negative input, so reject it explicitly
+                        if (value.find('-') != std::string::npos) {
+                            throw std::out_of_range("Value out of range for 64-bit unsigned int");
+                        }
+                        std::size_t consumed = 0;
+                        unsigned long long ullValue = std::stoull(value, &consumed, 0);
+                        if (consumed != value.size()) {
+                            throw std::invalid_argument("Invalid 64-bit unsigned int");
+                        }
+                        return static_cast<std::uint64_t>(ullValue);
+                    }
+                case CLI_INT64:
+                    {
+                        std::size_t consumed = 0;
+                        long long llValue = std::stoll(value, &consumed, 0);
+                        if (consumed != value.size()) {
+                            throw std::invalid_argument("Invalid 64-bit int");
+                        }
+                        return static_cast<std::int64_t>(llValue);
                     }
                 case CLI_INT:
                     return std::stoi(value);
@@ -326,6 +365,8 @@ namespace ParticleZoo {
             switch (type) {
                 case CLI_FLOAT: return "number";
                 case CLI_UINT: return "unsigned integer";
+                case CLI_UINT64: return "unsigned integer";
+                case CLI_INT64: return "integer";
                 case CLI_INT: return "integer";
                 case CLI_STRING: return "text";
                 case CLI_BOOL: return "true/false";

@@ -44,8 +44,50 @@ PYBIND11_MODULE(_pz, m) {
     py::class_<UserOptions>(m, "UserOptions",
         "Container for command-line options parsed by ArgParser. "
         "Stores format-specific and general options for phase space file readers and writers. "
-        "Use ArgParser.parse_args() to create from command-line arguments, then extract_*() methods to retrieve values.")
+        "Use ArgParser.parse_args() to create from command-line arguments, or set_option() to build programmatically.")
         .def(py::init<>(), "Create an empty UserOptions object")
+        .def("set_option",
+             [](UserOptions& self, const std::string& name, py::args values) {
+                 std::optional<CLICommand> cmd = ArgParser::FindCommand(name);
+                 if (!cmd) throw py::value_error("Unknown option: " + name);
+
+                 const auto& types = cmd->argTypes;
+                 if (types.size() == 1 && types[0] == CLI_VALUELESS) {
+                     if (values.size() != 0) throw py::value_error("Option '" + name + "' does not take a value");
+                     self[*cmd] = { true };
+                     return;
+                 }
+                 if (values.size() != types.size()) {
+                     throw py::value_error("Option '" + name + "' expects " + std::to_string(types.size()) +
+                                           " value(s) but " + std::to_string(values.size()) + " were given");
+                 }
+
+                 std::vector<CLIValue> converted;
+                 for (size_t i = 0; i < types.size(); ++i) {
+                     py::handle v = values[i];
+                     const char* expected = "";
+                     try {
+                         switch (types[i]) {
+                             case CLI_FLOAT:  expected = "float"; converted.emplace_back(py::cast<float>(v)); break;
+                             case CLI_INT:    expected = "int";   converted.emplace_back(py::cast<int>(v)); break;
+                             case CLI_UINT:   expected = "non-negative int"; converted.emplace_back(py::cast<unsigned int>(v)); break;
+                             case CLI_UINT64: expected = "non-negative int"; converted.emplace_back(py::cast<std::uint64_t>(v)); break;
+                             case CLI_INT64:  expected = "int";   converted.emplace_back(py::cast<std::int64_t>(v)); break;
+                             case CLI_BOOL:   expected = "bool";  converted.emplace_back(py::cast<bool>(v)); break;
+                             case CLI_STRING: expected = "str";   converted.emplace_back(py::cast<std::string>(v)); break;
+                             default: throw py::value_error("Option '" + name + "' has an unsupported argument type");
+                         }
+                     } catch (const py::cast_error&) {
+                         throw py::type_error("Value " + std::to_string(i + 1) + " for option '" + name +
+                                              "' must be a " + expected);
+                     }
+                 }
+                 self[*cmd] = std::move(converted);
+             },
+             py::arg("name"),
+             "Set a format-specific option by its command-line name without the leading dashes, "
+             "e.g. set_option(\"EGS-mode\", \"MODE2\"). Valueless flags take no values. "
+             "Raises ValueError for unknown options or the wrong number of values.")
         .def("extract_positional", &UserOptions::extractPositional, 
              py::arg("index"),
              "Extract a positional argument by index")
@@ -62,6 +104,16 @@ PYBIND11_MODULE(_pz, m) {
              },
              py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
              "Extract an integer option value from a command")
+        .def("extract_int64_option",
+             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
+                 if (defaultValue.is_none()) {
+                     return self.extractInt64Option(cmd, std::nullopt, index);
+                 } else {
+                     return self.extractInt64Option(cmd, py::cast<std::int64_t>(defaultValue), index);
+                 }
+             },
+             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit integer option value from a command")
         .def("extract_uint_option",
              [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
                  if (defaultValue.is_none()) {
@@ -72,6 +124,16 @@ PYBIND11_MODULE(_pz, m) {
              },
              py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
              "Extract an unsigned integer option value from a command")
+        .def("extract_uint64_option",
+             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
+                 if (defaultValue.is_none()) {
+                     return self.extractUInt64Option(cmd, std::nullopt, index);
+                 } else {
+                     return self.extractUInt64Option(cmd, py::cast<std::uint64_t>(defaultValue), index);
+                 }
+             },
+             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit unsigned integer option value from a command")
         .def("extract_float_option",
              [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
                  if (defaultValue.is_none()) {
@@ -711,7 +773,10 @@ PYBIND11_MODULE(_pz, m) {
         .def_readwrite("output_format", &CombineOptions::outputFormat,
                       "Force output format; empty string = auto-detect from extension")
         .def_readwrite("preserve_constants", &CombineOptions::preserveConstants,
-                      "Preserve constant particle-property values from the input files");
+                      "Preserve constant particle-property values from the input files")
+        .def_readwrite("format_options", &CombineOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
 
     m.def("combine", &Combine,
           py::arg("input_files"), py::arg("output_file"), py::arg("options") = CombineOptions{},
@@ -774,7 +839,10 @@ PYBIND11_MODULE(_pz, m) {
         .def_readwrite("generations", &ConvertOptions::generations,
                       "Keep particles whose generation is in the inclusive range (min, max), or None")
         .def_readwrite("error_on_warning", &ConvertOptions::errorOnWarning,
-                      "Raise an exception for warnings instead of printing them");
+                      "Raise an exception for warnings instead of printing them")
+        .def_readwrite("format_options", &ConvertOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
 
     m.def("convert", &Convert,
           py::arg("input_file"), py::arg("output_file"), py::arg("options") = ConvertOptions{},
@@ -855,8 +923,6 @@ PYBIND11_MODULE(_pz, m) {
                       "Maximum particles to process (default: unlimited)")
         .def_readwrite("score", &GenerateImageOptions::score,
                       "Quantity to accumulate per pixel (default: ImageQuantityType.COUNT)")
-        .def_readwrite("energy_weighted", &GenerateImageOptions::energyWeighted,
-                      "Convenience flag: sets score to ImageQuantityType.ENERGY")
         .def_readwrite("normalize_by_particles", &GenerateImageOptions::normalizeByParticles,
                       "Normalize by particle count instead of history count")
         .def_readwrite("input_format", &GenerateImageOptions::inputFormat,
@@ -876,7 +942,10 @@ PYBIND11_MODULE(_pz, m) {
         .def_readwrite("error_on_warning", &GenerateImageOptions::errorOnWarning,
                       "Raise an exception for warnings instead of printing them")
         .def_readwrite("show_details", &GenerateImageOptions::showDetails,
-                      "Print detailed parameter information before processing");
+                      "Print detailed parameter information before processing")
+        .def_readwrite("format_options", &GenerateImageOptions::formatOptions,
+                      "Format-specific reader options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
 
     m.def("generate_image", &GenerateImage,
           py::arg("input_file"), py::arg("output_file"), py::arg("options") = GenerateImageOptions{},
@@ -893,7 +962,10 @@ PYBIND11_MODULE(_pz, m) {
         .def_readwrite("input_format", &SplitOptions::inputFormat,
                       "Force input format; empty string = auto-detect from extension")
         .def_readwrite("output_format", &SplitOptions::outputFormat,
-                      "Force output format; empty string = same format as input");
+                      "Force output format; empty string = auto-detect from the input file's extension")
+        .def_readwrite("format_options", &SplitOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
 
     m.def("split", &Split,
           py::arg("input_file"), py::arg("split_number"), py::arg("options") = SplitOptions{},
@@ -969,9 +1041,14 @@ PYBIND11_MODULE(_pz, m) {
     m.attr("lb") = lb;
 
     // Time
+    m.attr("ms") = ms;
+    m.attr("us") = us;
+    m.attr("ns") = ns;
+    m.attr("ps") = ps;
     m.attr("minute") = minute;
     m.attr("hour") = hour;
     m.attr("day") = day;
+    m.attr("week") = week;
     m.attr("year") = year;
 
     // Frequency

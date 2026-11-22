@@ -35,7 +35,6 @@
  *   --square <value>          Side length of square region for imaging
  *   --tolerance <value>       Tolerance in the perpendicular direction (default: 0.25 cm)
  *   --maxParticles <N>        Limit the maximum number of particles to process (default: all)
- *   --energyWeighted          Score energy fluence instead of particle fluence
  *   --score <type>            Quantity to score: count, energy, xDir, yDir, zDir
  *   --normalizeByParticles    Normalize by particles instead of histories
  *   --inputFormat <format>    Force input file format (default: auto-detect)
@@ -78,7 +77,7 @@ namespace {
         "Examples:\n"
         "  PHSPImage beam.egsphsp output.tiff\n"
         "  PHSPImage --plane XZ --square 10 beam.IAEAphsp XZ10x10.tiff\n"
-        "  PHSPImage --energyWeighted --imageWidth 2048 input.phsp hiResEnergyFluence.bmp\n"
+        "  PHSPImage --score energy --imageWidth 2048 input.phsp hiResEnergyFluence.bmp\n"
         "  PHSPImage --projectTo 100.0 beam.phsp projectedAtIso.tiff";
 
     const CLICommand INPUT_FORMAT_COMMAND        = CLICommand(NONE, "", "inputFormat",        "Force input file format (default: auto-detect from extension)",                                                                                              { CLI_STRING });
@@ -97,8 +96,7 @@ namespace {
     const CLICommand MAXIMUM_Z_COMMAND           = CLICommand(NONE, "", "maxZ",              "Maximum Z coordinate for imaging region in cm (default: 40.0 cm)",                                                                                           { CLI_FLOAT });
     const CLICommand SQUARE_COMMAND              = CLICommand(NONE, "", "square",             "Side length of square region (centered at 0,0) for imaging in cm (overrides min/max for both dimensions)",                                                   { CLI_FLOAT });
     const CLICommand TOLERANCE_COMMAND           = CLICommand(NONE, "", "tolerance",          "Tolerance in the direction perpendicular to the plane in cm",                                                                                               { CLI_FLOAT },  { GenerateImageOptions::DEFAULT_TOLERANCE / cm });
-    const CLICommand MAX_PARTICLES_COMMAND       = CLICommand(NONE, "", "maxParticles",       "Maximum number of particles to process (default: unlimited)",                                                                                               { CLI_UINT });
-    const CLICommand ENERGY_WEIGHTED_COMMAND     = CLICommand(NONE, "", "energyWeighted",     "Score energy fluence (equivalent to --score energy)",                                                                                                       { CLI_VALUELESS });
+    const CLICommand MAX_PARTICLES_COMMAND       = CLICommand(NONE, "", "maxParticles",       "Maximum number of particles to process (default: unlimited)",                                                                                               { CLI_UINT64 });
     const CLICommand QUANTITY_TYPE_COMMAND       = CLICommand(NONE, "", "score",              "Quantity to score: count, energy, xDir, yDir, zDir",                                                                                                        { CLI_STRING }, { "count" });
     const CLICommand PRIMARIES_ONLY_COMMAND      = CLICommand(NONE, "", "primariesOnly",      "Only process primary particles from the phase space file",                                                                                                   { CLI_VALUELESS });
     const CLICommand EXCLUDE_PRIMARIES_COMMAND   = CLICommand(NONE, "", "excludePrimaries",   "Exclude primary particles from processing",                                                                                                                  { CLI_VALUELESS });
@@ -136,13 +134,13 @@ int main(int argc, char* argv[]) {
         SQUARE_COMMAND,
         TOLERANCE_COMMAND,
         MAX_PARTICLES_COMMAND,
-        ENERGY_WEIGHTED_COMMAND,
         QUANTITY_TYPE_COMMAND,
         PRIMARIES_ONLY_COMMAND,
         EXCLUDE_PRIMARIES_COMMAND,
         GENERATION_FILTER_COMMAND,
         NORMALIZE_BY_PARTICLES_COMMAND,
         SHOW_DETAILS_COMMAND,
+        ERROR_ON_WARNING_COMMAND,
         EGSLATCHFilterCommand
     });
 
@@ -219,10 +217,9 @@ int main(int argc, char* argv[]) {
     options.tolerance = userOptions.extractFloatOption(TOLERANCE_COMMAND, GenerateImageOptions::DEFAULT_TOLERANCE / cm) * cm;
 
     if (userOptions.contains(MAX_PARTICLES_COMMAND))
-        options.maxParticles = static_cast<uint64_t>(userOptions.extractUIntOption(MAX_PARTICLES_COMMAND));
+        options.maxParticles = userOptions.extractUInt64Option(MAX_PARTICLES_COMMAND);
 
-    // Score / energyWeighted
-    options.energyWeighted = userOptions.contains(ENERGY_WEIGHTED_COMMAND);
+    // Score
     if (userOptions.contains(QUANTITY_TYPE_COMMAND)) {
         std::string q = userOptions.extractStringOption(QUANTITY_TYPE_COMMAND);
         if (q == "energy")       options.score = ImageQuantityType::ENERGY;

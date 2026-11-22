@@ -593,15 +593,25 @@ namespace ParticleZoo::IAEAphspFile
 
             /**
              * @brief Set a header section value by name
+             *
+             * Sections backed by header fields (e.g. TITLE, ORIG_HISTORIES, RECORD_CONTENTS)
+             * are parsed into those fields, so the new value is reflected by the getters and
+             * when the header is written. Sections derived from particle data (counts,
+             * checksum, statistics) will be recalculated if particles are subsequently written.
              * @param sectionName Name of the section to set
              * @param sectionValue Content to store in the section
+             * @throws std::runtime_error if the value is invalid for a field-backed section
              */
             void                setSection(const std::string &sectionName, const std::string &sectionValue);
 
             /**
              * @brief Set a header section value using the explicit enum type
+             *
+             * See setSection(const std::string&, const std::string&) for how field-backed
+             * sections are handled.
              * @param section Section identifier to set
              * @param sectionValue Content to store in the section
+             * @throws std::runtime_error if the value is invalid for a field-backed section
              */
             void                setSection(SECTION section, const std::string &sectionValue);
 
@@ -754,6 +764,7 @@ namespace ParticleZoo::IAEAphspFile
 
             SectionTable        sectionTable_;
 
+            void                applySection(const std::string &sectionTitle, const std::string &content);
             void                readHeader(std::ifstream & file);
             void                generateSectionTable();
             unsigned int        calculateMinimumRecordLength() const;
