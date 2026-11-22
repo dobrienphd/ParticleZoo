@@ -725,7 +725,15 @@ namespace ParticleZoo {
     }
 
     inline void Particle::reserveBoolProperties(unsigned int size) {
+        // GCC reports a false-positive -Wstringop-overflow inside std::vector<bool>::reserve when inlined
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
         properties_.boolProperties.reserve(size);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
         properties_.boolPropertyTypes.reserve(size);
     }
 

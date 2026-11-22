@@ -90,7 +90,8 @@ if "%NO_ROOT%"=="1" (
         REM Get ROOT compile flags and filter out -std: flag
         for /f "delims=" %%i in ('root-config --cflags') do set "ROOT_CFLAGS_RAW=%%i"
         
-        REM Remove any -std:c++XX and /wd flags from ROOT_CFLAGS
+        REM Remove any -std:c++XX, /wd and -O (optimization) flags from ROOT_CFLAGS;
+        REM the optimization level is set by the build type below
         set "ROOT_CFLAGS="
         for %%f in (!ROOT_CFLAGS_RAW!) do (
             set "flag=%%f"
@@ -98,7 +99,10 @@ if "%NO_ROOT%"=="1" (
             if !ERRORLEVEL! NEQ 0 (
                 echo !flag! | findstr /B /C:"-wd" >nul
                 if !ERRORLEVEL! NEQ 0 (
-                    set "ROOT_CFLAGS=!ROOT_CFLAGS! %%f"
+                    echo !flag! | findstr /B /C:"-O" >nul
+                    if !ERRORLEVEL! NEQ 0 (
+                        set "ROOT_CFLAGS=!ROOT_CFLAGS! %%f"
+                    )
                 )
             )
         )
