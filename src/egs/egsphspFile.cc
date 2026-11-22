@@ -129,6 +129,9 @@ namespace ParticleZoo::EGSphspFile
         energy *= MeV; // Convert to internal units
 
         Particle particle(type, energy, x, y, z, u, v, w, isNewHistory, weight);
+        // Reserve space for the properties set from the LATCH to avoid reallocations
+        particle.reserveIntProperties(2);
+        particle.reserveBoolProperties(2);
         ApplyLATCHToParticle(particle, LATCH, latchOption_);
 
         if (mode_ == EGSMODE::MODE2) {
