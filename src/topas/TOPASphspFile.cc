@@ -48,8 +48,7 @@ namespace ParticleZoo::TOPASphspFile
       header_(std::move(formatAndHeader.second)),
       formatType_(header_.getTOPASFormat()),
       particleRecordLength_(header_.getRecordLength()),
-      readFullDetails_(true),
-      emptyHistoriesCount_(0)
+      readFullDetails_(true)
     {}
     
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() { return {}; }

@@ -553,6 +553,8 @@ namespace ParticleZoo
             void                  readNextBlock();
             void                  bufferNextASCIILine();
             Particle              readBinaryRecord(std::span<const byte> record);
+            std::span<const byte> nextBinaryRecord(std::size_t recordsAhead, bool consume);
+            void                  foldEmptyHistories(Particle & particle, bool consume);
 
             const std::string phspFormat_;
             const std::string fileName_;

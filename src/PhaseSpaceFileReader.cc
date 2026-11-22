@@ -266,6 +266,41 @@ namespace ParticleZoo
         return readBinaryParticle(*particleBuffer);
     }
 
+    std::span<const byte> PhaseSpaceFileReader::nextBinaryRecord(std::size_t recordsAhead, bool consume) {
+        // Make sure the buffer holds the requested record, reading the next block if necessary
+        std::size_t bytesNeeded = (recordsAhead + 1) * particleRecordLength_;
+        if (buffer_.remainingToRead() < bytesNeeded) {
+            if (bytesInFile_ - bytesRead_ + buffer_.remainingToRead() < bytesNeeded) {
+                throw std::runtime_error("No more particles to read.");
+            }
+            readNextBlock();
+        }
+        if (consume) return buffer_.readBytes(particleRecordLength_);
+        return buffer_.peekBytes(bytesNeeded).subspan(recordsAhead * particleRecordLength_);
+    }
+
+    void PhaseSpaceFileReader::foldEmptyHistories(Particle & particle, bool consume) {
+        // A pseudoparticle record only carries a count of empty histories (e.g. in TOPAS files),
+        // so fold those histories into the next real particle
+        std::size_t recordsAhead = 0;
+        std::uint64_t emptyHistories = 0;
+        while (particle.getType() == ParticleType::PseudoParticle) {
+            emptyHistories += particle.getIncrementalHistories();
+            if (consume) {
+                particlesRead_++;
+                metaparticlesRead_++;
+            } else {
+                recordsAhead++;
+            }
+            particle = readBinaryRecord(nextBinaryRecord(recordsAhead, consume));
+        }
+
+        if (emptyHistories > 0) {
+            std::uint64_t ownHistories = std::max<std::uint32_t>(1, particle.getIncrementalHistories());
+            particle.setIncrementalHistories(static_cast<std::uint32_t>(emptyHistories + ownHistories));
+        }
+    }
+
     Particle PhaseSpaceFileReader::getNextParticle(bool countParticleInStatistics) {
         if (!hasMoreParticles()) {
             throw std::runtime_error("No more particles to read.");
@@ -281,7 +316,11 @@ namespace ParticleZoo
                         }
 
                         // Read the next particle record in the buffer
-                        return readBinaryRecord(buffer_.readBytes(particleRecordLength_));
+                        Particle nextParticle = readBinaryRecord(buffer_.readBytes(particleRecordLength_));
+                        if (nextParticle.getType() == ParticleType::PseudoParticle) [[unlikely]] {
+                            foldEmptyHistories(nextParticle, true);
+                        }
+                        return nextParticle;
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format
@@ -347,7 +386,11 @@ namespace ParticleZoo
                         }
 
                         // Read the next particle record in the buffer without advancing the read position
-                        return readBinaryRecord(buffer_.peekBytes(particleRecordLength_));
+                        Particle nextParticle = readBinaryRecord(buffer_.peekBytes(particleRecordLength_));
+                        if (nextParticle.getType() == ParticleType::PseudoParticle) [[unlikely]] {
+                            foldEmptyHistories(nextParticle, false);
+                        }
+                        return nextParticle;
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format
