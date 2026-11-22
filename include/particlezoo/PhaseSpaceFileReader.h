@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <vector>
 
 #include "particlezoo/utilities/argParse.h"
@@ -551,6 +552,7 @@ namespace ParticleZoo
         private:
             void                  readNextBlock();
             void                  bufferNextASCIILine();
+            Particle              readBinaryRecord(std::span<const byte> record);
 
             const std::string phspFormat_;
             const std::string fileName_;
@@ -572,6 +574,8 @@ namespace ParticleZoo
             std::size_t particleRecordLength_;
             bool isFirstParticle_;
             ByteBuffer buffer_;
+            std::unique_ptr<ByteBuffer> particleBuffer_;
+            int readParticleDepth_; // to track nested calls to readBinaryParticle
 
             FixedValues fixedValues_;
     };
@@ -603,7 +607,10 @@ namespace ParticleZoo
     inline std::uint64_t PhaseSpaceFileReader::getFileSize() const { return bytesInFile_; }
     inline const std::string PhaseSpaceFileReader::getFileName() const { return fileName_; }
     inline std::size_t PhaseSpaceFileReader::getParticleRecordStartOffset() const { return 0; }
-    inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) { buffer_.setByteOrder(byteOrder); }
+    inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) {
+        buffer_.setByteOrder(byteOrder);
+        if (particleBuffer_) particleBuffer_->setByteOrder(byteOrder);
+    }
     inline const UserOptions& PhaseSpaceFileReader::getUserOptions() const { return userOptions_; }
 
     inline bool PhaseSpaceFileReader::isXConstant() const { return fixedValues_.xIsConstant; }

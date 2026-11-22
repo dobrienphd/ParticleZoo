@@ -46,6 +46,7 @@ namespace ParticleZoo
         particleRecordLength_(0),
         isFirstParticle_(true),
         buffer_(BUFFER_SIZE),
+        readParticleDepth_(0),
         fixedValues_(fixedValues)
     {
         if (formatType != FormatType::NONE) {
@@ -243,6 +244,28 @@ namespace ParticleZoo
         }
     }
 
+    Particle PhaseSpaceFileReader::readBinaryRecord(std::span<const byte> record) {
+        // Decrement the depth however readBinaryParticle exits
+        struct DepthGuard { int & depth; ~DepthGuard() { depth--; } } depthGuard{++readParticleDepth_};
+
+        ByteBuffer * particleBuffer;
+        std::unique_ptr<ByteBuffer> temporaryParticleBuffer;
+        if (readParticleDepth_ == 1) {
+            // avoid creating a new particle buffer for every record
+            if (!particleBuffer_ || particleBuffer_->capacity() < record.size()) {
+                particleBuffer_ = std::make_unique<ByteBuffer>(record.size(), buffer_.getByteOrder());
+            }
+            particleBuffer = particleBuffer_.get();
+        } else {
+            // a nested read (e.g. readBinaryParticle reading ahead) must not overwrite the outer record
+            temporaryParticleBuffer = std::make_unique<ByteBuffer>(record.size(), buffer_.getByteOrder());
+            particleBuffer = temporaryParticleBuffer.get();
+        }
+
+        particleBuffer->setData(record);
+        return readBinaryParticle(*particleBuffer);
+    }
+
     Particle PhaseSpaceFileReader::getNextParticle(bool countParticleInStatistics) {
         if (!hasMoreParticles()) {
             throw std::runtime_error("No more particles to read.");
@@ -257,12 +280,8 @@ namespace ParticleZoo
                             readNextBlock();
                         }
 
-                        // Get a view of the next particle record in the buffer
-                        std::span<const ParticleZoo::byte> recordView = buffer_.readBytes(particleRecordLength_);
-                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
-                        
-                        // Read the next particle from the buffer
-                        return readBinaryParticle(particleData);
+                        // Read the next particle record in the buffer
+                        return readBinaryRecord(buffer_.readBytes(particleRecordLength_));
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format
@@ -327,12 +346,8 @@ namespace ParticleZoo
                             readNextBlock();
                         }
 
-                        // Get a view of the next particle record in the buffer without advancing the read position
-                        std::span<const ParticleZoo::byte> recordView = buffer_.peekBytes(particleRecordLength_);
-                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
-                        
-                        // Read the next particle from the buffer
-                        return readBinaryParticle(particleData);
+                        // Read the next particle record in the buffer without advancing the read position
+                        return readBinaryRecord(buffer_.peekBytes(particleRecordLength_));
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format
