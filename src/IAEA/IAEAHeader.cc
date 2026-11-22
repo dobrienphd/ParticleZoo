@@ -169,8 +169,37 @@ namespace ParticleZoo::IAEAphspFile
 
     void IAEAHeader::setSection(const std::string &sectionName, const std::string &sectionValue)
     {
-        // Sections backed by member fields must update those fields, otherwise
-        // generateSectionTable() would overwrite the new value on write
+        // Only descriptive text sections may be set. Record layout, history and particle
+        // counts, checksum and statistics are derived from the header configuration and
+        // the particles written, and must stay consistent with the binary data
+        switch (getSectionFromString(sectionName)) {
+            case SECTION::IAEA_INDEX:
+            case SECTION::TITLE:
+            case SECTION::TRANSPORT_PARAMETERS:
+            case SECTION::MACHINE_TYPE:
+            case SECTION::MONTE_CARLO_CODE_VERSION:
+            case SECTION::GLOBAL_PHOTON_ENERGY_CUTOFF:
+            case SECTION::GLOBAL_PARTICLE_ENERGY_CUTOFF:
+            case SECTION::COORDINATE_SYSTEM_DESCRIPTION:
+            case SECTION::BEAM_NAME:
+            case SECTION::FIELD_SIZE:
+            case SECTION::NOMINAL_SSD:
+            case SECTION::MC_INPUT_FILENAME:
+            case SECTION::VARIANCE_REDUCTION_TECHNIQUES:
+            case SECTION::INITIAL_SOURCE_DESCRIPTION:
+            case SECTION::PUBLISHED_REFERENCE:
+            case SECTION::AUTHORS:
+            case SECTION::INSTITUTION:
+            case SECTION::LINK_VALIDATION:
+            case SECTION::ADDITIONAL_NOTES:
+            case SECTION::CUSTOM_SECTION:
+                break;
+            default:
+                throw std::runtime_error("The " + sectionName + " section cannot be set directly; it is derived from the header configuration and particle data.");
+        }
+
+        // IAEA_INDEX and TITLE are backed by member fields which must also be updated,
+        // otherwise generateSectionTable() would overwrite the new value on write
         std::string content = stripWhiteSpace(sectionValue);
         applySection(sectionName, content);
         sectionTable_[sectionName] = content;
@@ -290,6 +319,10 @@ namespace ParticleZoo::IAEAphspFile
                     std::vector<std::uint64_t> recordContents = getIntArray(content);
                     if (recordContents.size() < 9) {
                         throw std::runtime_error("Invalid RECORD_CONTENTS section: it should have at least 9 values.");
+                    }
+                    std::size_t expectedValues = 9 + recordContents[7] + recordContents[8];
+                    if (recordContents.size() < expectedValues) {
+                        throw std::runtime_error("Invalid RECORD_CONTENTS section: it should have " + std::to_string(expectedValues) + " values to describe " + std::to_string(recordContents[7]) + " extra floats and " + std::to_string(recordContents[8]) + " extra longs.");
                     }
                     xIsStored_ = recordContents[0] == 1;
                     yIsStored_ = recordContents[1] == 1;

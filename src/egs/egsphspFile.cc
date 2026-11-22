@@ -112,7 +112,10 @@ namespace ParticleZoo::EGSphspFile
         if (isNewHistory) { energy = -energy; }
 
         // Charge is encoded in bit 30 (negative) and bit 29 (positive), 0-based.
-        // Bit 30 takes precedence over bit 29 if both are set
+        // Both bits being set is invalid
+        if ((LATCH & LATCH_NEGATIVE_CHARGE_BIT) && (LATCH & LATCH_POSITIVE_CHARGE_BIT)) {
+            throw std::runtime_error("Invalid particle charge bits.");
+        }
         ParticleType type;
         if (LATCH & LATCH_NEGATIVE_CHARGE_BIT) { // Negative particle
             type = ParticleType::Electron;

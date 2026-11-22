@@ -594,24 +594,24 @@ namespace ParticleZoo::IAEAphspFile
             /**
              * @brief Set a header section value by name
              *
-             * Sections backed by header fields (e.g. TITLE, ORIG_HISTORIES, RECORD_CONTENTS)
-             * are parsed into those fields, so the new value is reflected by the getters and
-             * when the header is written. Sections derived from particle data (counts,
-             * checksum, statistics) will be recalculated if particles are subsequently written.
+             * Only descriptive text sections can be set: IAEA_INDEX, TITLE, the descriptive
+             * metadata sections (TRANSPORT_PARAMETERS through ADDITIONAL_NOTES) and custom
+             * sections. Record layout, history and particle counts, checksum and statistics
+             * are derived from the header configuration and particle data and cannot be set.
              * @param sectionName Name of the section to set
              * @param sectionValue Content to store in the section
-             * @throws std::runtime_error if the value is invalid for a field-backed section
+             * @throws std::runtime_error if the section cannot be set directly
              */
             void                setSection(const std::string &sectionName, const std::string &sectionValue);
 
             /**
              * @brief Set a header section value using the explicit enum type
              *
-             * See setSection(const std::string&, const std::string&) for how field-backed
-             * sections are handled.
+             * See setSection(const std::string&, const std::string&) for which sections
+             * can be set.
              * @param section Section identifier to set
              * @param sectionValue Content to store in the section
-             * @throws std::runtime_error if the value is invalid for a field-backed section
+             * @throws std::runtime_error if the section cannot be set directly
              */
             void                setSection(SECTION section, const std::string &sectionValue);
 

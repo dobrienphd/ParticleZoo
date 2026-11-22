@@ -237,15 +237,17 @@ void Convert(const std::string& inputFile,
                 warningMessages.push_back("The number of particles written (" + std::to_string(particlesWritten) + ") does not match the number of particles expected (" + std::to_string(particlesExpected) + "). The output file will reflect the number of particles actually written.");
             }
 
-            uint64_t historiesInOriginalFile = readPartialFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
-            uint64_t historiesWritten = writer->getHistoriesWritten();
-            if (historiesWritten < historiesInOriginalFile) {
-                writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
-            } else if (historiesWritten > historiesInOriginalFile) {
-                warningMessages.push_back("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
-            }
-
             progress.Complete("Conversion complete.");
+        }
+
+        // Reconcile histories even when no particles were read, since a file with
+        // no particles can still represent histories that must be counted
+        uint64_t historiesInOriginalFile = readPartialFile ? reader->getHistoriesRead() : reader->getNumberOfOriginalHistories();
+        uint64_t historiesWritten = writer->getHistoriesWritten();
+        if (historiesWritten < historiesInOriginalFile) {
+            writer->addAdditionalHistories(historiesInOriginalFile - historiesWritten);
+        } else if (historiesWritten > historiesInOriginalFile) {
+            warningMessages.push_back("The number of histories written (" + std::to_string(historiesWritten) + ") exceeds the number of histories in the original file's metadata (" + std::to_string(historiesInOriginalFile) + "). The metadata may be incorrect. The output file will reflect the number of histories actually written.");
         }
 
         auto endTime = std::chrono::steady_clock::now();

@@ -273,6 +273,9 @@ reader.move_to_particle(1000000)  # Jump to particle at index 1,000,000
 print(f"Particles read: {reader.get_particles_read()}")
 print(f"Histories read: {reader.get_histories_read()}")
 
+# Format-specific header metadata (empty dict if the format provides none)
+metadata = reader.get_metadata()
+
 reader.close()
 ```
 
@@ -296,6 +299,15 @@ print(f"Histories written: {writer.get_histories_written()}")
 print(f"Max supported: {writer.get_maximum_supported_particles()}")
 
 writer.close()  # Flushes buffers and finalizes file
+```
+
+For IAEA output the factories return an `IAEAPhaseSpaceFileWriter`, which can also set descriptive text sections of the header. Sections derived from the header configuration or particle data (e.g. `RECORD_CONTENTS`, `ORIG_HISTORIES`, `PARTICLES`, `CHECKSUM`) cannot be set and raise `RuntimeError`.
+
+```python
+writer = pz.create_writer("output.IAEAphsp")
+writer.set_section("TITLE", "6 MV photon beam")
+writer.set_section("AUTHORS", "Jane Doe")
+writer.set_section("MY_CUSTOM_SECTION", "Any extra text")  # custom sections are allowed
 ```
 
 ### FixedValues Class

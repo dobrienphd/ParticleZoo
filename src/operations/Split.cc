@@ -81,9 +81,7 @@ void Split(const std::string& inputFile,
 
     try {
         for (filesSplit = 0; filesSplit < splitNumber; filesSplit++) {
-            bool isNewHistory = false;
-            bool belowLimit   = true;
-            bool isLastFile   = (filesSplit == splitNumber - 1);
+            bool isLastFile = (filesSplit == splitNumber - 1);
 
             Progress<uint64_t> progress(particlesPerSplit);
             progress.Start(outputFilePath);
@@ -91,19 +89,17 @@ void Split(const std::string& inputFile,
             Particle particle;
             bool hasBufferedParticle = false;
 
-            for (uint64_t j = particlesWrittenAtStartOfSplit;
-                 reader->hasMoreParticles() && (belowLimit || !isNewHistory || isLastFile);
-                 j++) {
-                particle    = reader->getNextParticle();
-                isNewHistory = particle.isNewHistory();
+            for (uint64_t j = particlesWrittenAtStartOfSplit; reader->hasMoreParticles(); j++) {
+                particle = reader->getNextParticle();
 
-                if (belowLimit || !isNewHistory || isLastFile) {
-                    writer->writeParticle(particle);
-                } else {
+                // Once the limit is reached, stop at the first particle of the next history
+                // and carry it over to the next file so that no history spans two files
+                if (!isLastFile && j >= particlesPerSplit && particle.isNewHistory()) {
                     hasBufferedParticle = true;
+                    break;
                 }
 
-                belowLimit = (j + 1 < particlesPerSplit);
+                writer->writeParticle(particle);
 
                 if (j % onePercentInterval == 0) {
                     progress.Update(j, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");

@@ -5,6 +5,7 @@
 #include "particlezoo/PDGParticleCodes.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
+#include "particlezoo/IAEA/IAEAphspFile.h"
 #include "particlezoo/utilities/formats.h"
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/units.h"
@@ -244,10 +245,10 @@ PYBIND11_MODULE(_pz, m) {
                "EGS-specific YLAST variable, for photons it is the Y position of the last interaction, for electrons/positrons it is the Y position it (or its ancestor) was created at by a photon")
         .value("ZLAST", FloatPropertyType::ZLAST,
                "EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or its ancestor) was created at by a photon")
-        .value("TIME", FloatPropertyType::TIME,
-               "Particle time at the particle position, stored in internal time units")
         .value("CUSTOM", FloatPropertyType::CUSTOM,
-               "Custom float property type, can be used for any user-defined purpose");
+               "Custom float property type, can be used for any user-defined purpose")
+        .value("TIME", FloatPropertyType::TIME,
+               "Particle time at the particle position, stored in internal time units");
 
     py::enum_<BoolPropertyType>(m, "BoolPropertyType",
         "Enumeration of boolean property types for particles. "
@@ -476,6 +477,9 @@ PYBIND11_MODULE(_pz, m) {
              "Get the constant Z directional cosine value (when is_pz_constant returns True).")
         .def("get_constant_weight", &PhaseSpaceFileReader::getConstantWeight,
              "Get the constant statistical weight value (when is_weight_constant returns True).")
+        .def("get_metadata", &PhaseSpaceFileReader::getMetadata,
+             "Get format-specific metadata from the file header as a dict of key-value strings. "
+             "Returns an empty dict if the format provides no metadata.")
         .def("close", &PhaseSpaceFileReader::close,
              "Close the phase space file and release associated resources.")
         .def("__iter__", [](PhaseSpaceFileReader &self) -> PhaseSpaceFileReader& { return self; }, py::return_value_policy::reference_internal,
@@ -507,6 +511,16 @@ PYBIND11_MODULE(_pz, m) {
              "Get the phase space file format identifier (e.g., 'IAEA', 'EGS', 'TOPAS').")
         .def("close", &PhaseSpaceFileWriter::close,
              "Close the phase space file, flush buffered data, and finalize writing.");
+
+    // IAEA writer (returned by the writer factories for IAEA output)
+    py::class_<IAEAphspFile::Writer, PhaseSpaceFileWriter, std::unique_ptr<IAEAphspFile::Writer>>(m, "IAEAPhaseSpaceFileWriter",
+        "Writer for IAEA phase space files. Returned by create_writer() and create_writer_for_format() for IAEA output.")
+        .def("set_section", [](IAEAphspFile::Writer &self, const std::string &sectionName, const std::string &sectionValue) {
+            self.getHeader().setSection(sectionName, sectionValue);
+        }, py::arg("section_name"), py::arg("section_value"),
+             "Set a descriptive text section of the IAEA header (e.g. 'TITLE', 'AUTHORS', 'BEAM_NAME', or a custom section name). "
+             "Raises RuntimeError for sections derived from the header configuration or particle data, such as "
+             "RECORD_CONTENTS, ORIG_HISTORIES, PARTICLES, CHECKSUM and the statistics sections.");
 
     // SupportedFormat struct
     py::class_<SupportedFormat>(m, "SupportedFormat",

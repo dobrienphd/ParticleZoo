@@ -62,8 +62,13 @@ void Combine(const std::vector<std::string>& inputFiles,
                                          ? options.maxParticles - particlesSoFar
                                          : particlesInFile;
 
+                // The loop stops once maxParticles is reached, so this only occurs for empty files,
+                // which can still represent histories that must be counted
                 if (particlesToRead == 0) {
-                    std::cout << "\rWARNING: " << inputFile << " has no particles to read... skipped." << std::endl;
+                    uint64_t historiesInFile = reader->getNumberOfOriginalHistories();
+                    writer->addAdditionalHistories(historiesInFile);
+                    std::cout << "\rWARNING: " << inputFile << " has no particles; its " << historiesInFile << " histories were still counted." << std::endl;
+                    reader->close();
                     continue;
                 }
 
