@@ -230,7 +230,7 @@ namespace ParticleZoo
                         particleBuffer->expand();
                     }
 
-                    if (buffer_.length() + getParticleRecordLength() > buffer_.capacity()) {
+                    if (buffer_.length() + particleRecordLength_ > buffer_.capacity()) {
                         writeNextBlock();
                     }
 

@@ -222,7 +222,7 @@ void Convert(const std::string& inputFile,
                     }
                     particlesRejected++;
                 } else {
-                    writer->writeParticle(particle);
+                    writer->writeParticle(std::move(particle));
                 }
 
                 uint64_t particlesSoFar = reader->getParticlesRead();

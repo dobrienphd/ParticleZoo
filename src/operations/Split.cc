@@ -99,7 +99,7 @@ void Split(const std::string& inputFile,
                     break;
                 }
 
-                writer->writeParticle(particle);
+                writer->writeParticle(std::move(particle)); // reassigned on the next iteration
 
                 if (j % onePercentInterval == 0) {
                     progress.Update(j, "Processed " + std::to_string(writer->getHistoriesWritten()) + " histories.");

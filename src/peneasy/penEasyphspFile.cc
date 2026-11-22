@@ -9,6 +9,9 @@
 #include <fstream>
 #include <string>
 #include <array>
+#include <charconv>
+#include <cstring>
+#include <string_view>
 
 #include "particlezoo/Particle.h"
 #include "particlezoo/ByteBuffer.h"
@@ -90,6 +93,23 @@ namespace ParticleZoo::penEasyphspFile
 
 
 
+    // Parse DeltaN (the 10th whitespace-separated field) from a particle line, returning 0 if it cannot be parsed
+    static int parseDeltaN(std::string_view line) {
+        constexpr std::string_view whitespace = " \t\r\n\v\f";
+        std::size_t pos = 0;
+        for (int field = 0; field < 9; field++) {
+            pos = line.find_first_not_of(whitespace, pos);
+            pos = line.find_first_of(whitespace, pos);
+            if (pos == std::string_view::npos) return 0;
+        }
+        pos = line.find_first_not_of(whitespace, pos);
+        if (pos == std::string_view::npos) return 0;
+        if (line[pos] == '+') pos++;
+        int deltaN = 0;
+        std::from_chars(line.data() + pos, line.data() + line.size(), deltaN);
+        return deltaN;
+    }
+
     std::pair<std::size_t, std::uint64_t> countParticlesAndSumDeltaN(const std::string& filename) {
         std::ifstream file(filename, std::ios::binary);
         if (!file.is_open()) {
@@ -112,39 +132,24 @@ namespace ParticleZoo::penEasyphspFile
 
         while (!file.eof() && file.peek() != std::ifstream::traits_type::eof()) {
             size_t bytesRead = buffer.setData(file);
-            const byte* data = buffer.data();
-            
-            for (size_t i = 0; i < bytesRead; ++i) {
-                char ch = static_cast<char>(data[i]);
-                
-                if (ch == '\n') {
-                    lineCount++;
-                    
-                    // Skip header lines (first two lines)
-                    if (lineCount > 2 && !currentLine.empty()) {
-                        // Parse DeltaN from the line (10th field)
-                        std::istringstream iss(currentLine);
-                        std::string field;
-                        int fieldCount = 0;
-                        
-                        // Skip first 9 fields, then read DeltaN
-                        while (fieldCount < 10 && iss >> field) {
-                            fieldCount++;
-                            if (fieldCount == 10) {
-                                try {
-                                    int deltaN = std::stoi(field);
-                                    totalDeltaN += deltaN;
-                                } catch (const std::exception&) {
-                                    // If parsing fails, skip this line
-                                }
-                                break;
-                            }
-                        }
-                    }
-                    currentLine.clear();
-                } else {
-                    currentLine += ch;
+            const char* data = reinterpret_cast<const char*>(buffer.data());
+            const char* end = data + bytesRead;
+
+            while (data < end) {
+                const char* newline = static_cast<const char*>(std::memchr(data, '\n', end - data));
+                if (!newline) {
+                    currentLine.append(data, end); // partial line, completed by the next block
+                    break;
                 }
+                currentLine.append(data, newline);
+                data = newline + 1;
+                lineCount++;
+
+                // Skip header lines (first two lines)
+                if (lineCount > 2 && !currentLine.empty()) {
+                    totalDeltaN += parseDeltaN(currentLine);
+                }
+                currentLine.clear();
             }
         }
 
@@ -158,22 +163,7 @@ namespace ParticleZoo::penEasyphspFile
                 lineCount++;
                 // Process the last line for DeltaN if it's a data line
                 if (lineCount > 2) {
-                    std::istringstream iss(currentLine);
-                    std::string field;
-                    int fieldCount = 0;
-                    
-                    while (fieldCount < 10 && iss >> field) {
-                        fieldCount++;
-                        if (fieldCount == 10) {
-                            try {
-                                int deltaN = std::stoi(field);
-                                totalDeltaN += deltaN;
-                            } catch (const std::exception&) {
-                                // If parsing fails, skip this line
-                            }
-                            break;
-                        }
-                    }
+                    totalDeltaN += parseDeltaN(currentLine);
                 }
             }
         }

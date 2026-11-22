@@ -82,7 +82,7 @@ void Combine(const std::vector<std::string>& inputFiles,
 
                 while (reader->hasMoreParticles() && particlesSoFar + particlesSoFarThisFile < options.maxParticles) {
                     Particle particle = reader->getNextParticle();
-                    writer->writeParticle(particle);
+                    writer->writeParticle(std::move(particle));
 
                     particlesSoFarThisFile = reader->getParticlesRead();
                     if (particlesSoFarThisFile % onePercentInterval == 0) {
