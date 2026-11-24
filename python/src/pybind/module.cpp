@@ -1008,7 +1008,7 @@ PYBIND11_MODULE(_pz, m) {
 
     // Distance
     m.attr("km") = km;
-    m.attr("m") = m;
+    m.attr("m") = ParticleZoo::m; // qualified, as the module variable hides the unit
     m.attr("mm") = mm;
     m.attr("um") = um;
     m.attr("nm") = nm;
