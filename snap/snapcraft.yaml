@@ -12,7 +12,7 @@ description: |
 
   - particlezoo.convert (PHSPConvert) - convert between phase space formats
   - particlezoo.combine (PHSPCombine) - merge multiple phase space files
-  - particlezoo.image (PHSPImage) - generate fluence images (TIFF/BMP/PNG)
+  - particlezoo.image (PHSPImage) - generate fluence images (TIFF/BMP)
   - particlezoo.split (PHSPSplit) - split phase space files
 
   To invoke the tools by their original names, add snap aliases:
