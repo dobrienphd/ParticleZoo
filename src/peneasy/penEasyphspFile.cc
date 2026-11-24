@@ -24,6 +24,15 @@ namespace ParticleZoo::penEasyphspFile
     : PhaseSpaceFileWriter("penEasy", fileName, options, FormatType::ASCII)
     {}
 
+    Writer::~Writer()
+    {
+        try {
+            close();
+        } catch (...) {
+            // destructors must not throw; call close() explicitly to handle write errors
+        }
+    }
+
     void Writer::writeHeaderData(ByteBuffer & buffer)
     {
         buffer.writeString(std::string(FILE_HEADER));

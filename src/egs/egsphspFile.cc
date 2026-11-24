@@ -195,6 +195,15 @@ namespace ParticleZoo::EGSphspFile
     : PhaseSpaceFileWriter("EGS", fileName, options), mode_(mode), latchOption_(latchOption)
     {}
 
+    Writer::~Writer()
+    {
+        try {
+            close();
+        } catch (...) {
+            // destructors must not throw; call close() explicitly to handle write errors
+        }
+    }
+
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
         return { EGSModeCommand, EGSLATCHOptionCommand };
     }

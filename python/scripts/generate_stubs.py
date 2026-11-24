@@ -49,9 +49,6 @@ def clean(text: str) -> str:
     # Fixed-size arrays are annotated as Annotated[list, FixedSize(n)]
     text = re.sub(r'typing\.Annotated\[(.*?), "FixedSize\(\d+\)"\]', r"\1", text)
 
-    # CLICommand is not exposed to Python
-    text = text.replace("cmd: ...", "cmd: typing.Any")
-
     # Enum comparisons accept any object; overloads for it are redundant
     for op in ("__eq__", "__ne__"):
         text = re.sub(

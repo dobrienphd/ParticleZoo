@@ -175,6 +175,11 @@ namespace ParticleZoo
                 Writer(const std::string & fileName, const UserOptions & options = UserOptions{});
 
                 /**
+                 * @brief Destructor - closes the file if it has not been closed already
+                 */
+                ~Writer() override;
+
+                /**
                  * @brief Get the maximum number of particles this format can support.
                  * 
                  * @return std::uint64_t Maximum particle count (limited by 32-bit unsigned integer)

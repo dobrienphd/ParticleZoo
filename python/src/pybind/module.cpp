@@ -1,6 +1,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <optional>
+#include <string>
+
 #include "particlezoo/Particle.h"
 #include "particlezoo/PDGParticleCodes.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
@@ -21,6 +24,13 @@
 
 namespace py = pybind11;
 using namespace ParticleZoo;
+
+// Look up a registered command by name, raising ValueError if there is no such option
+static CLICommand findCommand(const std::string& name) {
+    std::optional<CLICommand> cmd = ArgParser::FindCommand(name);
+    if (!cmd) throw py::value_error("Unknown option: " + name);
+    return *cmd;
+}
 
 PYBIND11_MODULE(_pz, m) {
     m.doc() = "Python bindings for ParticleZoo core and IAEA reader";
@@ -49,13 +59,11 @@ PYBIND11_MODULE(_pz, m) {
         .def(py::init<>(), "Create an empty UserOptions object")
         .def("set_option",
              [](UserOptions& self, const std::string& name, py::args values) {
-                 std::optional<CLICommand> cmd = ArgParser::FindCommand(name);
-                 if (!cmd) throw py::value_error("Unknown option: " + name);
-
-                 const auto& types = cmd->argTypes;
+                 const CLICommand cmd = findCommand(name);
+                 const auto& types = cmd.argTypes;
                  if (types.size() == 1 && types[0] == CLI_VALUELESS) {
                      if (values.size() != 0) throw py::value_error("Option '" + name + "' does not take a value");
-                     self[*cmd] = { true };
+                     self[cmd] = { true };
                      return;
                  }
                  if (values.size() != types.size()) {
@@ -83,7 +91,7 @@ PYBIND11_MODULE(_pz, m) {
                                               "' must be a " + expected);
                      }
                  }
-                 self[*cmd] = std::move(converted);
+                 self[cmd] = std::move(converted);
              },
              py::arg("name"),
              "Set a format-specific option by its command-line name without the leading dashes, "
@@ -92,69 +100,61 @@ PYBIND11_MODULE(_pz, m) {
         .def("extract_positional", &UserOptions::extractPositional, 
              py::arg("index"),
              "Extract a positional argument by index")
-        .def("extract_string_option", &UserOptions::extractStringOption,
-             py::arg("cmd"), py::arg("index") = 0,
-             "Extract a string option value from a command")
+        .def("extract_string_option",
+             [](const UserOptions& self, const std::string& name, int index) {
+                 return self.extractStringOption(findCommand(name), index);
+             },
+             py::arg("name"), py::arg("index") = 0,
+             "Extract a string option value by the option's command-line name without the leading dashes. "
+             "Returns an empty string if the option is not set or is not a string. Raises ValueError for unknown options.")
         .def("extract_int_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractIntOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractIntOption(cmd, py::cast<int>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<int> defaultValue, int index) {
+                 return self.extractIntOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract an integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract an integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_int64_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractInt64Option(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractInt64Option(cmd, py::cast<std::int64_t>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<std::int64_t> defaultValue, int index) {
+                 return self.extractInt64Option(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a 64-bit integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_uint_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractUIntOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractUIntOption(cmd, py::cast<unsigned int>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<unsigned int> defaultValue, int index) {
+                 return self.extractUIntOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract an unsigned integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract an unsigned integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_uint64_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractUInt64Option(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractUInt64Option(cmd, py::cast<std::uint64_t>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<std::uint64_t> defaultValue, int index) {
+                 return self.extractUInt64Option(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a 64-bit unsigned integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit unsigned integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_float_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractFloatOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractFloatOption(cmd, py::cast<float>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<float> defaultValue, int index) {
+                 return self.extractFloatOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a float option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a float option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_bool_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractBoolOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractBoolOption(cmd, py::cast<bool>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<bool> defaultValue, int index) {
+                 return self.extractBoolOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a boolean option value from a command");
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a boolean option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.");
 
     // ===== ArgParser - expose ParseArgs =====
     py::class_<ArgParser>(m, "ArgParser",

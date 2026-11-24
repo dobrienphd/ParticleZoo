@@ -2239,37 +2239,37 @@ class UserOptions:
         """
         Create an empty UserOptions object
         """
-    def extract_bool_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> bool:
+    def extract_bool_option(self, name: str, default_value: bool | None = None, index: typing.SupportsIndex = 0) -> bool:
         """
-        Extract a boolean option value from a command
+        Extract a boolean option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
-    def extract_float_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> float:
+    def extract_float_option(self, name: str, default_value: typing.SupportsFloat | typing.SupportsIndex | None = None, index: typing.SupportsIndex = 0) -> float:
         """
-        Extract a float option value from a command
+        Extract a float option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
-    def extract_int64_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> int:
+    def extract_int64_option(self, name: str, default_value: typing.SupportsIndex | None = None, index: typing.SupportsIndex = 0) -> int:
         """
-        Extract a 64-bit integer option value from a command
+        Extract a 64-bit integer option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
-    def extract_int_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> int:
+    def extract_int_option(self, name: str, default_value: typing.SupportsIndex | None = None, index: typing.SupportsIndex = 0) -> int:
         """
-        Extract an integer option value from a command
+        Extract an integer option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
     def extract_positional(self, index: typing.SupportsIndex) -> str:
         """
         Extract a positional argument by index
         """
-    def extract_string_option(self, cmd: typing.Any, index: typing.SupportsIndex = 0) -> str:
+    def extract_string_option(self, name: str, index: typing.SupportsIndex = 0) -> str:
         """
-        Extract a string option value from a command
+        Extract a string option value by the option's command-line name without the leading dashes. Returns an empty string if the option is not set or is not a string. Raises ValueError for unknown options.
         """
-    def extract_uint64_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> int:
+    def extract_uint64_option(self, name: str, default_value: typing.SupportsIndex | None = None, index: typing.SupportsIndex = 0) -> int:
         """
-        Extract a 64-bit unsigned integer option value from a command
+        Extract a 64-bit unsigned integer option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
-    def extract_uint_option(self, cmd: typing.Any, default_value: typing.Any = None, index: typing.SupportsIndex = 0) -> int:
+    def extract_uint_option(self, name: str, default_value: typing.SupportsIndex | None = None, index: typing.SupportsIndex = 0) -> int:
         """
-        Extract an unsigned integer option value from a command
+        Extract an unsigned integer option value by the option's command-line name without the leading dashes. Returns default_value if the option is not set or has a different type, or raises RuntimeError if no default is given. Raises ValueError for unknown options.
         """
     def set_option(self, name: str, *args: bool | int | float | str) -> None:
         """

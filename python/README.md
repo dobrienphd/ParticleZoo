@@ -368,6 +368,10 @@ options = pz.ArgParser.parse_args(
 options = pz.UserOptions()
 options.set_option("EGS-mode", "MODE2")
 
+# Read option values back by name
+mode = options.extract_string_option("EGS-mode")
+z = options.extract_float_option("constantZ", default_value=0.0)
+
 # Pass options to reader/writer
 reader = pz.create_reader("file.phsp", options)
 ```

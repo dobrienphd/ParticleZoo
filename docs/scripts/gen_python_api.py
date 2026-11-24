@@ -46,7 +46,7 @@ def main():
     stub_dir.mkdir(exist_ok=True)
     
     stdout, stderr, code = run_command(
-        f"{sys.executable} -m pybind11_stubgen particlezoo._pz -o {stub_dir} --ignore-invalid=all",
+        f"{sys.executable} -m pybind11_stubgen particlezoo._pz -o {stub_dir} --ignore-all-errors",
         check=False
     )
     if code != 0:
