@@ -1,10 +1,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include <optional>
+#include <string>
+
 #include "particlezoo/Particle.h"
 #include "particlezoo/PDGParticleCodes.h"
 #include "particlezoo/PhaseSpaceFileReader.h"
 #include "particlezoo/PhaseSpaceFileWriter.h"
+#include "particlezoo/IAEA/IAEAphspFile.h"
 #include "particlezoo/utilities/formats.h"
 #include "particlezoo/utilities/argParse.h"
 #include "particlezoo/utilities/units.h"
@@ -13,9 +17,20 @@
 #include "particlezoo/parallel/ParticleBalancedParallelReader.h"
 #include "particlezoo/egs/EGSLATCH.h"
 #include "particlezoo/penelope/ILBArray.h"
+#include "particlezoo/operations/Combine.h"
+#include "particlezoo/operations/Convert.h"
+#include "particlezoo/operations/GenerateImage.h"
+#include "particlezoo/operations/Split.h"
 
 namespace py = pybind11;
 using namespace ParticleZoo;
+
+// Look up a registered command by name, raising ValueError if there is no such option
+static CLICommand findCommand(const std::string& name) {
+    std::optional<CLICommand> cmd = ArgParser::FindCommand(name);
+    if (!cmd) throw py::value_error("Unknown option: " + name);
+    return *cmd;
+}
 
 PYBIND11_MODULE(_pz, m) {
     m.doc() = "Python bindings for ParticleZoo core and IAEA reader";
@@ -40,54 +55,106 @@ PYBIND11_MODULE(_pz, m) {
     py::class_<UserOptions>(m, "UserOptions",
         "Container for command-line options parsed by ArgParser. "
         "Stores format-specific and general options for phase space file readers and writers. "
-        "Use ArgParser.parse_args() to create from command-line arguments, then extract_*() methods to retrieve values.")
+        "Use ArgParser.parse_args() to create from command-line arguments, or set_option() to build programmatically.")
         .def(py::init<>(), "Create an empty UserOptions object")
+        .def("set_option",
+             [](UserOptions& self, const std::string& name, py::args values) {
+                 const CLICommand cmd = findCommand(name);
+                 const auto& types = cmd.argTypes;
+                 if (types.size() == 1 && types[0] == CLI_VALUELESS) {
+                     if (values.size() != 0) throw py::value_error("Option '" + name + "' does not take a value");
+                     self[cmd] = { true };
+                     return;
+                 }
+                 if (values.size() != types.size()) {
+                     throw py::value_error("Option '" + name + "' expects " + std::to_string(types.size()) +
+                                           " value(s) but " + std::to_string(values.size()) + " were given");
+                 }
+
+                 std::vector<CLIValue> converted;
+                 for (size_t i = 0; i < types.size(); ++i) {
+                     py::handle v = values[i];
+                     const char* expected = "";
+                     try {
+                         switch (types[i]) {
+                             case CLI_FLOAT:  expected = "float"; converted.emplace_back(py::cast<float>(v)); break;
+                             case CLI_INT:    expected = "int";   converted.emplace_back(py::cast<int>(v)); break;
+                             case CLI_UINT:   expected = "non-negative int"; converted.emplace_back(py::cast<unsigned int>(v)); break;
+                             case CLI_UINT64: expected = "non-negative int"; converted.emplace_back(py::cast<std::uint64_t>(v)); break;
+                             case CLI_INT64:  expected = "int";   converted.emplace_back(py::cast<std::int64_t>(v)); break;
+                             case CLI_BOOL:   expected = "bool";  converted.emplace_back(py::cast<bool>(v)); break;
+                             case CLI_STRING: expected = "str";   converted.emplace_back(py::cast<std::string>(v)); break;
+                             default: throw py::value_error("Option '" + name + "' has an unsupported argument type");
+                         }
+                     } catch (const py::cast_error&) {
+                         throw py::type_error("Value " + std::to_string(i + 1) + " for option '" + name +
+                                              "' must be a " + expected);
+                     }
+                 }
+                 self[cmd] = std::move(converted);
+             },
+             py::arg("name"),
+             "Set a format-specific option by its command-line name without the leading dashes, "
+             "e.g. set_option(\"EGS-mode\", \"MODE2\"). Valueless flags take no values. "
+             "Raises ValueError for unknown options or the wrong number of values.")
         .def("extract_positional", &UserOptions::extractPositional, 
              py::arg("index"),
              "Extract a positional argument by index")
-        .def("extract_string_option", &UserOptions::extractStringOption,
-             py::arg("cmd"), py::arg("index") = 0,
-             "Extract a string option value from a command")
+        .def("extract_string_option",
+             [](const UserOptions& self, const std::string& name, int index) {
+                 return self.extractStringOption(findCommand(name), index);
+             },
+             py::arg("name"), py::arg("index") = 0,
+             "Extract a string option value by the option's command-line name without the leading dashes. "
+             "Returns an empty string if the option is not set or is not a string. Raises ValueError for unknown options.")
         .def("extract_int_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractIntOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractIntOption(cmd, py::cast<int>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<int> defaultValue, int index) {
+                 return self.extractIntOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract an integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract an integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
+        .def("extract_int64_option",
+             [](const UserOptions& self, const std::string& name, std::optional<std::int64_t> defaultValue, int index) {
+                 return self.extractInt64Option(findCommand(name), defaultValue, index);
+             },
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_uint_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractUIntOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractUIntOption(cmd, py::cast<unsigned int>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<unsigned int> defaultValue, int index) {
+                 return self.extractUIntOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract an unsigned integer option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract an unsigned integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
+        .def("extract_uint64_option",
+             [](const UserOptions& self, const std::string& name, std::optional<std::uint64_t> defaultValue, int index) {
+                 return self.extractUInt64Option(findCommand(name), defaultValue, index);
+             },
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a 64-bit unsigned integer option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_float_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractFloatOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractFloatOption(cmd, py::cast<float>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<float> defaultValue, int index) {
+                 return self.extractFloatOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a float option value from a command")
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a float option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.")
         .def("extract_bool_option",
-             [](const UserOptions& self, const CLICommand& cmd, py::object defaultValue, int index) {
-                 if (defaultValue.is_none()) {
-                     return self.extractBoolOption(cmd, std::nullopt, index);
-                 } else {
-                     return self.extractBoolOption(cmd, py::cast<bool>(defaultValue), index);
-                 }
+             [](const UserOptions& self, const std::string& name, std::optional<bool> defaultValue, int index) {
+                 return self.extractBoolOption(findCommand(name), defaultValue, index);
              },
-             py::arg("cmd"), py::arg("default_value") = py::none(), py::arg("index") = 0,
-             "Extract a boolean option value from a command");
+             py::arg("name"), py::arg("default_value") = py::none(), py::arg("index") = 0,
+             "Extract a boolean option value by the option's command-line name without the leading dashes. "
+             "Returns default_value if the option is not set or has a different type, or raises RuntimeError "
+             "if no default is given. Raises ValueError for unknown options.");
 
     // ===== ArgParser - expose ParseArgs =====
     py::class_<ArgParser>(m, "ArgParser",
@@ -179,7 +246,9 @@ PYBIND11_MODULE(_pz, m) {
         .value("ZLAST", FloatPropertyType::ZLAST,
                "EGS-specific ZLAST variable, for photons it is the Z position of the last interaction, for electrons/positrons it is the Z position it (or its ancestor) was created at by a photon")
         .value("CUSTOM", FloatPropertyType::CUSTOM,
-               "Custom float property type, can be used for any user-defined purpose");
+               "Custom float property type, can be used for any user-defined purpose")
+        .value("TIME", FloatPropertyType::TIME,
+               "Particle time at the particle position, stored in internal time units");
 
     py::enum_<BoolPropertyType>(m, "BoolPropertyType",
         "Enumeration of boolean property types for particles. "
@@ -196,7 +265,7 @@ PYBIND11_MODULE(_pz, m) {
           py::arg("pdg"), 
           "Map PDG particle code to ParticleType enum. Returns ParticleType for recognized PDG codes.");
     m.def("get_pdgid", &getPDGIDFromParticleType,
-          py::arg("type"), 
+          py::arg("type"),
           "Get PDG particle code from ParticleType enum. Returns integer PDG code.");
     m.def("get_particle_type_name", &getParticleTypeName,
           py::arg("type"), 
@@ -408,6 +477,9 @@ PYBIND11_MODULE(_pz, m) {
              "Get the constant Z directional cosine value (when is_pz_constant returns True).")
         .def("get_constant_weight", &PhaseSpaceFileReader::getConstantWeight,
              "Get the constant statistical weight value (when is_weight_constant returns True).")
+        .def("get_metadata", &PhaseSpaceFileReader::getMetadata,
+             "Get format-specific metadata from the file header as a dict of key-value strings. "
+             "Returns an empty dict if the format provides no metadata.")
         .def("close", &PhaseSpaceFileReader::close,
              "Close the phase space file and release associated resources.")
         .def("__iter__", [](PhaseSpaceFileReader &self) -> PhaseSpaceFileReader& { return self; }, py::return_value_policy::reference_internal,
@@ -439,6 +511,16 @@ PYBIND11_MODULE(_pz, m) {
              "Get the phase space file format identifier (e.g., 'IAEA', 'EGS', 'TOPAS').")
         .def("close", &PhaseSpaceFileWriter::close,
              "Close the phase space file, flush buffered data, and finalize writing.");
+
+    // IAEA writer (returned by the writer factories for IAEA output)
+    py::class_<IAEAphspFile::Writer, PhaseSpaceFileWriter, std::unique_ptr<IAEAphspFile::Writer>>(m, "IAEAPhaseSpaceFileWriter",
+        "Writer for IAEA phase space files. Returned by create_writer() and create_writer_for_format() for IAEA output.")
+        .def("set_section", [](IAEAphspFile::Writer &self, const std::string &sectionName, const std::string &sectionValue) {
+            self.getHeader().setSection(sectionName, sectionValue);
+        }, py::arg("section_name"), py::arg("section_value"),
+             "Set a descriptive text section of the IAEA header (e.g. 'TITLE', 'AUTHORS', 'BEAM_NAME', or a custom section name). "
+             "Raises RuntimeError for sections derived from the header configuration or particle data, such as "
+             "RECORD_CONTENTS, ORIG_HISTORIES, PARTICLES, CHECKSUM and the statistics sections.");
 
     // SupportedFormat struct
     py::class_<SupportedFormat>(m, "SupportedFormat",
@@ -617,8 +699,9 @@ PYBIND11_MODULE(_pz, m) {
 
     m.def("extract_latch_from_particle", &ParticleZoo::EGSphspFile::ExtractLATCHFromParticle,
           py::arg("particle"), py::arg("latch_option"),
-          "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it directly. "
-          "Otherwise, constructs LATCH from particle type (bits 29-30), IS_MULTIPLE_CROSSER flag (bit 32), "
+          "Extract EGS LATCH value from a particle. If EGS_LATCH property exists, returns it with the charge "
+          "bits set to match the particle type (0-based bit 30 for electrons, bit 29 for positrons). "
+          "Otherwise, constructs LATCH from particle type (charge bits), IS_MULTIPLE_CROSSER flag (bit 31), "
           "and GENERATION flag (bits 24-28 for LATCH_OPTION_2 and LATCH_OPTION_3).");
 
     m.def("does_particle_pass_latch_filter", &ParticleZoo::EGSphspFile::DoesParticlePassLATCHFilter,
@@ -690,6 +773,223 @@ PYBIND11_MODULE(_pz, m) {
           "Returns [ILB1, ILB2, ILB3, ILB4, ILB5] extracted from particle properties. "
           "Missing properties return 0 (except ILB1 which may infer from GENERATION).");
 
+    // ===== High-level operations =====
+
+    // --- Combine ---
+    py::class_<CombineOptions>(m, "CombineOptions",
+        "Options for the combine() operation. All fields have sensible defaults; "
+        "only fields that deviate from the default need to be set.")
+        .def(py::init<>(), "Create a CombineOptions object with all defaults")
+        .def_readwrite("max_particles", &CombineOptions::maxParticles,
+                      "Maximum particles to process across all files (default: unlimited)")
+        .def_readwrite("input_format", &CombineOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &CombineOptions::outputFormat,
+                      "Force output format; empty string = auto-detect from extension")
+        .def_readwrite("preserve_constants", &CombineOptions::preserveConstants,
+                      "Preserve constant particle-property values from the input files")
+        .def_readwrite("format_options", &CombineOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
+
+    m.def("combine", &Combine,
+          py::arg("input_files"), py::arg("output_file"), py::arg("options") = CombineOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Combine multiple phase space files into a single output file. "
+          "Reads particles from each input file in order and writes them to the output file, "
+          "optionally converting between formats. History counts are properly accumulated "
+          "from all input files. Raises RuntimeError on invalid parameters or I/O errors.");
+
+    // --- Convert ---
+    py::class_<ConvertOptions>(m, "ConvertOptions",
+        "Options for the convert() operation. All fields have sensible defaults. "
+        "Physical quantities use the internal unit system - multiply by the module unit "
+        "constants (e.g. 5.0 * pz.cm, 1.0 * pz.MeV). Optional fields accept None (unset) or a value.")
+        .def(py::init<>(), "Create a ConvertOptions object with all defaults")
+        .def_readwrite("max_particles", &ConvertOptions::maxParticles,
+                      "Maximum particles to convert (default: unlimited)")
+        .def_readwrite("input_format", &ConvertOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &ConvertOptions::outputFormat,
+                      "Force output format; empty string = auto-detect from extension")
+        .def_readwrite("preserve_constants", &ConvertOptions::preserveConstants,
+                      "Preserve constant particle-property values from the input file")
+        .def_readwrite("project_to_x", &ConvertOptions::projectToX,
+                      "Project particles to this X coordinate (internal units, use * cm), or None")
+        .def_readwrite("project_to_y", &ConvertOptions::projectToY,
+                      "Project particles to this Y coordinate (internal units, use * cm), or None")
+        .def_readwrite("project_to_z", &ConvertOptions::projectToZ,
+                      "Project particles to this Z coordinate (internal units, use * cm), or None")
+        .def_readwrite("photons_only", &ConvertOptions::photonsOnly,
+                      "Keep only photons (at most one particle-type filter may be set)")
+        .def_readwrite("electrons_only", &ConvertOptions::electronsOnly,
+                      "Keep only electrons (at most one particle-type filter may be set)")
+        .def_readwrite("filter_by_pdg", &ConvertOptions::filterByPDG,
+                      "Keep only particles with this PDG code, or None")
+        .def_readwrite("min_energy", &ConvertOptions::minEnergy,
+                      "Minimum kinetic energy, inclusive (internal units, use * MeV), or None")
+        .def_readwrite("max_energy", &ConvertOptions::maxEnergy,
+                      "Maximum kinetic energy, inclusive (internal units, use * MeV), or None")
+        .def_readwrite("min_x", &ConvertOptions::minX,
+                      "Minimum X position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_x", &ConvertOptions::maxX,
+                      "Maximum X position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_y", &ConvertOptions::minY,
+                      "Minimum Y position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_y", &ConvertOptions::maxY,
+                      "Maximum Y position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_z", &ConvertOptions::minZ,
+                      "Minimum Z position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_z", &ConvertOptions::maxZ,
+                      "Maximum Z position, inclusive (internal units, use * cm), or None")
+        .def_readwrite("min_radius", &ConvertOptions::minRadius,
+                      "Minimum radial distance in the XY plane, inclusive (internal units, use * cm), or None")
+        .def_readwrite("max_radius", &ConvertOptions::maxRadius,
+                      "Maximum radial distance in the XY plane, inclusive (internal units, use * cm), or None")
+        .def_readwrite("primaries_only", &ConvertOptions::primariesOnly,
+                      "Keep only primary particles, generation == 1 (at most one generation filter may be set)")
+        .def_readwrite("exclude_primaries", &ConvertOptions::excludePrimaries,
+                      "Exclude primary particles (at most one generation filter may be set)")
+        .def_readwrite("generations", &ConvertOptions::generations,
+                      "Keep particles whose generation is in the inclusive range (min, max), or None")
+        .def_readwrite("error_on_warning", &ConvertOptions::errorOnWarning,
+                      "Raise an exception for warnings instead of printing them")
+        .def_readwrite("format_options", &ConvertOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
+
+    m.def("convert", &Convert,
+          py::arg("input_file"), py::arg("output_file"), py::arg("options") = ConvertOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Convert a phase space file to another format, optionally filtering or projecting "
+          "particles. History counts are preserved from the original file. The output file "
+          "must differ from the input file. Raises RuntimeError on invalid parameters, "
+          "conflicting filters, or I/O errors.");
+
+    // --- GenerateImage ---
+    py::enum_<ImagePlane>(m, "ImagePlane",
+        "Imaging plane orientation for generate_image().")
+        .value("XY", ImagePlane::XY, "View from the Z axis (horizontal slice)")
+        .value("XZ", ImagePlane::XZ, "View from the Y axis")
+        .value("YZ", ImagePlane::YZ, "View from the X axis");
+
+    py::enum_<ImageProjectionType>(m, "ImageProjectionType",
+        "How particles are projected onto the imaging plane in generate_image().")
+        .value("FLATTEN", ImageProjectionType::FLATTEN,
+               "Force all particle coordinates perpendicular to the plane to the plane location")
+        .value("PROJECT", ImageProjectionType::PROJECT,
+               "Project each particle along its direction of travel to the plane")
+        .value("NONE", ImageProjectionType::NONE,
+               "Only score particles already within tolerance of the plane location");
+
+    py::enum_<ImageQuantityType>(m, "ImageQuantityType",
+        "Physical quantity accumulated in each image pixel by generate_image().")
+        .value("COUNT", ImageQuantityType::COUNT, "Particle fluence (weighted particle count per unit area)")
+        .value("ENERGY", ImageQuantityType::ENERGY, "Energy fluence (weighted energy per unit area)")
+        .value("X_DIR", ImageQuantityType::X_DIR, "Mean X directional cosine (weighted)")
+        .value("Y_DIR", ImageQuantityType::Y_DIR, "Mean Y directional cosine (weighted)")
+        .value("Z_DIR", ImageQuantityType::Z_DIR, "Mean Z directional cosine (weighted)");
+
+    py::enum_<ImageOutputFormat>(m, "ImageOutputFormat",
+        "Output image file format for generate_image().")
+        .value("TIFF", ImageOutputFormat::TIFF,
+               "32-bit floating-point TIFF with spatial calibration metadata (default)")
+        .value("BMP", ImageOutputFormat::BMP,
+               "8-bit BMP with automatic window-level contrast adjustment");
+
+    py::class_<GenerateImageOptions>(m, "GenerateImageOptions",
+        "Options for the generate_image() operation. All fields have sensible defaults. "
+        "Physical quantities use the internal unit system - multiply by the module unit "
+        "constants (e.g. 5.0 * pz.cm). Optional fields accept None (unset) or a value.")
+        .def(py::init<>(), "Create a GenerateImageOptions object with all defaults")
+        .def_readwrite("plane", &GenerateImageOptions::plane,
+                      "Imaging plane orientation (default: ImagePlane.XY)")
+        .def_readwrite("plane_location", &GenerateImageOptions::planeLocation,
+                      "Location of the imaging plane (internal units, use * cm; default: 0)")
+        .def_readwrite("projection_type", &GenerateImageOptions::projectionType,
+                      "Particle projection scheme (default: ImageProjectionType.FLATTEN)")
+        .def_readwrite("project_to", &GenerateImageOptions::projectTo,
+                      "If set, project particles to this location and override projection_type "
+                      "to PROJECT (internal units, use * cm), or None")
+        .def_readwrite("image_width", &GenerateImageOptions::imageWidth,
+                      "Output image width in pixels (default: 1024)")
+        .def_readwrite("image_height", &GenerateImageOptions::imageHeight,
+                      "Output image height in pixels (default: 1024)")
+        .def_readwrite("min_x", &GenerateImageOptions::minX,
+                      "Minimum X coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_x", &GenerateImageOptions::maxX,
+                      "Maximum X coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("min_y", &GenerateImageOptions::minY,
+                      "Minimum Y coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_y", &GenerateImageOptions::maxY,
+                      "Maximum Y coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("min_z", &GenerateImageOptions::minZ,
+                      "Minimum Z coordinate of the imaging region (internal units, use * cm); None = -40 cm")
+        .def_readwrite("max_z", &GenerateImageOptions::maxZ,
+                      "Maximum Z coordinate of the imaging region (internal units, use * cm); None = 40 cm")
+        .def_readwrite("square", &GenerateImageOptions::square,
+                      "If set, use a square region of this side length centred at the origin, "
+                      "overriding min/max for both in-plane axes (internal units, use * cm), or None")
+        .def_readwrite("tolerance", &GenerateImageOptions::tolerance,
+                      "Half-thickness of the scoring slab perpendicular to the plane, used when "
+                      "projection_type == ImageProjectionType.NONE (internal units; default: 0.25 cm)")
+        .def_readwrite("max_particles", &GenerateImageOptions::maxParticles,
+                      "Maximum particles to process (default: unlimited)")
+        .def_readwrite("score", &GenerateImageOptions::score,
+                      "Quantity to accumulate per pixel (default: ImageQuantityType.COUNT)")
+        .def_readwrite("normalize_by_particles", &GenerateImageOptions::normalizeByParticles,
+                      "Normalize by particle count instead of history count")
+        .def_readwrite("input_format", &GenerateImageOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &GenerateImageOptions::outputFormat,
+                      "Output image format (default: ImageOutputFormat.TIFF)")
+        .def_readwrite("primaries_only", &GenerateImageOptions::primariesOnly,
+                      "Score only primary particles (at most one generation filter may be set)")
+        .def_readwrite("exclude_primaries", &GenerateImageOptions::excludePrimaries,
+                      "Exclude primary particles (at most one generation filter may be set)")
+        .def_readwrite("generations", &GenerateImageOptions::generations,
+                      "Score particles whose generation is in the inclusive range (min, max), or None")
+        .def_readwrite("use_latch_filter", &GenerateImageOptions::useLATCHFilter,
+                      "Apply an EGS LATCH bitmask filter")
+        .def_readwrite("latch_filter", &GenerateImageOptions::LATCHFilter,
+                      "LATCH bitmask (used when use_latch_filter is True)")
+        .def_readwrite("error_on_warning", &GenerateImageOptions::errorOnWarning,
+                      "Raise an exception for warnings instead of printing them")
+        .def_readwrite("show_details", &GenerateImageOptions::showDetails,
+                      "Print detailed parameter information before processing")
+        .def_readwrite("format_options", &GenerateImageOptions::formatOptions,
+                      "Format-specific reader options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
+
+    m.def("generate_image", &GenerateImage,
+          py::arg("input_file"), py::arg("output_file"), py::arg("options") = GenerateImageOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Generate a 2D fluence image from a phase space file. Reads particles, projects them "
+          "onto the specified plane, accumulates the selected quantity into a pixel grid, "
+          "normalizes by history (or particle) count, and saves the result to the output file "
+          "(.tiff or .bmp). Raises RuntimeError on invalid parameters or I/O errors.");
+
+    // --- Split ---
+    py::class_<SplitOptions>(m, "SplitOptions",
+        "Options for the split() operation. All fields have sensible defaults.")
+        .def(py::init<>(), "Create a SplitOptions object with all defaults")
+        .def_readwrite("input_format", &SplitOptions::inputFormat,
+                      "Force input format; empty string = auto-detect from extension")
+        .def_readwrite("output_format", &SplitOptions::outputFormat,
+                      "Force output format; empty string = auto-detect from the input file's extension")
+        .def_readwrite("format_options", &SplitOptions::formatOptions,
+                      "Format-specific reader/writer options (e.g. EGS mode, TOPAS format, IAEA extra values). "
+                      "Build with pz.UserOptions() and set_option(), e.g. opts.set_option(\"EGS-mode\", \"MODE2\")");
+
+    m.def("split", &Split,
+          py::arg("input_file"), py::arg("split_number"), py::arg("options") = SplitOptions{},
+          py::call_guard<py::gil_scoped_release>(),
+          "Split a phase space file into multiple roughly equal-sized files. Divides the input "
+          "into split_number parts (must be > 1), respecting history boundaries so that no "
+          "history is split across files. Output files are named automatically as "
+          "stem_PartXX.ext (1-based, zero-padded index). Fixed (constant) particle-property "
+          "values are always preserved. Raises RuntimeError on invalid parameters or I/O errors.");
+
     // ===== Units - expose as module constants =====
     
     // Base units
@@ -708,7 +1008,7 @@ PYBIND11_MODULE(_pz, m) {
 
     // Distance
     m.attr("km") = km;
-    m.attr("m") = m;
+    m.attr("m") = ParticleZoo::m; // qualified, as the module variable hides the unit
     m.attr("mm") = mm;
     m.attr("um") = um;
     m.attr("nm") = nm;
@@ -755,9 +1055,14 @@ PYBIND11_MODULE(_pz, m) {
     m.attr("lb") = lb;
 
     // Time
+    m.attr("ms") = ms;
+    m.attr("us") = us;
+    m.attr("ns") = ns;
+    m.attr("ps") = ps;
     m.attr("minute") = minute;
     m.attr("hour") = hour;
     m.attr("day") = day;
+    m.attr("week") = week;
     m.attr("year") = year;
 
     // Frequency

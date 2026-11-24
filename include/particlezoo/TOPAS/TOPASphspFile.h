@@ -4,6 +4,7 @@
 #include "particlezoo/TOPAS/TOPASHeader.h"
 
 #include <cmath>
+#include <optional>
 
 namespace ParticleZoo::TOPASphspFile
 {
@@ -104,8 +105,8 @@ namespace ParticleZoo::TOPASphspFile
             /**
              * @brief Read and decode a single particle from binary data
              * 
-             * Handles format-specific binary reading including pseudo-particle processing
-             * for empty history tracking in BINARY format.
+             * Empty-history pseudo-particles in BINARY format are returned as PseudoParticle
+             * type particles, which PhaseSpaceFileReader folds into the following particle.
              * 
              * @param buffer Binary buffer containing particle data
              * @return Decoded Particle object with all properties
@@ -130,6 +131,17 @@ namespace ParticleZoo::TOPASphspFile
              * @return Maximum line length (1024 characters for TOPAS format)
              */
             std::size_t    getMaximumASCIILineLength() const override;
+
+            /**
+             * @brief Check whether moveToParticle() can seek straight to a particle record
+             * 
+             * BINARY files can contain empty-history pseudo-particles, which are written
+             * immediately before a particle or once after the last particle. Seeking directly
+             * is only safe when the sole extra record, if any, is a trailing pseudo-particle.
+             * 
+             * @return true if no pseudo-particles precede the last particle
+             */
+            bool           canSeekDirectly() const override;
 
         private:
             /**
@@ -176,7 +188,7 @@ namespace ParticleZoo::TOPASphspFile
             const TOPASFormat formatType_;           ///< Format type (ASCII, BINARY, or LIMITED)
             const std::size_t particleRecordLength_; ///< Length of each particle record in bytes
             bool  readFullDetails_;                  ///< Flag for detailed vs. core-only reading
-            std::int32_t emptyHistoriesCount_;       ///< Accumulator for empty history tracking
+            mutable std::optional<bool> canSeekDirectly_; ///< Cached result of canSeekDirectly()
     };
 
     // Inline implementations for the Reader class
@@ -214,20 +226,7 @@ namespace ParticleZoo::TOPASphspFile
 
     inline Particle Reader::readBinaryParticle(ByteBuffer & buffer) {
         if (formatType_ == TOPASFormat::BINARY) {
-            Particle particle = readBinaryStandardParticle(buffer);
-            if (particle.getWeight() < 0 && particle.getType() == ParticleType::PseudoParticle) {
-                // Special particle representing a sequence of empty histories
-                emptyHistoriesCount_ += roundToInt32(-particle.getWeight());
-                // need to read the next particle with the countParticleInStatistics flag set to false to avoid double counting
-                return getNextParticle(false);
-            } else if (emptyHistoriesCount_ > 0) {
-                particle.setNewHistory(true); // make sure this flag is set, although it should be already
-                std::int32_t incrementalHistoryNumber = particle.hasIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER) ? particle.getIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER) : 1;
-                emptyHistoriesCount_ += incrementalHistoryNumber > 0 ? incrementalHistoryNumber : 1;
-                particle.setIntProperty(IntPropertyType::INCREMENTAL_HISTORY_NUMBER, emptyHistoriesCount_);
-                emptyHistoriesCount_ = 0; // Reset after using
-            }
-            return particle;
+            return readBinaryStandardParticle(buffer);
         } else if (formatType_ == TOPASFormat::LIMITED) {
             return readBinaryLimitedParticle(buffer);
         } else {

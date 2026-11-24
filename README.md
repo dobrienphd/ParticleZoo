@@ -24,6 +24,36 @@ ParticleZoo serves as a universal translator and processor for particle phase sp
 - **Memory Efficient**: Streaming interfaces for processing large files
 - **Cross-Platform**: Windows, Linux and macOS support with standard build tools
 - **Python Bindings**: Optional Python package for scripting and rapid prototyping
+- **High-Level Operations**: Single-call convert, combine, split, and image-generation operations available from C++, Python, and the command line
+
+## Installation
+
+The quickest way to get started is to install the Python package from PyPI:
+
+```bash
+pip install particlezoo
+```
+
+Pre-built wheels are provided for Linux, macOS, and Windows. Wheels are built without ROOT support; to enable the ROOT format, install from source with ROOT available (see [Python Bindings](#python-bindings)).
+
+On Linux, the command-line tools are also available as a snap:
+
+```bash
+sudo snap install particlezoo
+```
+
+This provides `particlezoo.convert`, `particlezoo.combine`, `particlezoo.image`, and `particlezoo.split`. To invoke the tools by their original names, add snap aliases:
+
+```bash
+sudo snap alias particlezoo.convert PHSPConvert
+sudo snap alias particlezoo.combine PHSPCombine
+sudo snap alias particlezoo.image   PHSPImage
+sudo snap alias particlezoo.split   PHSPSplit
+```
+
+The snap is built without ROOT support and does not include the C++ library or headers; to develop against the library or use the ROOT format, build from source instead.
+
+To build the C++ library and command-line tools from source, see [Building and Installation](#building-and-installation).
 
 ## Supported Formats
 
@@ -389,7 +419,7 @@ PHSPImage --projectTo 100 beam.egsphsp projection.tiff
 # Custom plane and energy weighting, particles are not relocated, only particles located at
 # Y = 5 cm +- a default margin of 0.25 cm will be counted (margin for XZ plane can be changed
 # with the --tolerance parameter)
-PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --energyWeighted simulation.IAEAphsp dose_profile.bmp
+PHSPImage --outputFormat BMP --projectionType none --plane XZ --planeLocation 5.0 --score energy simulation.IAEAphsp dose_profile.bmp
 
 # Score different quantities (count, energy, xDir, yDir, zDir)
 PHSPImage --score energy input.phsp energy_fluence.tiff
@@ -635,6 +665,16 @@ ParticleZoo includes optional Python bindings for scripting and rapid prototypin
 
 ### Installation
 
+#### From PyPI
+
+The recommended installation method is from PyPI, as described in [Installation](#installation) at the top of this document:
+
+```bash
+pip install particlezoo
+```
+
+To install from source instead (required for ROOT format support), use one of the methods below.
+
 #### Linux/macOS (using Makefile)
 
 ```bash
@@ -657,6 +697,41 @@ python -m pip install -e python     # Editable install
 ```
 
 See the [python/README.md](python/README.md) for detailed installation options and full API documentation.
+
+### High-Level Operations
+
+The high-level operations that power the command-line tools (`PHSPConvert`, `PHSPCombine`, `PHSPSplit`, `PHSPImage`) are available directly from Python as single function calls. Each operation takes an optional options object whose attributes mirror the corresponding command-line flags:
+
+```python
+import particlezoo as pz
+
+# Convert between formats with optional filtering and projection
+opts = pz.ConvertOptions()
+opts.photons_only = True
+opts.min_energy = 1.0 * pz.MeV
+opts.project_to_z = 100.0 * pz.cm
+pz.convert("input.egsphsp", "photons.IAEAphsp", opts)
+
+# Combine multiple files into one
+pz.combine(["run1.IAEAphsp", "run2.IAEAphsp"], "combined.IAEAphsp")
+
+# Split a file into roughly equal parts (history boundaries respected)
+pz.split("combined.IAEAphsp", 4)
+
+# Generate a 2D fluence image (TIFF or BMP)
+img = pz.GenerateImageOptions()
+img.score = pz.ImageQuantityType.ENERGY
+img.square = 20.0 * pz.cm
+img.image_width = 2048
+img.image_height = 2048
+pz.generate_image("beam.IAEAphsp", "energy_fluence.tiff", img)
+```
+
+`generate_image()` is configured with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums (e.g. `img.plane = pz.ImagePlane.XZ`). All physical quantities use ParticleZoo's unit system: multiply by the unit constants exposed on the module (`pz.cm`, `pz.MeV`, ...) when setting values.
+
+### Low-Level API
+
+For custom processing, the underlying reader/writer API is also fully exposed:
 
 ```python
 import particlezoo as pz

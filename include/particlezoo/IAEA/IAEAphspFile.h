@@ -140,6 +140,11 @@ namespace ParticleZoo::IAEAphspFile
             Writer(const std::string & filename, const IAEAHeader & templateHeader);
 
             /**
+             * @brief Destructor - closes the file if it has not been closed already
+             */
+            ~Writer() override;
+
+            /**
              * @brief Set the number of original simulation histories
              * 
              * @param numberOfHistories Number of original histories to record in header

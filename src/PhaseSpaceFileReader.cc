@@ -46,6 +46,7 @@ namespace ParticleZoo
         particleRecordLength_(0),
         isFirstParticle_(true),
         buffer_(BUFFER_SIZE),
+        readParticleDepth_(0),
         fixedValues_(fixedValues)
     {
         if (formatType != FormatType::NONE) {
@@ -68,7 +69,10 @@ namespace ParticleZoo
         if (formatType_ == FormatType::NONE) {
             throw std::runtime_error("moveToParticle is not supported for NONE format.");
         }
-        if (particleIndex >= getNumberOfEntriesInFile()) {
+        // Metadata records before the last particle (e.g. TOPAS empty-history pseudoparticles)
+        // mean particle indices cannot be converted to byte offsets
+        const bool seekDirectly = formatType_ == FormatType::BINARY && canSeekDirectly();
+        if (particleIndex >= (seekDirectly ? getNumberOfEntriesInFile() : getNumberOfParticles())) {
             throw std::out_of_range("Particle index out of range.");
         }
 
@@ -78,7 +82,7 @@ namespace ParticleZoo
         asciiLineBuffer_.clear();
         numberOfParticlesToRead_ = 0;
 
-        if (formatType_ == FormatType::BINARY) {
+        if (seekDirectly) {
             // Calculate byte offset to seek to
             std::size_t particleRecordStartOffset = getParticleRecordStartOffset();
             std::size_t particleRecordLength = getParticleRecordLength();
@@ -94,8 +98,9 @@ namespace ParticleZoo
             }
 
             bytesRead_ = bytesToSkip;
-        } else if (formatType_ == FormatType::ASCII) {
-            // For ASCII, we need to read lines until we reach the desired particle index
+            particlesRead_ = particleIndex;
+        } else {
+            // For ASCII, or binary files that cannot seek directly, read forward until we reach the desired particle index
             file_.seekg(0, std::ios::beg);
             if (file_.fail()) {
                 throw std::runtime_error("Failed to seek to beginning of file: " + fileName_);
@@ -103,17 +108,16 @@ namespace ParticleZoo
             // reset counters
             bytesRead_  = 0;
             particlesRead_ = 0;
+            metaparticlesRead_ = 0;
             historiesRead_ = 0;
             for (std::size_t p = 0 ; p < particleIndex ; p++) {
                 getNextParticle(false); // Read without counting in statistics
             }
-        } else {
-            throw std::runtime_error("Unsupported format type for moveToParticle."); // Just for safety
         }
 
-        particlesRead_ = particleIndex;
+        // Every record read so far that is not one of the skipped particles is a metadata record
+        metaparticlesRead_ = particlesRead_ - particleIndex;
         particlesSkipped_ = particleIndex;
-        metaparticlesRead_ = 0;
         // historiesRead_ restarts from the seek point; a mid-file seek target is not
         // "the first particle of the file" so only re-arm the flag when seeking to the start
         historiesRead_ = 0;
@@ -243,6 +247,63 @@ namespace ParticleZoo
         }
     }
 
+    Particle PhaseSpaceFileReader::readBinaryRecord(std::span<const byte> record) {
+        // Decrement the depth however readBinaryParticle exits
+        struct DepthGuard { int & depth; ~DepthGuard() { depth--; } } depthGuard{++readParticleDepth_};
+
+        ByteBuffer * particleBuffer;
+        std::unique_ptr<ByteBuffer> temporaryParticleBuffer;
+        if (readParticleDepth_ == 1) {
+            // avoid creating a new particle buffer for every record
+            if (!particleBuffer_ || particleBuffer_->capacity() < record.size()) {
+                particleBuffer_ = std::make_unique<ByteBuffer>(record.size(), buffer_.getByteOrder());
+            }
+            particleBuffer = particleBuffer_.get();
+        } else {
+            // a nested read (e.g. readBinaryParticle reading ahead) must not overwrite the outer record
+            temporaryParticleBuffer = std::make_unique<ByteBuffer>(record.size(), buffer_.getByteOrder());
+            particleBuffer = temporaryParticleBuffer.get();
+        }
+
+        particleBuffer->setData(record);
+        return readBinaryParticle(*particleBuffer);
+    }
+
+    std::span<const byte> PhaseSpaceFileReader::nextBinaryRecord(std::size_t recordsAhead, bool consume) {
+        // Make sure the buffer holds the requested record, reading the next block if necessary
+        std::size_t bytesNeeded = (recordsAhead + 1) * particleRecordLength_;
+        if (buffer_.remainingToRead() < bytesNeeded) {
+            if (bytesInFile_ - bytesRead_ + buffer_.remainingToRead() < bytesNeeded) {
+                throw std::runtime_error("No more particles to read.");
+            }
+            readNextBlock();
+        }
+        if (consume) return buffer_.readBytes(particleRecordLength_);
+        return buffer_.peekBytes(bytesNeeded).subspan(recordsAhead * particleRecordLength_);
+    }
+
+    void PhaseSpaceFileReader::foldEmptyHistories(Particle & particle, bool consume) {
+        // A pseudoparticle record only carries a count of empty histories (e.g. in TOPAS files),
+        // so fold those histories into the next real particle
+        std::size_t recordsAhead = 0;
+        std::uint64_t emptyHistories = 0;
+        while (particle.getType() == ParticleType::PseudoParticle) {
+            emptyHistories += particle.getIncrementalHistories();
+            if (consume) {
+                particlesRead_++;
+                metaparticlesRead_++;
+            } else {
+                recordsAhead++;
+            }
+            particle = readBinaryRecord(nextBinaryRecord(recordsAhead, consume));
+        }
+
+        if (emptyHistories > 0) {
+            std::uint64_t ownHistories = std::max<std::uint32_t>(1, particle.getIncrementalHistories());
+            particle.setIncrementalHistories(static_cast<std::uint32_t>(emptyHistories + ownHistories));
+        }
+    }
+
     Particle PhaseSpaceFileReader::getNextParticle(bool countParticleInStatistics) {
         if (!hasMoreParticles()) {
             throw std::runtime_error("No more particles to read.");
@@ -257,12 +318,12 @@ namespace ParticleZoo
                             readNextBlock();
                         }
 
-                        // Get a view of the next particle record in the buffer
-                        std::span<const ParticleZoo::byte> recordView = buffer_.readBytes(particleRecordLength_);
-                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
-                        
-                        // Read the next particle from the buffer
-                        return readBinaryParticle(particleData);
+                        // Read the next particle record in the buffer
+                        Particle nextParticle = readBinaryRecord(buffer_.readBytes(particleRecordLength_));
+                        if (nextParticle.getType() == ParticleType::PseudoParticle) [[unlikely]] {
+                            foldEmptyHistories(nextParticle, true);
+                        }
+                        return nextParticle;
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format
@@ -327,12 +388,12 @@ namespace ParticleZoo
                             readNextBlock();
                         }
 
-                        // Get a view of the next particle record in the buffer without advancing the read position
-                        std::span<const ParticleZoo::byte> recordView = buffer_.peekBytes(particleRecordLength_);
-                        ByteBuffer particleData(recordView, buffer_.getByteOrder());
-                        
-                        // Read the next particle from the buffer
-                        return readBinaryParticle(particleData);
+                        // Read the next particle record in the buffer without advancing the read position
+                        Particle nextParticle = readBinaryRecord(buffer_.peekBytes(particleRecordLength_));
+                        if (nextParticle.getType() == ParticleType::PseudoParticle) [[unlikely]] {
+                            foldEmptyHistories(nextParticle, false);
+                        }
+                        return nextParticle;
                     }
                     break;
                 case (FormatType::ASCII): // ASCII format

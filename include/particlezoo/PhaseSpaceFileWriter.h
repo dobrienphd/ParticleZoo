@@ -49,7 +49,9 @@ namespace ParticleZoo
             /**
              * @brief Destroy the Phase Space File Writer object.
              * 
-             * Ensures proper cleanup by closing the file and flushing any remaining buffered data.
+             * Releases the file handle, but cannot finalize the file. Derived classes should
+             * call close() in their own destructors, so that a writer which has not been closed
+             * explicitly still flushes its buffered data and writes its header.
              */
             virtual ~PhaseSpaceFileWriter();
 

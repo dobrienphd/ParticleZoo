@@ -154,6 +154,9 @@ namespace ParticleZoo
 
     std::unique_ptr<PhaseSpaceFileReader> FormatRegistry::CreateReader(const std::string& formatName, const std::string& filename, const UserOptions & options)
     {
+        if (formatName.empty()) {
+            return CreateReader(filename, options); // auto-detect from the file extension
+        }
         FormatRegistry& registry = instance();
         std::unique_lock lock(registry.mutex_);
         auto it = registry.readerFactories_.find(formatName);
@@ -179,6 +182,9 @@ namespace ParticleZoo
 
     std::unique_ptr<PhaseSpaceFileWriter> FormatRegistry::CreateWriter(const std::string& formatName, const std::string& filename, const UserOptions & options, const FixedValues & fixedValues)
     {
+        if (formatName.empty()) {
+            return CreateWriter(filename, options, fixedValues); // auto-detect from the file extension
+        }
         FormatRegistry& registry = instance();
         std::unique_lock lock(registry.mutex_);
         auto it = registry.writerFactories_.find(formatName);

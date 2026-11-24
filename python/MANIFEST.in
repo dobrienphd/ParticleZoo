@@ -1,0 +1,8 @@
+# Vendored C++ sources and headers (created by setup.py from ../src, ../include)
+graft cpp
+graft src/pybind
+include LICENSE
+include README.md
+recursive-include src/particlezoo *.pyi py.typed
+prune **/__pycache__
+global-exclude *.so *.dylib *.dll *.py[cod] *.o

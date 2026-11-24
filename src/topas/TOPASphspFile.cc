@@ -10,7 +10,9 @@ namespace ParticleZoo::TOPASphspFile
     CLICommand TOPASFormatCommand { WRITER, "", "TOPAS-format", "Specify the TOPAS phase space file format to write (ASCII, BINARY or LIMITED)", { CLI_STRING }, { "BINARY" } };
     CLICommand TOPASWritePseudoParticleAtEndOnlyCommand { WRITER, "", "TOPAS-single-pseudo", "For TOPAS binary files, write a single pseudo-particle at the end of the file to account for all empty histories instead of writing them continously throughout the file", { CLI_VALUELESS }, {} };
 
-    // STRING columns only exist in the TOPAS ASCII format; the binary formats have no
+    constexpr float inv_ns = 1.f / ns;
+
+// STRING columns only exist in the TOPAS ASCII format; the binary formats have no
     // representation for them, so reject them before any fixed-record-length I/O begins
     inline void rejectStringColumnsForBinaryFormats(const Header & header)
     {
@@ -46,11 +48,37 @@ namespace ParticleZoo::TOPASphspFile
       header_(std::move(formatAndHeader.second)),
       formatType_(header_.getTOPASFormat()),
       particleRecordLength_(header_.getRecordLength()),
-      readFullDetails_(true),
-      emptyHistoriesCount_(0)
+      readFullDetails_(true)
     {}
     
     std::vector<CLICommand> Reader::getFormatSpecificCLICommands() { return {}; }
+
+    bool Reader::canSeekDirectly() const
+    {
+        if (canSeekDirectly_.has_value()) return *canSeekDirectly_;
+
+        canSeekDirectly_ = [&]() {
+            // Only BINARY files contain pseudo-particles
+            if (formatType_ != TOPASFormat::BINARY) return true;
+
+            std::uint64_t records = getNumberOfEntriesInFile();
+            std::uint64_t particles = getNumberOfParticles();
+            if (records <= particles) return true;
+
+            // At most one pseudo-particle is written after the last particle, so any more extra records
+            // mean that some pseudo-particles are mid-file
+            if (records - particles > 1) return false;
+
+            // A single extra record is safe only if it is a trailing pseudo-particle (type code 0)
+            std::ifstream file(getFileName(), std::ios::binary);
+            file.seekg(static_cast<std::streamoff>((records - 1) * particleRecordLength_), std::ios::beg);
+            ByteBuffer lastRecord(particleRecordLength_);
+            lastRecord.appendData(file);
+            lastRecord.moveTo(7 * sizeof(float)); // x, y, z, u, v, energy and weight precede the type code
+            return lastRecord.read<std::int32_t>() == 0;
+        }();
+        return *canSeekDirectly_;
+    }
 
     Particle Reader::readASCIIParticle(const std::string & line)
     {
@@ -89,14 +117,22 @@ namespace ParticleZoo::TOPASphspFile
                     {
                         float floatValue;
                         iss >> floatValue;
-                        particle.setFloatProperty(FloatPropertyType::CUSTOM, floatValue);
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            particle.setFloatProperty(FloatPropertyType::TIME, floatValue * ns);
+                        } else {
+                            particle.setFloatProperty(FloatPropertyType::CUSTOM, floatValue);
+                        }
                         break;
                     }
                     case Header::DataType::FLOAT64:
                     {
                         double doubleValue;
                         iss >> doubleValue;
-                        particle.setFloatProperty(FloatPropertyType::CUSTOM, static_cast<float>(doubleValue));
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            particle.setFloatProperty(FloatPropertyType::TIME, static_cast<float>(doubleValue) * ns);
+                        } else {
+                            particle.setFloatProperty(FloatPropertyType::CUSTOM, static_cast<float>(doubleValue));
+                        }
                         break;
                     }
                     case Header::DataType::INT8:
@@ -180,10 +216,18 @@ namespace ParticleZoo::TOPASphspFile
                         particle.setBoolProperty(BoolPropertyType::CUSTOM, buffer.read<bool>());
                         break;
                     case Header::DataType::FLOAT32:
-                        particle.setFloatProperty(FloatPropertyType::CUSTOM, buffer.read<float>());
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            particle.setFloatProperty(FloatPropertyType::TIME, buffer.read<float>() * ns);
+                        } else {
+                            particle.setFloatProperty(FloatPropertyType::CUSTOM, buffer.read<float>());
+                        }
                         break;
                     case Header::DataType::FLOAT64:
-                        particle.setFloatProperty(FloatPropertyType::CUSTOM, (float)buffer.read<double>());
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            particle.setFloatProperty(FloatPropertyType::TIME, static_cast<float>(buffer.read<double>()) * ns);
+                        } else {
+                            particle.setFloatProperty(FloatPropertyType::CUSTOM, static_cast<float>(buffer.read<double>()));
+                        }
                         break;
                     case Header::DataType::INT8:
                         particle.setIntProperty(IntPropertyType::CUSTOM, (std::int32_t)buffer.read<std::int8_t>());
@@ -368,8 +412,15 @@ namespace ParticleZoo::TOPASphspFile
                     case Header::DataType::FLOAT32:
                     case Header::DataType::FLOAT64:
                         {
-                            const float customFloat = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
-                            oss << std::setw(12) << customFloat << " ";
+                            if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                                float timeVal = particle.hasFloatProperty(FloatPropertyType::TIME)
+                                    ? particle.getFloatProperty(FloatPropertyType::TIME) * inv_ns
+                                    : 0.0f;
+                                oss << std::setw(12) << timeVal << " ";
+                            } else {
+                                const float customFloat = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
+                                oss << std::setw(12) << customFloat << " ";
+                            }
                         }
                         break;
                 }
@@ -477,14 +528,26 @@ namespace ParticleZoo::TOPASphspFile
                     }
                     case Header::DataType::FLOAT32:
                     {
-                        const float customFloat32 = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
-                        buffer.write(customFloat32);
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            buffer.write(particle.hasFloatProperty(FloatPropertyType::TIME)
+                                ? particle.getFloatProperty(FloatPropertyType::TIME) * inv_ns
+                                : 0.0f);
+                        } else {
+                            const float customFloat32 = customFloatIndex < customFloatProperties.size() ? customFloatProperties[customFloatIndex++] : 0.0f;
+                            buffer.write(customFloat32);
+                        }
                         break;
                     }
                     case Header::DataType::FLOAT64:
                     {
-                        const double customFloat64 = customFloatIndex < customFloatProperties.size() ? static_cast<double>(customFloatProperties[customFloatIndex++]) : 0.0;
-                        buffer.write(customFloat64);
+                        if (column.columnType_ == Header::ColumnType::TIME_OF_FLIGHT) {
+                            buffer.write(static_cast<double>(particle.hasFloatProperty(FloatPropertyType::TIME)
+                                ? particle.getFloatProperty(FloatPropertyType::TIME) * inv_ns
+                                : 0.0f));
+                        } else {
+                            const double customFloat64 = customFloatIndex < customFloatProperties.size() ? static_cast<double>(customFloatProperties[customFloatIndex++]) : 0.0;
+                            buffer.write(customFloat64);
+                        }
                         break;
                     }
                 }

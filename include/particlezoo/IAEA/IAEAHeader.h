@@ -593,15 +593,25 @@ namespace ParticleZoo::IAEAphspFile
 
             /**
              * @brief Set a header section value by name
+             *
+             * Only descriptive text sections can be set: IAEA_INDEX, TITLE, the descriptive
+             * metadata sections (TRANSPORT_PARAMETERS through ADDITIONAL_NOTES) and custom
+             * sections. Record layout, history and particle counts, checksum and statistics
+             * are derived from the header configuration and particle data and cannot be set.
              * @param sectionName Name of the section to set
              * @param sectionValue Content to store in the section
+             * @throws std::runtime_error if the section cannot be set directly
              */
             void                setSection(const std::string &sectionName, const std::string &sectionValue);
 
             /**
              * @brief Set a header section value using the explicit enum type
+             *
+             * See setSection(const std::string&, const std::string&) for which sections
+             * can be set.
              * @param section Section identifier to set
              * @param sectionValue Content to store in the section
+             * @throws std::runtime_error if the section cannot be set directly
              */
             void                setSection(SECTION section, const std::string &sectionValue);
 
@@ -754,6 +764,7 @@ namespace ParticleZoo::IAEAphspFile
 
             SectionTable        sectionTable_;
 
+            void                applySection(const std::string &sectionTitle, const std::string &content);
             void                readHeader(std::ifstream & file);
             void                generateSectionTable();
             unsigned int        calculateMinimumRecordLength() const;

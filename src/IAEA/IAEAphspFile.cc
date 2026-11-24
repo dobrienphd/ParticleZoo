@@ -314,6 +314,15 @@ namespace ParticleZoo::IAEAphspFile
         fixedValuesHaveChanged();
     }
 
+    Writer::~Writer()
+    {
+        try {
+            close();
+        } catch (...) {
+            // destructors must not throw; call close() explicitly to handle write errors
+        }
+    }
+
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
         return {
             IAEAHeaderTemplateCommand,

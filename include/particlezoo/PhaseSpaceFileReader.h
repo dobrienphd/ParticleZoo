@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <vector>
 
 #include "particlezoo/utilities/argParse.h"
@@ -306,6 +307,8 @@ namespace ParticleZoo
              * 
              * Allows random access to particles within the file. The next call to
              * getNextParticle() will return the particle at the specified index.
+             * ASCII files, and binary files where canSeekDirectly() is false, are read
+             * forward to reach the index.
              * 
              * @param particleIndex Zero-based index of the particle to move to
              */
@@ -318,6 +321,16 @@ namespace ParticleZoo
              * The reader cannot be used after calling this method.
              */
             void                  close();
+
+            /**
+             * @brief Get metadata associated with the phase space file.
+             * 
+             * Returns a map of metadata key-value pairs extracted from the file header or other sources.
+             * Derived classes can override this method to provide format-specific metadata.
+             * 
+             * @return std::unordered_map<std::string, std::string> Map of metadata key-value pairs
+             */
+            virtual std::unordered_map<std::string, std::string> getMetadata() const;
 
         protected:
 
@@ -397,6 +410,18 @@ namespace ParticleZoo
              * @return std::size_t The byte offset of the first particle record
              */
             virtual std::size_t   getParticleRecordStartOffset() const;
+
+            /**
+             * @brief Check whether particle indices map directly onto record indices in a binary file.
+             * 
+             * When true, moveToParticle() seeks straight to the requested record. Formats whose
+             * binary files can contain metadata records before the last particle (e.g. TOPAS
+             * empty-history pseudoparticles) must override this and return false for such files,
+             * so that moveToParticle() reads forward instead. Default implementation returns true.
+             * 
+             * @return true if every record before the last particle is a particle
+             */
+            virtual bool          canSeekDirectly() const;
             
             /**
              * @brief Get the length in bytes of each particle record.
@@ -541,6 +566,9 @@ namespace ParticleZoo
         private:
             void                  readNextBlock();
             void                  bufferNextASCIILine();
+            Particle              readBinaryRecord(std::span<const byte> record);
+            std::span<const byte> nextBinaryRecord(std::size_t recordsAhead, bool consume);
+            void                  foldEmptyHistories(Particle & particle, bool consume);
 
             const std::string phspFormat_;
             const std::string fileName_;
@@ -562,6 +590,8 @@ namespace ParticleZoo
             std::size_t particleRecordLength_;
             bool isFirstParticle_;
             ByteBuffer buffer_;
+            std::unique_ptr<ByteBuffer> particleBuffer_;
+            int readParticleDepth_; // to track nested calls to readBinaryParticle
 
             FixedValues fixedValues_;
     };
@@ -593,7 +623,11 @@ namespace ParticleZoo
     inline std::uint64_t PhaseSpaceFileReader::getFileSize() const { return bytesInFile_; }
     inline const std::string PhaseSpaceFileReader::getFileName() const { return fileName_; }
     inline std::size_t PhaseSpaceFileReader::getParticleRecordStartOffset() const { return 0; }
-    inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) { buffer_.setByteOrder(byteOrder); }
+    inline bool PhaseSpaceFileReader::canSeekDirectly() const { return true; }
+    inline void PhaseSpaceFileReader::setByteOrder(ByteOrder byteOrder) {
+        buffer_.setByteOrder(byteOrder);
+        if (particleBuffer_) particleBuffer_->setByteOrder(byteOrder);
+    }
     inline const UserOptions& PhaseSpaceFileReader::getUserOptions() const { return userOptions_; }
 
     inline bool PhaseSpaceFileReader::isXConstant() const { return fixedValues_.xIsConstant; }
@@ -621,6 +655,10 @@ namespace ParticleZoo
     inline void PhaseSpaceFileReader::setConstantWeight(float weight) { fixedValues_.weightIsConstant = true; fixedValues_.constantWeight = weight; }
 
     inline const FixedValues PhaseSpaceFileReader::getFixedValues() const { return fixedValues_; }
+
+    inline std::unordered_map<std::string, std::string> PhaseSpaceFileReader::getMetadata() const {
+        return std::unordered_map<std::string, std::string>(); // Default implementation returns an empty map; derived classes can override to provide actual metadata
+    }
 
     inline std::uint64_t PhaseSpaceFileReader::getHistoriesRead() {
         if (!hasMoreParticles()) {

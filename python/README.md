@@ -1,10 +1,11 @@
-# Python Bindings for ParticleZoo
+# ParticleZoo
 
 Python bindings for the ParticleZoo C++20 library, enabling reading, writing, and manipulation of particle phase space files from various Monte Carlo simulation codes.
 
 ## Features
 
-- **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, penEasy, and ROOT formats
+- **Unified API**: Read and write phase space files from EGS, IAEA, TOPAS, and penEasy formats (ROOT also available — see "ROOT support" under Installation)
+- **High-Level Operations**: Convert, combine, split, and generate fluence images with single function calls
 - **Automatic Format Detection**: File format is inferred from extension, with explicit override options
 - **Iterator Support**: Pythonic iteration over particles with `for particle in reader:`
 - **Full Particle Access**: Get and set all particle properties (position, momentum, energy, weight, etc.)
@@ -12,73 +13,41 @@ Python bindings for the ParticleZoo C++20 library, enabling reading, writing, an
 - **Unit System**: Comprehensive physical units for dimensional consistency
 - **Format-Specific Features**: Access EGS LATCH bits, PENELOPE ILB arrays, and other format-specific data
 
-## Prerequisites
-
-- Python 3.8+
-- A C++20 compiler (GCC 10+, Clang 13+, or MSVC 2019+)
-- pybind11 (installed automatically by pip)
-
 ## Installation
 
-### Using the Makefile (Linux/macOS)
-
-From the repository root, use the provided makefile targets:
-
 ```bash
-# Standard installation (uses virtual env if active, otherwise user site-packages)
-make install-python
-
-# Development/editable installation (changes to source are reflected immediately)
-make install-python-dev
-
-# Uninstall
-make uninstall-python
+pip install particlezoo
 ```
 
-If no virtual environment is active, the makefile will prompt before installing to user site-packages (`~/.local`).
+Requires Python 3.9 or newer. Ready-to-use packages are provided for
+Windows, macOS, and Linux (x86_64 and ARM), so no compiler or other setup
+is needed — the EGS, IAEA, TOPAS, and penEasy formats work out
+of the box.
 
-### Windows Installation
+### ROOT support
 
-On Windows, use pip directly from a command prompt or PowerShell:
+The standard `pip install particlezoo` does **not** include support for
+CERN ROOT files. If you need the ROOT format:
 
-```powershell
-# Navigate to repository root
-cd path\to\particlezoo
+1. Install [ROOT](https://root.cern/) so that the `root-config` command
+   works in your terminal.
+2. Install ParticleZoo with pip's `--no-binary` flag, which compiles it
+   from source on your machine so it can link against your ROOT
+   installation:
 
-# Optional: Create and activate a virtual environment
-python -m venv .venv
-.venv\Scripts\activate
+   ```bash
+   pip install --no-binary particlezoo particlezoo
+   ```
 
-# Install dependencies and the package
-python -m pip install -U pip setuptools wheel pybind11
-python -m pip install python        # Standard install
-# or
-python -m pip install -e python     # Editable/development install
-```
+Compiling from source requires a C++20 compiler (GCC 10+, Clang 13+, or
+MSVC 2019+); everything else is handled automatically by pip. One macOS
+note: if you use a python.org Python together with Homebrew ROOT on Apple
+Silicon, prefix the command with `ARCHFLAGS="-arch arm64"` so the build
+matches your ROOT installation's architecture.
 
-### Using a Virtual Environment (Linux/macOS)
-
-For isolated development, create and activate a virtual environment first:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-
-# Then install using the makefile
-make install-python      # or make install-python-dev for editable mode
-```
-
-### Direct pip Installation (All Platforms)
-
-Alternatively, install directly with pip from the repository root:
-
-```bash
-python -m pip install -U pip setuptools wheel pybind11
-python -m pip install python        # Standard install
-python -m pip install -e python     # Editable install
-```
-
-The extension compiles its own copy of the C++ sources; it does not require installing the static library first.
+For development or editable installs from a git checkout, see the
+[GitHub repository](https://github.com/dobrienphd/ParticleZoo), which
+provides `make install-python` and `make install-python-dev` targets.
 
 ## Quick Start
 
@@ -103,6 +72,53 @@ reader.close()
 ```
 
 ## API Reference
+
+### High-Level Operations
+
+The operations that power the ParticleZoo command-line tools (`PHSPConvert`, `PHSPCombine`, `PHSPSplit`, `PHSPImage`) are exposed as single function calls. Each takes an optional options object whose attributes mirror the corresponding command-line flags. All physical quantities use ParticleZoo's internal unit system: multiply by the module's unit constants (`pz.cm`, `pz.MeV`, ...) when setting values. Optional attributes default to `None` (unset).
+
+Every options object also has a `format_options` attribute holding a `UserOptions` with format-specific reader/writer settings (EGS mode, TOPAS format, IAEA extra values, ...). Set them by command-line name with `set_option()`:
+
+```python
+opts = pz.ConvertOptions()
+opts.format_options.set_option("EGS-particleZ", 100.0)  # EGS files don't store Z; supply it when reading
+pz.convert("input.egsphsp", "output.IAEAphsp", opts)
+```
+
+#### `convert(input_file, output_file, options=ConvertOptions())`
+Convert a phase space file to another format, optionally filtering or projecting particles. `ConvertOptions` attributes include `max_particles`, `input_format`, `output_format`, `preserve_constants`, `project_to_x/y/z`, `photons_only`, `electrons_only`, `filter_by_pdg`, `min_energy`/`max_energy`, `min_x`/`max_x` (and y, z), `min_radius`/`max_radius`, `primaries_only`, `exclude_primaries`, `generations`, `error_on_warning`, and `format_options`.
+
+```python
+opts = pz.ConvertOptions()
+opts.photons_only = True
+opts.min_energy = 1.0 * pz.MeV
+pz.convert("input.egsphsp", "photons.IAEAphsp", opts)
+```
+
+#### `combine(input_files, output_file, options=CombineOptions())`
+Combine multiple phase space files into a single output file, accumulating history counts. `CombineOptions` attributes: `max_particles`, `input_format`, `output_format`, `preserve_constants`, `format_options`.
+
+```python
+pz.combine(["run1.IAEAphsp", "run2.IAEAphsp"], "combined.IAEAphsp")
+```
+
+#### `split(input_file, split_number, options=SplitOptions())`
+Split a phase space file into `split_number` roughly equal parts, respecting history boundaries. Output files are named `stem_PartXX.ext`. `SplitOptions` attributes: `input_format`, `output_format` (empty = auto-detect from the input file's extension), `format_options`.
+
+```python
+pz.split("large.IAEAphsp", 4)
+```
+
+#### `generate_image(input_file, output_file, options=GenerateImageOptions())`
+Generate a 2D fluence image (TIFF or BMP) from a phase space file. `GenerateImageOptions` attributes include `plane`, `plane_location`, `projection_type`, `project_to`, `image_width`/`image_height`, `min_x`/`max_x` (and y, z), `square`, `tolerance`, `max_particles`, `score`, `normalize_by_particles`, `input_format`, `output_format`, generation filters, EGS LATCH filters, `error_on_warning`, and `format_options`. Configure it with the `ImagePlane`, `ImageProjectionType`, `ImageQuantityType`, and `ImageOutputFormat` enums.
+
+```python
+img = pz.GenerateImageOptions()
+img.plane = pz.ImagePlane.XZ
+img.score = pz.ImageQuantityType.ENERGY
+img.square = 20.0 * pz.cm
+pz.generate_image("beam.IAEAphsp", "energy_fluence.tiff", img)
+```
 
 ### Factory Functions
 
@@ -257,6 +273,9 @@ reader.move_to_particle(1000000)  # Jump to particle at index 1,000,000
 print(f"Particles read: {reader.get_particles_read()}")
 print(f"Histories read: {reader.get_histories_read()}")
 
+# Format-specific header metadata (empty dict if the format provides none)
+metadata = reader.get_metadata()
+
 reader.close()
 ```
 
@@ -280,6 +299,15 @@ print(f"Histories written: {writer.get_histories_written()}")
 print(f"Max supported: {writer.get_maximum_supported_particles()}")
 
 writer.close()  # Flushes buffers and finalizes file
+```
+
+For IAEA output the factories return an `IAEAPhaseSpaceFileWriter`, which can also set descriptive text sections of the header. Sections derived from the header configuration or particle data (e.g. `RECORD_CONTENTS`, `ORIG_HISTORIES`, `PARTICLES`, `CHECKSUM`) cannot be set and raise `RuntimeError`.
+
+```python
+writer = pz.create_writer("output.IAEAphsp")
+writer.set_section("TITLE", "6 MV photon beam")
+writer.set_section("AUTHORS", "Jane Doe")
+writer.set_section("MY_CUSTOM_SECTION", "Any extra text")  # custom sections are allowed
 ```
 
 ### FixedValues Class
@@ -336,8 +364,13 @@ options = pz.ArgParser.parse_args(
     min_positional_args=1
 )
 
-# Create empty options for manual configuration
+# Or build options programmatically by command-line name (no leading dashes)
 options = pz.UserOptions()
+options.set_option("EGS-mode", "MODE2")
+
+# Read option values back by name
+mode = options.extract_string_option("EGS-mode")
+z = options.extract_float_option("constantZ", default_value=0.0)
 
 # Pass options to reader/writer
 reader = pz.create_reader("file.phsp", options)
@@ -450,7 +483,7 @@ pz.eV, pz.keV, pz.MeV, pz.GeV, pz.TeV, pz.J
 pz.ug, pz.mg, pz.g, pz.kg, pz.lb
 
 # Time
-pz.s, pz.minute, pz.hour, pz.day, pz.year
+pz.s, pz.ms, pz.us, pz.ns, pz.ps, pz.minute, pz.hour, pz.day, pz.week, pz.year
 
 # Frequency
 pz.Hz, pz.kHz, pz.MHz, pz.GHz, pz.THz
@@ -609,12 +642,14 @@ reader.close()
 | IAEA | `.IAEAphsp` | IAEA standard format with header |
 | TOPAS | `.phsp` | TOPAS Binary, ASCII, Limited |
 | penEasy | `.dat` | PENELOPE/penEasy ASCII format |
-| ROOT | `.root` | CERN ROOT trees (if compiled with ROOT support) |
+| ROOT | `.root` | CERN ROOT trees (requires opt-in install — see "ROOT support" under Installation) |
 
 ## Notes
 
-- All positions are in internal units
-- All energies are in internal units
+- Positions and energies are stored in the library's internal units (cm and
+  MeV) — use the unit constants (see Unit System) when converting values in
+  and out
 - Direction cosines are automatically normalized
-- The extension compiles against the C++ sources directly
+- Installing from the source distribution compiles the bundled C++ sources;
+  no separate ParticleZoo C++ library installation is required
 - Thread safety: Each reader/writer should be used from a single thread

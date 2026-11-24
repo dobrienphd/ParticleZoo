@@ -12,6 +12,7 @@
 #include <variant>
 #include <array>
 #include <optional>
+#include <cstdint>
 
 namespace ParticleZoo {
 
@@ -21,7 +22,7 @@ namespace ParticleZoo {
      * A variant type that can hold different types of values that can be passed
      * as command line arguments: floating point numbers, integers, strings, or booleans.
      */
-    using CLIValue = std::variant<float,unsigned int,int,std::string,bool>;
+    using CLIValue = std::variant<float,unsigned int,int,std::string,bool,std::uint64_t,std::int64_t>;
 
     /**
      * @brief Enumeration for command line argument types.
@@ -35,7 +36,9 @@ namespace ParticleZoo {
         CLI_INT,        ///< Integer number argument  
         CLI_STRING,     ///< String argument
         CLI_BOOL,       ///< Boolean flag argument
-        CLI_VALUELESS   ///< Flag with no associated value
+        CLI_VALUELESS,  ///< Flag with no associated value
+        CLI_UINT64,     ///< 64-bit unsigned integer number argument
+        CLI_INT64       ///< 64-bit integer number argument
     };
 
     /**
@@ -241,6 +244,28 @@ namespace ParticleZoo {
             }
 
             /**
+             * @brief Extract a 64-bit integer option value from a command.
+             *
+             * Also accepts values stored as 32-bit integers (CLI_INT).
+             */
+            std::int64_t extractInt64Option(const CLICommand& cmd, std::optional<std::int64_t> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
+                if (validCommand) {
+                    if (auto* val = std::get_if<std::int64_t>(&it->second[index])) {
+                        return *val;
+                    }
+                    if (auto* val = std::get_if<int>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract 64-bit integer option for command.");
+            }
+
+            /**
              * @brief Extract an unsigned integer option value from a command.
              */
             unsigned int extractUIntOption(const CLICommand& cmd, std::optional<unsigned int> defaultValue = std::nullopt, int index = 0) const {
@@ -255,6 +280,28 @@ namespace ParticleZoo {
                     return defaultValue.value();
                 }
                 throw std::runtime_error("Unable to extract unsigned integer option for command.");
+            }
+
+            /**
+             * @brief Extract a 64-bit unsigned integer option value from a command.
+             *
+             * Also accepts values stored as 32-bit unsigned integers (CLI_UINT).
+             */
+            std::uint64_t extractUInt64Option(const CLICommand& cmd, std::optional<std::uint64_t> defaultValue = std::nullopt, int index = 0) const {
+                auto it = this->find(cmd);
+                bool validCommand = it != this->end() && index >= 0 && static_cast<std::size_t>(index) < it->second.size();
+                if (validCommand) {
+                    if (auto* val = std::get_if<std::uint64_t>(&it->second[index])) {
+                        return *val;
+                    }
+                    if (auto* val = std::get_if<unsigned int>(&it->second[index])) {
+                        return *val;
+                    }
+                }
+                if (defaultValue.has_value()) {
+                    return defaultValue.value();
+                }
+                throw std::runtime_error("Unable to extract 64-bit unsigned integer option for command.");
             }
             
             /**
@@ -378,6 +425,19 @@ namespace ParticleZoo {
              * @throws std::runtime_error if any command conflicts with reserved names
              */
             static void RegisterCommands(const std::vector<CLICommand>& commands);
+
+            /**
+             * @brief Look up a registered command by its long or short name.
+             * 
+             * Ensures the generic reader/writer commands and the standard format
+             * commands are registered before searching, so format-specific options
+             * can be found without first calling ParseArgs (e.g. to build UserOptions
+             * programmatically).
+             * 
+             * @param name The command's long or short name, without leading dashes
+             * @return The matching command, or std::nullopt if no command has that name
+             */
+            static std::optional<CLICommand> FindCommand(const std::string& name);
 
             /**
              * @brief Prints usage information for the command line interface.

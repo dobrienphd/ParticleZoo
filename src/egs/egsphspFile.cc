@@ -111,27 +111,27 @@ namespace ParticleZoo::EGSphspFile
         bool isNewHistory = energy < 0;
         if (isNewHistory) { energy = -energy; }
 
-        unsigned int particleChargeBits = (LATCH >> 29) & 3;
-
+        // Charge is encoded in bit 30 (negative) and bit 29 (positive), 0-based.
+        // Both bits being set is invalid
+        if ((LATCH & LATCH_NEGATIVE_CHARGE_BIT) && (LATCH & LATCH_POSITIVE_CHARGE_BIT)) {
+            throw std::runtime_error("Invalid particle charge bits.");
+        }
         ParticleType type;
-        switch (particleChargeBits) {
-            case 0: // Neutral particle
-                type = ParticleType::Photon;
-                break;
-            case 1: // Negative particle
-                type = ParticleType::Electron;
-                energy -= ELECTRON_REST_MASS_MEV; // Convert to kinetic energy
-                break;
-            case 2: // Positive particle
-                type = ParticleType::Positron;
-                energy -= ELECTRON_REST_MASS_MEV; // Convert to kinetic energy
-                break;
-            default: // Error
-                throw std::runtime_error("Invalid particle charge bits.");
-        };
+        if (LATCH & LATCH_NEGATIVE_CHARGE_BIT) { // Negative particle
+            type = ParticleType::Electron;
+            energy -= ELECTRON_REST_MASS_MEV; // Convert to kinetic energy
+        } else if (LATCH & LATCH_POSITIVE_CHARGE_BIT) { // Positive particle
+            type = ParticleType::Positron;
+            energy -= ELECTRON_REST_MASS_MEV; // Convert to kinetic energy
+        } else { // Neutral particle
+            type = ParticleType::Photon;
+        }
         energy *= MeV; // Convert to internal units
 
         Particle particle(type, energy, x, y, z, u, v, w, isNewHistory, weight);
+        // Reserve space for the properties set from the LATCH to avoid reallocations
+        particle.reserveIntProperties(2);
+        particle.reserveBoolProperties(2);
         ApplyLATCHToParticle(particle, LATCH, latchOption_);
 
         if (mode_ == EGSMODE::MODE2) {
@@ -144,39 +144,64 @@ namespace ParticleZoo::EGSphspFile
 
 
     // Writer class implementation
-    Writer::Writer(const std::string & fileName, const UserOptions & options)
-    : PhaseSpaceFileWriter("EGS", fileName, options), latchOption_(EGSLATCHOPTION::LATCH_OPTION_2)
-    {
-        mode_ = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
 
-        if (options.contains(EGSModeCommand)) {
-            CLIValue modeValue = options.at(EGSModeCommand)[0];
-            std::string modeStr = std::get<std::string>(modeValue);
-            if (modeStr == "MODE0") {
-                mode_ = EGSMODE::MODE0;
-            } else if (modeStr == "MODE2") {
-                mode_ = EGSMODE::MODE2;
-            } else {
-                throw std::runtime_error("Unsupported EGS phase-space file mode: " + modeStr);
+    namespace {
+        // Resolve and validate the writer options before the base class is constructed
+        // (in a delegating constructor argument), so that an invalid option cannot
+        // leave a partially constructed writer behind.
+        EGSMODE parseEGSMode(const UserOptions & options) {
+            EGSMODE mode = EGSMODE::MODE0; // Default mode, MODE2 requires source particles to include ZLAST information
+            if (options.contains(EGSModeCommand)) {
+                CLIValue modeValue = options.at(EGSModeCommand)[0];
+                std::string modeStr = std::get<std::string>(modeValue);
+                if (modeStr == "MODE0") {
+                    mode = EGSMODE::MODE0;
+                } else if (modeStr == "MODE2") {
+                    mode = EGSMODE::MODE2;
+                } else {
+                    throw std::runtime_error("Unsupported EGS phase-space file mode: " + modeStr);
+                }
             }
+            return mode;
         }
 
-        if (options.contains(EGSLATCHOptionCommand)) {
-            int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
-            switch (latchOptionInt) {
-                case 1:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_1;
-                    break;
-                case 2:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_2;
-                    break;
-                case 3:
-                    latchOption_ = EGSLATCHOPTION::LATCH_OPTION_3;
-                    break;
-                default:
-                    throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+        EGSLATCHOPTION parseEGSLATCHOption(const UserOptions & options) {
+            EGSLATCHOPTION latchOption = EGSLATCHOPTION::LATCH_OPTION_2;
+            if (options.contains(EGSLATCHOptionCommand)) {
+                int latchOptionInt = options.extractIntOption(EGSLATCHOptionCommand);
+                switch (latchOptionInt) {
+                    case 1:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_1;
+                        break;
+                    case 2:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_2;
+                        break;
+                    case 3:
+                        latchOption = EGSLATCHOPTION::LATCH_OPTION_3;
+                        break;
+                    default:
+                        throw std::runtime_error("Unsupported EGS LATCH option: " + std::to_string(latchOptionInt));
+                }
             }
-        }        
+            return latchOption;
+        }
+    }
+
+    Writer::Writer(const std::string & fileName, const UserOptions & options)
+    : Writer(fileName, options, parseEGSMode(options), parseEGSLATCHOption(options))
+    {}
+
+    Writer::Writer(const std::string & fileName, const UserOptions & options, EGSMODE mode, EGSLATCHOPTION latchOption)
+    : PhaseSpaceFileWriter("EGS", fileName, options), mode_(mode), latchOption_(latchOption)
+    {}
+
+    Writer::~Writer()
+    {
+        try {
+            close();
+        } catch (...) {
+            // destructors must not throw; call close() explicitly to handle write errors
+        }
     }
 
     std::vector<CLICommand> Writer::getFormatSpecificCLICommands() {
@@ -237,7 +262,8 @@ namespace ParticleZoo::EGSphspFile
         if (energy > maxKineticEnergy_) {
             maxKineticEnergy_ = energy;
         }
-        if (particle.getType() == ParticleType::Electron && energy < minElectronEnergy_) {
+        const bool isCharged = particle.getType() == ParticleType::Electron || particle.getType() == ParticleType::Positron;
+        if (isCharged && energy < minElectronEnergy_) {
             minElectronEnergy_ = energy;
         }
 

@@ -1,5 +1,8 @@
 #include "particlezoo/PhaseSpaceFileWriter.h"
 
+#include <exception>
+#include <iostream>
+
 namespace ParticleZoo
 {
 
@@ -94,7 +97,11 @@ namespace ParticleZoo
 
 
     PhaseSpaceFileWriter::~PhaseSpaceFileWriter() {
-        close();
+        // close() cannot be called here: it needs virtual functions of the derived class, which has
+        // already been destroyed (or was never fully constructed, if its constructor threw)
+        if (file_.is_open() && std::uncaught_exceptions() == 0) {
+            std::cerr << "Warning: " << fileName_ << " was not closed properly and is incomplete." << std::endl;
+        }
     }
 
 
@@ -230,7 +237,7 @@ namespace ParticleZoo
                         particleBuffer->expand();
                     }
 
-                    if (buffer_.length() + getParticleRecordLength() > buffer_.capacity()) {
+                    if (buffer_.length() + particleRecordLength_ > buffer_.capacity()) {
                         writeNextBlock();
                     }
 
